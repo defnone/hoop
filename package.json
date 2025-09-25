@@ -1,0 +1,48 @@
+{
+  "name": "hoop",
+  "version": "0.0.1",
+  "description": "",
+  "author": "defnone",
+  "license": "MIT",
+  "workspaces": [
+    "./server",
+    "./client",
+    "./shared"
+  ],
+  "scripts": {
+    "dev:client": "cd client && bun run dev",
+    "dev:server": "cd server && bun run dev",
+    "dev:shared": "cd shared && bun run dev",
+    "dev": "overmind start",
+    "build:client": "cd client && bun run build",
+    "build:shared": "cd shared && bun run build",
+    "build:server": "cd server && bun run build",
+    "build": "bun run build:shared && bun run build:client && bun run build:server",
+    "copy:static": "mkdir -p build && rm -rf build/static && cp -r client/dist build/static",
+    "build:single": "bun run build && bun build ./server/src/index.ts --target=node --outfile=./build/server.js --packages bundle --env=inline && bun run copy:static",
+    "start:single": "cd build && NODE_ENV=production bun server.js",
+    "postinstall": "bun run build:shared && bun run build:server",
+    "lint": "sh -c 'cd client && bun run lint && cd ../server && bun run lint && cd ../shared && bun run lint'",
+    "test:server": "cd server && bunx vitest --coverage",
+    "test:client": "cd client && bunx vitest --coverage",
+    "test:shared": "cd shared && bunx vitest --coverage",
+    "test": "bun run test:server && bun run test:client && bun run test:shared"
+  },
+  "keywords": [
+    "bun",
+    "hono",
+    "react",
+    "vite",
+    "monorepo"
+  ],
+  "devDependencies": {
+    "bun-osv-scanner": "1.0.0",
+    "bun-types": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "hono": "^4.9.7"
+  }
+}
