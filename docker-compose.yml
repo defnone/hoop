@@ -1,0 +1,27 @@
+name: hoop
+services:
+  app:
+    image: ghcr.io/defnone/hoop:latest
+    container_name: hoop
+    ports:
+      - '3803:3000'
+    volumes:
+      - ~/.config/hoop:/app/build/data # data folder for sqlite db
+      - /media:/media # media and download folder, best to keep it on the same volume
+    environment:
+      # - HTTP_PROXY=http://localhost:3128
+      # - HTTPS_PROXY=http://localhost:3128
+      - BETTER_AUTH_SECRET=random_secret # for auth, REQUIRED, generate with `openssl rand -hex 32`
+      - ORIGIN=http://localhost:3803 # for CORS and CSRF, REQUIRED
+      - TRANSMISSION_BASE_URL=http://localhost:9091
+      - TRANSMISSION_USERNAME=username
+      - TRANSMISSION_PASSWORD=password
+      - PUID=1000 # os user id, default 1000
+      - PGID=1000 # os group id, default 1000
+      - TZ=Europe/Moscow # or any other timezone
+      - LOG_LEVEL=info # optional
+    restart: unless-stopped
+
+volumes:
+  data:
+    driver: local
