@@ -31,8 +31,8 @@ export default function TrackerLogo({ tracker }: { tracker: string }) {
     <img
       src={logo.logoSrc}
       alt={logo.id}
-      width={20}
-      height={20}
+      width={15}
+      height={15}
       title={logo.hoverText}
     />
   );
