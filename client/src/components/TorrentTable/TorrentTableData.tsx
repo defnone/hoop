@@ -138,7 +138,7 @@ function DataTableRow({
       <TableCell
         className={cn(
           'font-mono text-nowrap',
-          new Date(item.updatedAt).getDate() === new Date().getDate()
+          new Date(item.updatedAt).toDateString() === new Date().toDateString()
             ? 'text-green-500'
             : 'text-zinc-300'
         )}>
