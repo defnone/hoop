@@ -1,14 +1,18 @@
-import Dashboard from './routes/dashboard';
 import App from './App';
 import { Route, Routes } from 'react-router';
-import Login from './routes/login';
 import NotFound from './routes/404';
 import { DashboardLayout } from './routes/dashboard/layout';
-import Discover from './routes/dashboard/discover';
-import Search from './routes/dashboard/search';
-import Settings from './routes/dashboard/settings';
-import SignUp from './routes/sign-up';
-import CredentialsSettings from './routes/dashboard/settings.credentials';
+import { lazy } from 'react';
+
+const Dashboard = lazy(() => import('./routes/dashboard'));
+const Discover = lazy(() => import('./routes/dashboard/discover'));
+const Search = lazy(() => import('./routes/dashboard/search'));
+const Settings = lazy(() => import('./routes/dashboard/settings'));
+const SignUp = lazy(() => import('./routes/sign-up'));
+const Login = lazy(() => import('./routes/login'));
+const CredentialsSettings = lazy(
+  () => import('./routes/dashboard/settings.credentials')
+);
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const routes = [
