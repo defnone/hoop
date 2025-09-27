@@ -101,22 +101,32 @@ export default function SearchPage() {
   };
 
   useEffect(() => {
-    if (tvName.length > 0) {
-      if (season !== '') {
-        setSearchParams({ query: tvName, season: season.toString() });
-      } else {
-        setSearchParams({ query: tvName });
-      }
-    }
-  }, [tvName]);
+    // Keep URL search params in sync with local state.
+    // - If tvName is empty: remove both 'query' and 'season'.
+    // - If season is empty: remove only 'season'.
+    // - Avoid redundant history entries when nothing changes.
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        const before = next.toString();
 
-  useEffect(() => {
-    if (season !== '') {
-      setSearchParams({ query: tvName, season: season.toString() });
-    } else {
-      setSearchParams({ query: tvName });
-    }
-  }, [season]);
+        if (!tvName) {
+          next.delete('query');
+          next.delete('season');
+        } else {
+          next.set('query', tvName);
+          if (season === '' || season === undefined || season === null) {
+            next.delete('season');
+          } else {
+            next.set('season', String(season));
+          }
+        }
+
+        return next.toString() === before ? prev : next;
+      },
+      { replace: true }
+    );
+  }, [tvName, season, setSearchParams]);
 
   const handleSearch = async () => {
     if (tvName.length === 0) return;
