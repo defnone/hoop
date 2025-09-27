@@ -112,7 +112,7 @@ function DataTableRow({
       </TableCell>
       <TableCell className='font-bold'>{item.title}</TableCell>
       <TableCell className='font-mono text-zinc-300'>
-        <span className='p-1.5 bg-muted rounded-md text-xs font-bold min-w-8 flex w-fit items-center justify-center'>
+        <span className='p-1 bg-muted rounded-md text-xs font-bold min-w-7 flex w-fit items-center justify-center'>
           {item.season}
         </span>
       </TableCell>
