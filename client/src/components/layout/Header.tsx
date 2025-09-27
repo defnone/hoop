@@ -54,7 +54,7 @@ export default function Header() {
         </div>
         <div className='flex items-center gap-2'>
           <Button
-            onClick={() => navigate('/discover')}
+            onClick={() => navigate('/discover?period=weekly')}
             size='sm'
             variant='outline'
             className={cn(
