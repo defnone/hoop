@@ -43,9 +43,11 @@ export default function Header() {
     <div className='mb-10 w-full flex h-[70px] items-center border-b border-border '>
       <div className='w-full mx-auto container flex flex-row justify-between px-[1%]'>
         <div className='flex items-center gap-2'>
-          <h1 className='text-base font-extrabold tracking-tight'>
+          <span
+            className='text-base font-extrabold tracking-tight cursor-pointer'
+            onClick={() => navigate('/')}>
             <Logo width={50} />
-          </h1>
+          </span>
           {lastSync && (
             <p className='text-sm text-muted-foreground ml-4 font-mono'>
               Last sync: {new Date(Number(lastSync)).toLocaleString()}
