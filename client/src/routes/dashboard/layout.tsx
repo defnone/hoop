@@ -1,5 +1,7 @@
 import Header from '@/components/layout/Header';
+import SuspenseLoader from '@/components/layout/SuspenseLoader';
 import { useSession } from '@/lib/auth-client';
+import { Suspense } from 'react';
 import { Outlet } from 'react-router';
 
 export function DashboardLayout() {
@@ -13,7 +15,9 @@ export function DashboardLayout() {
     <div className='w-full mx-auto flex flex-col'>
       <Header />
       <div className='w-full mx-auto container px-[1%]'>
-        <Outlet />
+        <Suspense fallback={<SuspenseLoader />}>
+          <Outlet />
+        </Suspense>
       </div>
     </div>
   );

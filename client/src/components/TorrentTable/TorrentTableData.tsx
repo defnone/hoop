@@ -91,6 +91,8 @@ function DataTableRow({
 
   const downloading = status?.state === 'downloading';
   const paused = status?.state === 'paused';
+
+  const downloadedFiles = filterMediaFiles(item.files as string[]).length;
   return (
     <TableRow
       onClick={() => {
@@ -105,26 +107,41 @@ function DataTableRow({
           'bg-green-500/10 animate-pulse animate-infinite animate-slow',
         paused && 'bg-zinc-300/10 animate-pulse animate-infinite animate-slow'
       )}>
-      <TableCell>
+      <TableCell className='w-12'>
         <TrackerLogo tracker={item.tracker || ''} />
       </TableCell>
-      <TableCell className='font-bold'>
-        {item.title}
-        <span className='text-zinc-500'>
-          {item.season ? ` (Season ${item.season})` : ''}
+      <TableCell className='font-bold'>{item.title}</TableCell>
+      <TableCell className='font-mono text-zinc-300'>
+        <span className='p-1.5 bg-muted rounded-md text-xs font-bold min-w-8 flex w-fit items-center justify-center'>
+          {item.season}
         </span>
       </TableCell>
-      <TableCell className='font-mono text-zinc-300'>{item.season}</TableCell>
       <TableCell className='font-mono text-zinc-300'>
         {(item.haveEpisodes as number[]).length} of {item.totalEpisodes}
       </TableCell>
-      <TableCell className='font-mono text-zinc-300'>
+      <TableCell
+        className={cn(
+          'font-mono',
+          (item.trackedEpisodes as number[]).length > 0
+            ? 'text-zinc-300'
+            : 'text-muted-foreground/40'
+        )}>
         {(item.trackedEpisodes as number[]).length} of {item.totalEpisodes}
       </TableCell>
-      <TableCell className='font-mono text-zinc-300'>
-        {filterMediaFiles(item.files as string[]).length}
+      <TableCell
+        className={cn(
+          'font-mono',
+          downloadedFiles > 0 ? 'text-green-500' : 'text-muted-foreground/40'
+        )}>
+        {downloadedFiles}
       </TableCell>
-      <TableCell className='font-mono text-zinc-300 text-nowrap'>
+      <TableCell
+        className={cn(
+          'font-mono text-nowrap',
+          new Date(item.updatedAt).toDateString() === new Date().toDateString()
+            ? 'text-green-500'
+            : 'text-zinc-300'
+        )}>
         {item.updatedAt
           ? new Date(item.updatedAt).toLocaleDateString('en-GB', {
               month: 'numeric',
