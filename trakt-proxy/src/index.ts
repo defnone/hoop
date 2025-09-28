@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { cache } from 'hono/cache';
 import { getTraktData } from './getTraktData';
 import { cors } from 'hono/cors';
@@ -20,11 +21,31 @@ type AppType = {
 
 const app = new Hono<AppType>();
 
+const resolveRateLimitKey = (c: Context<AppType>): string => {
+  const cfIp = c.req.header('cf-connecting-ip');
+  if (cfIp) return cfIp;
+
+  const xff = c.req.header('x-forwarded-for');
+  if (xff) {
+    const first = xff.split(',')[0]?.trim();
+    if (first) return first;
+  }
+
+  const xri = c.req.header('x-real-ip');
+  if (xri) return xri;
+  const cfRay = c.req.header('cf-ray');
+  if (cfRay) return `cf-ray:${cfRay}`;
+
+  const ua = c.req.header('user-agent') ?? 'unknown-ua';
+  const al = c.req.header('accept-language') ?? 'unknown-lang';
+  return `anon:${ua}:${al}`;
+};
+
 // Initialize rate limiter middleware
 app.use(
   cloudflareRateLimiter<AppType>({
     rateLimitBinding: (c) => c.env.RATE_LIMITER,
-    keyGenerator: (c) => c.req.header('cf-connecting-ip') ?? '',
+    keyGenerator: (c) => resolveRateLimitKey(c),
   })
 );
 
@@ -56,7 +77,6 @@ app.get('/api/trakt/:period', async (c) => {
     return c.json({ error: 'Invalid period, supports weekly or daily' }, 400);
   }
 
-  console.log(`running ${period}`);
   const data = await getTraktData(c, period);
 
   return c.json(data);
