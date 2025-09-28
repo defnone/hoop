@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 - 2025-09-28
+
+### Changed
+- client: adjust TrackerLogo and TorrentTableData styling for improved layout
+- client: refactor Header component and simplify Logo rendering
+- client: refactor search parameter handling in SearchPage
+- client: update Header navigation to include period parameter
+
 ## 0.2.0 - 2025-09-27
 
 ### Added
