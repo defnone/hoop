@@ -16,7 +16,7 @@ export const getTraktData = async (c: Context, period: 'weekly' | 'daily') => {
 
   if (!response.ok) {
     console.error(`API Error: ${response.status} ${response.statusText}`);
-    throw new Error(`API Error: ${response.status}`);
+    throw new Error(`API Error: ${response.status} ${response.statusText}`);
   }
 
   const data = await response.json();
