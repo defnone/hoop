@@ -46,3 +46,6 @@ tmp
 AGENTS.md
 
 server/data
+
+trakt-proxy/wrangler.jsonc
+.wrangler
