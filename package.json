@@ -7,12 +7,14 @@
   "workspaces": [
     "./server",
     "./client",
-    "./shared"
+    "./shared",
+    "./trakt-proxy"
   ],
   "scripts": {
     "dev:client": "cd client && bun run dev",
     "dev:server": "cd server && bun run dev",
     "dev:shared": "cd shared && bun run dev",
+    "dev:trakt": "cd trakt-proxy && bun run dev",
     "dev": "overmind start",
     "build:client": "cd client && bun run build",
     "build:shared": "cd shared && bun run build",
@@ -43,6 +45,6 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "hono": "^4.9.7"
+    "hono": "4.9.7"
   }
 }
