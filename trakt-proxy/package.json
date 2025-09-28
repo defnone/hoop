@@ -1,0 +1,16 @@
+{
+  "name": "trakt-proxy",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify"
+  },
+  "dependencies": {
+    "@hono-rate-limiter/cloudflare": "^0.2.2",
+    "hono-rate-limiter": "^0.4.2",
+    "hono": "4.9.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250214.0",
+    "wrangler": "^4.1.0"
+  }
+}
