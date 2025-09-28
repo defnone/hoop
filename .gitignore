@@ -48,4 +48,4 @@ AGENTS.md
 server/data
 
 trakt-proxy/wrangler.jsonc
-.wrangler
+trakt-proxy/.wrangler
