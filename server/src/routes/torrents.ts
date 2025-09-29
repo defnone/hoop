@@ -5,15 +5,16 @@ import { statusStorage } from '@server/workers/download-worker';
 import logger from '@server/lib/logger';
 import z from 'zod';
 import { zValidator } from '@hono/zod-validator';
+import { handleZodValidation } from '@server/lib/validation';
 
 const schema = z.object({
-  page: z.coerce.number(),
-  limit: z.coerce.number(),
+  page: z.coerce.number({ message: 'page is required' }).min(1),
+  limit: z.coerce.number({ message: 'limit is required' }).min(1),
 });
 
 export const torrentsRoute = new Hono().get(
   '/',
-  zValidator('query', schema),
+  zValidator('query', schema, handleZodValidation),
   async (c) => {
     const { page, limit } = c.req.valid('query');
 
@@ -37,7 +38,7 @@ export const torrentsRoute = new Hono().get(
       return c.json(response);
     } catch (e) {
       logger.error(e);
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
         message: (e as Error).message,
       };
