@@ -11,7 +11,7 @@ export const handleZodValidation: ZodHook = (result, c) => {
     return c.json<ApiResponse<null>>(
       {
         success: false,
-        message: `${result.error.issues[0]?.message}`,
+        message: result.error.issues.map((issue) => issue.message).join(', '),
         code: 400,
       },
       400
