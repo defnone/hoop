@@ -18,7 +18,10 @@ type ApiResponse<T> = {
 
 const { getSettingsMock, fetchMock } = vi.hoisted(() => {
   const getSettingsMock = vi.fn<[], Promise<JackettSettings | null>>();
-  const fetchMock = vi.fn<[RequestInfo | URL, RequestInit | undefined], Promise<Response>>();
+  const fetchMock = vi.fn<
+    [RequestInfo | URL, RequestInit | undefined],
+    Promise<Response>
+  >();
   return { getSettingsMock, fetchMock } as const;
 });
 
@@ -115,7 +118,9 @@ describe('jackettSearchRoute', () => {
     const response = await jackettSearchRoute.request(
       '/?query=show&tracker=all&season=1&category=5000'
     );
-    const body = (await response.json()) as ApiResponse<Array<{ Tracker: string }>>;
+    const body = (await response.json()) as ApiResponse<
+      Array<{ Tracker: string }>
+    >;
 
     expect(response.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(3);
@@ -188,7 +193,7 @@ describe('jackettVerifyRoute /connection', () => {
   });
 
   it('returns 500 on network error', async () => {
-    fetchMock.mockRejectedValueOnce(new Error('network'));
+    fetchMock.mockRejectedValue(new Error('network'));
 
     const response = await jackettVerifyRoute.request('/connection', {
       method: 'POST',
@@ -201,7 +206,9 @@ describe('jackettVerifyRoute /connection', () => {
     const body = (await response.json()) as ApiResponse<null>;
 
     expect(response.status).toBe(500);
-    expect(body.message).toBe('Failed to reach Jackett: network');
+    expect(body.message).toBe(
+      'Failed to fetch http://jackett.test/ after 3 attempts: Error: network'
+    );
   });
 });
 
@@ -269,7 +276,7 @@ describe('jackettVerifyRoute /api-key', () => {
   });
 
   it('returns 500 on network error', async () => {
-    fetchMock.mockRejectedValueOnce(new Error('network'));
+    fetchMock.mockRejectedValue(new Error('network'));
 
     const response = await jackettVerifyRoute.request('/api-key', {
       method: 'POST',
@@ -282,6 +289,8 @@ describe('jackettVerifyRoute /api-key', () => {
     const body = (await response.json()) as ApiResponse<null>;
 
     expect(response.status).toBe(500);
-    expect(body.message).toBe('Failed to validate Jackett API Key: network');
+    expect(body.message).toBe(
+      'Failed to validate Jackett API Key: Failed to fetch http://jackett.test/api/v2.0/indexers/all/results/?apikey=key&Query=ping&Category=5000 after 3 attempts: Error: network'
+    );
   });
 });

@@ -5,14 +5,15 @@ import { TransmissionAdapter } from '@server/external/adapters/transmission';
 import logger from '@server/lib/logger';
 import { statusStorage } from '@server/workers/download-worker';
 import { zValidator } from '@hono/zod-validator';
+import { handleZodValidation } from '@server/lib/validation';
 
 const paramSchema = z.object({
-  id: z.coerce.number(),
+  id: z.coerce.number().min(1),
 });
 
 export const torrentClientDeleteRoute = new Hono().delete(
   '/',
-  zValidator('param', paramSchema),
+  zValidator('param', paramSchema, handleZodValidation),
   async (c) => {
     const { id } = c.req.valid('param');
 
