@@ -1,6 +1,10 @@
 import { Hono } from 'hono';
 import type { ApiResponse } from '@shared/types';
 import { SettingsService } from '@server/features/settings/settings.service';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
+import { customFetch } from '@server/shared/custom-fetch';
+import { handleZodValidation } from '@server/lib/validation';
 
 type JackettItem = {
   Tracker: string;
@@ -14,80 +18,70 @@ type JackettItem = {
   Grabs: number;
 };
 
-export const jackettSearchRoute = new Hono().get('/', async (c) => {
-  const query = c.req.query('query') ?? '';
-  const seasonStr = c.req.query('season');
-  const categoryStr = c.req.query('category');
-  const tracker = c.req.query('tracker') ?? 'rutracker';
+const querySchema = z.object({
+  query: z.string({ message: 'Query is required' }).trim().min(1),
+  season: z.coerce.number().default(0),
+  category: z.coerce.number().default(5000),
+  tracker: z.coerce.string().default('rutracker'),
+});
 
-  if (!query) {
-    const response: ApiResponse<null> = {
-      success: false,
-      message: 'Query is required',
-      data: null,
-      code: 400,
-    };
-    return c.json(response, 400);
-  }
+export const jackettSearchRoute = new Hono().get(
+  '/',
+  zValidator('query', querySchema, handleZodValidation),
+  async (c) => {
+    const { query, season, category, tracker } = c.req.valid('query');
 
-  const season = seasonStr ? Number(seasonStr) : 0;
-  const category = categoryStr ? Number(categoryStr) : 5000;
+    const settings = await new SettingsService().getSettings();
 
-  const settings = await new SettingsService().getSettings();
-  if (!settings?.jackettUrl || !settings?.jackettApiKey) {
-    const response: ApiResponse<null> = {
-      success: false,
-      message: 'Jackett is not configured',
-      data: null,
-      code: 400,
-    };
-    return c.json(response, 400);
-  }
-
-  const availableTrackers = ['rutracker', 'kinozal', 'noname-club'];
-  const trackers = tracker === 'all' ? availableTrackers : [tracker];
-
-  if (!settings.kinozalUsername || !settings.kinozalPassword)
-    trackers.splice(trackers.indexOf('kinozal'), 1);
-
-  const results: JackettItem[] = [];
-
-  for (const t of trackers) {
-    let url = `${settings.jackettUrl}/api/v2.0/indexers/${t}/results/?apikey=${settings.jackettApiKey}&Category=${category}`;
-
-    if (season && season !== 0) {
-      url += `&Query=${encodeURIComponent(query)}%20S${String(season).padStart(
-        2,
-        '0'
-      )}`;
-    } else {
-      url += `&Query=${encodeURIComponent(query)}`;
-    }
-
-    const res = await fetch(url, {
-      method: 'GET',
-      signal: AbortSignal.timeout(10000),
-    });
-
-    if (!res.ok) {
+    if (!settings?.jackettUrl || !settings?.jackettApiKey) {
       const response: ApiResponse<null> = {
         success: false,
-        message: `Jackett request failed: ${res.status} ${res.statusText}`,
-        data: null,
-        code: res.status,
+        message: 'Jackett is not configured',
+        code: 400,
       };
-      return c.json(response, 502);
+      return c.json(response, 400);
     }
 
-    const json = (await res.json()) as { Results?: JackettItem[] };
-    const items = Array.isArray(json.Results) ? json.Results : [];
-    const mapped = items.map((r) => ({ ...r, Tracker: t }));
-    results.push(...mapped);
-  }
+    const availableTrackers = ['rutracker', 'kinozal', 'noname-club'];
+    const trackers = tracker === 'all' ? availableTrackers : [tracker];
 
-  const response: ApiResponse<JackettItem[]> = {
-    success: true,
-    data: results,
-  };
-  return c.json(response);
-});
+    if (!settings.kinozalUsername || !settings.kinozalPassword)
+      trackers.splice(trackers.indexOf('kinozal'), 1);
+
+    const results: JackettItem[] = [];
+
+    for (const t of trackers) {
+      let url = `${settings.jackettUrl}/api/v2.0/indexers/${t}/results/?apikey=${settings.jackettApiKey}&Category=${category}`;
+
+      if (season && season !== 0) {
+        url += `&Query=${encodeURIComponent(query)}%20S${String(
+          season
+        ).padStart(2, '0')}`;
+      } else {
+        url += `&Query=${encodeURIComponent(query)}`;
+      }
+
+      const res = await customFetch(url);
+
+      if (!res.ok) {
+        const response: ApiResponse<null> = {
+          success: false,
+          message: `Jackett request failed: ${res.status} ${res.statusText}`,
+          code: res.status,
+        };
+        return c.json(response, 502);
+      }
+
+      const json = (await res.json()) as { Results?: JackettItem[] };
+      const items = Array.isArray(json.Results) ? json.Results : [];
+      const mapped = items.map((r) => ({ ...r, Tracker: t }));
+      results.push(...mapped);
+    }
+
+    const response: ApiResponse<JackettItem[]> = {
+      success: true,
+      data: results,
+    };
+    return c.json(response);
+  }
+);
