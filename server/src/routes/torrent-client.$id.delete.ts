@@ -8,7 +8,7 @@ import { zValidator } from '@hono/zod-validator';
 import { handleZodValidation } from '@server/lib/validation';
 
 const paramSchema = z.object({
-  id: z.coerce.number(),
+  id: z.coerce.number().min(1),
 });
 
 export const torrentClientDeleteRoute = new Hono().delete(
