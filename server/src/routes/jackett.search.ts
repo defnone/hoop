@@ -45,8 +45,12 @@ export const jackettSearchRoute = new Hono().get(
     const availableTrackers = ['rutracker', 'kinozal', 'noname-club'];
     const trackers = tracker === 'all' ? availableTrackers : [tracker];
 
-    if (!settings.kinozalUsername || !settings.kinozalPassword)
-      trackers.splice(trackers.indexOf('kinozal'), 1);
+    if (!settings.kinozalUsername || !settings.kinozalPassword) {
+      const kinozalIndex = trackers.indexOf('kinozal');
+      if (kinozalIndex > -1) {
+        trackers.splice(kinozalIndex, 1);
+      }
+    }
 
     const results: JackettItem[] = [];
 
