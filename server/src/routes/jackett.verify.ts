@@ -59,7 +59,7 @@ export const jackettVerifyRoute = new Hono()
             : 'Unknown error while testing connection';
         const errorResponse: ApiResponse = {
           success: false,
-          message: `Failed to reach Jackett: ${errorMessage}`,
+          message: errorMessage,
         };
         return c.json(errorResponse, 500);
       }
