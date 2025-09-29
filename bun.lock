@@ -4,7 +4,7 @@
     "": {
       "name": "hoop",
       "dependencies": {
-        "hono": "4.9.7",
+        "hono": "4.9.9",
       },
       "devDependencies": {
         "bun-osv-scanner": "1.0.0",
@@ -114,6 +114,7 @@
       "name": "trakt-proxy",
       "dependencies": {
         "@hono-rate-limiter/cloudflare": "^0.2.2",
+        "hono": "4.9.9",
         "hono-rate-limiter": "^0.4.2",
       },
       "devDependencies": {
@@ -937,7 +938,7 @@
 
     "help-me": ["help-me@5.0.0", "", {}, "sha512-7xgomUX6ADmcYzFik0HzAxh/73YlKR9bmFzf51CZwR+b6YtzU2m0u49hQCqV6SvlqIqsaxovfwdvbnsw3b/zpg=="],
 
-    "hono": ["hono@4.9.7", "", {}, "sha512-t4Te6ERzIaC48W3x4hJmBwgNlLhmiEdEE5ViYb02ffw4ignHNHa5IBtPjmbKstmtKa8X6C35iWwK4HaqvrzG9w=="],
+    "hono": ["hono@4.9.9", "", {}, "sha512-Hxw4wT6zjJGZJdkJzAx9PyBdf7ZpxaTSA0NfxqjLghwMrLBX8p33hJBzoETRakF3UJu6OdNQBZAlNSkGqKFukw=="],
 
     "hono-rate-limiter": ["hono-rate-limiter@0.4.2", "", { "peerDependencies": { "hono": "^4.1.1" } }, "sha512-AAtFqgADyrmbDijcRTT/HJfwqfvhalya2Zo+MgfdrMPas3zSMD8SU03cv+ZsYwRU1swv7zgVt0shwN059yzhjw=="],
 
