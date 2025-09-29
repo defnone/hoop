@@ -188,7 +188,7 @@ describe('jackettVerifyRoute /connection', () => {
   });
 
   it('returns 500 on network error', async () => {
-    fetchMock.mockRejectedValueOnce(new Error('network'));
+    fetchMock.mockRejectedValue(new Error('network'));
 
     const response = await jackettVerifyRoute.request('/connection', {
       method: 'POST',
@@ -201,7 +201,9 @@ describe('jackettVerifyRoute /connection', () => {
     const body = (await response.json()) as ApiResponse<null>;
 
     expect(response.status).toBe(500);
-    expect(body.message).toBe('Failed to reach Jackett: network');
+    expect(body.message).toBe(
+      'Failed to reach Jackett: Failed to fetch http://jackett.test/ after 3 attempts: Error: network'
+    );
   });
 });
 
@@ -269,7 +271,7 @@ describe('jackettVerifyRoute /api-key', () => {
   });
 
   it('returns 500 on network error', async () => {
-    fetchMock.mockRejectedValueOnce(new Error('network'));
+    fetchMock.mockRejectedValue(new Error('network'));
 
     const response = await jackettVerifyRoute.request('/api-key', {
       method: 'POST',
@@ -282,6 +284,8 @@ describe('jackettVerifyRoute /api-key', () => {
     const body = (await response.json()) as ApiResponse<null>;
 
     expect(response.status).toBe(500);
-    expect(body.message).toBe('Failed to validate Jackett API Key: network');
+    expect(body.message).toBe(
+      'Failed to validate Jackett API Key: Failed to fetch http://jackett.test/api/v2.0/indexers/all/results/?apikey=key&Query=ping&Category=5000 after 3 attempts: Error: network'
+    );
   });
 });
