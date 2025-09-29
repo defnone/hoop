@@ -18,7 +18,10 @@ type ApiResponse<T> = {
 
 const { getSettingsMock, fetchMock } = vi.hoisted(() => {
   const getSettingsMock = vi.fn<[], Promise<JackettSettings | null>>();
-  const fetchMock = vi.fn<[RequestInfo | URL, RequestInit | undefined], Promise<Response>>();
+  const fetchMock = vi.fn<
+    [RequestInfo | URL, RequestInit | undefined],
+    Promise<Response>
+  >();
   return { getSettingsMock, fetchMock } as const;
 });
 
@@ -115,7 +118,9 @@ describe('jackettSearchRoute', () => {
     const response = await jackettSearchRoute.request(
       '/?query=show&tracker=all&season=1&category=5000'
     );
-    const body = (await response.json()) as ApiResponse<Array<{ Tracker: string }>>;
+    const body = (await response.json()) as ApiResponse<
+      Array<{ Tracker: string }>
+    >;
 
     expect(response.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(3);
@@ -202,7 +207,7 @@ describe('jackettVerifyRoute /connection', () => {
 
     expect(response.status).toBe(500);
     expect(body.message).toBe(
-      'Failed to reach Jackett: Failed to fetch http://jackett.test/ after 3 attempts: Error: network'
+      'Failed to fetch http://jackett.test/ after 3 attempts: Error: network'
     );
   });
 });
