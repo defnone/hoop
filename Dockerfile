@@ -1,7 +1,7 @@
 ###########
 # Builder #
 ###########
-FROM oven/bun:latest AS builder
+FROM oven/bun:1.2.23 AS builder
 WORKDIR /app
 ENV NODE_ENV=production
 
@@ -10,6 +10,7 @@ COPY package.json bun.lock ./
 COPY client/package.json ./client/
 COPY server/package.json ./server/
 COPY shared/package.json ./shared/
+COPY trakt-proxy/package.json ./trakt-proxy/
 
 # Install all dependencies for building (dev+prod)
 RUN bun install --frozen-lockfile --ignore-scripts
