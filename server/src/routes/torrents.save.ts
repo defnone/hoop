@@ -4,19 +4,20 @@ import { TorrentItem } from '@server/features/torrent-item/torrent-item.service'
 import { z } from 'zod';
 import logger from '@server/lib/logger';
 import { zValidator } from '@hono/zod-validator';
+import { handleZodValidation } from '@server/lib/validation';
 
 const paramSchema = z.object({
-  id: z.coerce.number(),
+  id: z.coerce.number().min(1),
 });
 
 const jsonSchema = z.object({
-  episodes: z.number().array(),
+  episodes: z.number({ error: 'Episodes must be a number' }).array(),
 });
 
 export const torrentsSaveRoute = new Hono().post(
   '/',
-  zValidator('param', paramSchema),
-  zValidator('json', jsonSchema),
+  zValidator('param', paramSchema, handleZodValidation),
+  zValidator('json', jsonSchema, handleZodValidation),
 
   async (c) => {
     const { episodes } = c.req.valid('json');

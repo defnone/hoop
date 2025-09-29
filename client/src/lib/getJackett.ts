@@ -10,15 +10,14 @@ export async function getJackett(
   const res = await rpc.api.jackett.search.$get({
     query: {
       query,
-      season:
-        Number.isFinite(season) && season > 0 ? String(season) : undefined,
+      season: String(season || 0),
       category: String(category),
       tracker,
     },
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch data from Jackett: ${res.status}`);
+    throw new Error(`${res.status} ${res.statusText}`);
   }
   const json = (await res.json()) as {
     success: boolean;

@@ -6,15 +6,20 @@ import logger from '@server/lib/logger';
 import { TrackerAuth } from '@server/external/adapters/tracker-data/tracker-data.auth';
 import { trackersConf } from '@server/shared/trackers-conf';
 import { normalizeBaseUrl } from '@server/lib/utils';
+import { handleZodValidation } from '@server/lib/validation';
 
 const credentialsSchema = z.object({
-  username: z.string().min(1),
-  password: z.string().min(1),
+  username: z
+    .string({ message: 'Username must be a string' })
+    .min(1, { message: 'Username is required' }),
+  password: z
+    .string({ message: 'Password must be a string' })
+    .min(1, { message: 'Password is required' }),
 });
 
 export const trackersKinozalVerifyRoute = new Hono().post(
   '/',
-  zValidator('json', credentialsSchema),
+  zValidator('json', credentialsSchema, handleZodValidation),
   async (c) => {
     const { username, password } = c.req.valid('json');
 

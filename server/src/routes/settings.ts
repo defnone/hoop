@@ -5,6 +5,7 @@ import { SettingsService } from '@server/features/settings/settings.service';
 import { userSettings } from '@server/db/app/app-schema';
 import { createSelectSchema } from 'drizzle-zod';
 import { zValidator } from '@hono/zod-validator';
+import { handleZodValidation } from '@server/lib/validation';
 
 const jsonSchema = createSelectSchema(userSettings);
 
@@ -18,7 +19,7 @@ export const settingsRoute = new Hono()
       };
       return c.json(response);
     } catch (e) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
         message: (e as Error).message,
       };
@@ -26,7 +27,7 @@ export const settingsRoute = new Hono()
       return c.json(response, 400);
     }
   })
-  .post('/', zValidator('json', jsonSchema), async (c) => {
+  .post('/', zValidator('json', jsonSchema, handleZodValidation), async (c) => {
     const data = c.req.valid('json');
     try {
       const resp = await new SettingsService({ data }).upsert();
@@ -36,7 +37,7 @@ export const settingsRoute = new Hono()
       };
       return c.json(response);
     } catch (e) {
-      const response: ApiResponse = {
+      const response: ApiResponse<null> = {
         success: false,
         message: (e as Error).message,
       };
