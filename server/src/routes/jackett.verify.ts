@@ -11,7 +11,7 @@ const connectionSchema = z.object({
 });
 
 const apiKeySchema = connectionSchema.extend({
-  jackettApiKey: z.string({ message: 'Jackett API Key is required' }).trim(),
+  jackettApiKey: z.string({ message: 'Jackett API Key is required' }).trim().min(1, { message: 'Jackett API Key cannot be empty' }),
 });
 
 const jackettTimeoutMs = 10_000;
