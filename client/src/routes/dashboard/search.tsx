@@ -157,8 +157,8 @@ export default function SearchPage() {
       <div className='flex flex-col w-full pb-10 gap-4'>
         <h1 className='text-2xl font-black text-zinc-100'>Jackett Search</h1>
         <p className='text-zinc-400 mb-1'>
-          Make sure you have properly configured rutracker.org and kinozal.tv in
-          Jackett.
+          Make sure you have properly configured rutracker.org, nnm-club and
+          kinozal.tv in Jackett.
         </p>
         <div className='flex flex-col w-full max-w-[1000px]'>
           <div className='flex flex-row w-full gap-2'>
