@@ -12,7 +12,7 @@ export const trackersConf: Record<string, TrackerConf> = {
     magnetRegExp: /Инфо хеш: (\w+)/,
     epsAndSeasonRegExps: [
       /\((\d+)\s*сезон:\s*(\d+)-(\d+)\s*серии\s*из\s*(\d+)\)/i,
-      /\((\d+)\s*сезон:\s*(\d+)\s*серия\s*из\s*(\d+)\)/i,
+      /\((\d+)\s*сезон:\s*(\d+)\s*сери(?:я|и)\s*из\s*(\d+)\)/i,
     ],
     trackerId: (url: string) => new URL(url).searchParams.get('id'),
     isAuthRequired: true,

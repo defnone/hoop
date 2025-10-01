@@ -134,6 +134,59 @@ describe('TrackerData.collect', () => {
     expect(result.magnet).toBe('DEADBEEF1234');
   });
 
+  it('kinozal: parses single episode with plural word', async () => {
+    const pageHtml = `
+      <html>
+        <body>
+          <h1>Сериал / Название сериала (7 сезон: 1 серии из 7)</h1>
+        </body>
+      </html>`;
+
+    const magnetHtml = `
+      <html>
+        <body>
+          <ul><li>Инфо хеш: FEEDFACE5678</li></ul>
+        </body>
+      </html>`;
+
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml));
+
+    class MockTrackerAuth extends TrackerAuth {
+      public async getCookies(): Promise<string> {
+        return 'sid=abc';
+      }
+    }
+
+    const url = 'https://kinozal.tv/details.php?id=778';
+    const trackerAuth = new MockTrackerAuth({
+      login: 'login',
+      password: 'pass',
+      baseUrl: 'https://kinozal.tv',
+      tracker: 'kinozal',
+    });
+
+    const td = new TrackerDataAdapter({
+      url,
+      tracker: 'kinozal',
+      trackerAuth,
+    });
+    const result = await td.collect();
+
+    expect(result.torrentId).toBe('778');
+    expect(result.rawTitle).toContain('Сериал / Название сериала');
+    expect(result.showTitle).toBe('Название сериала (7 сезон: 1 серии из 7)');
+    expect(result.epAndSeason).toEqual({
+      season: 7,
+      startEp: 1,
+      endEp: 1,
+      totalEp: 7,
+    });
+    expect(result.magnet).toBe('FEEDFACE5678');
+  });
+
   it('nnmClub: parses data from anchor href (no auth)', async () => {
     const topicHtml = `
       <html>
