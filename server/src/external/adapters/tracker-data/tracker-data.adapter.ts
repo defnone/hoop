@@ -118,7 +118,7 @@ export class TrackerDataAdapter {
         return;
       }
     }
-    throw new Error('No episodes and season found');
+    throw new Error('No episodes and season found: ' + this.rawTitle);
   }
 
   private async extractMagnet() {
