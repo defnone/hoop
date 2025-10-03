@@ -81,7 +81,7 @@ export default function EditTorrentDialog({
 
   const handleSave = async (id: number, episodes: number[]) => {
     const resp = await (
-      await rpc.api.torrents[':id'].save.$post({
+      await rpc.api.torrents[':id']['save-tracked-ep'].$post({
         json: { episodes },
         param: { id: String(id) },
       })
