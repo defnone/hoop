@@ -14,7 +14,7 @@ const jsonSchema = z.object({
   episodes: z.number({ error: 'Episodes must be a number' }).array(),
 });
 
-export const torrentsSaveRoute = new Hono().post(
+export const torrentsSaveTrackedEpRoute = new Hono().post(
   '/',
   zValidator('param', paramSchema, handleZodValidation),
   zValidator('json', jsonSchema, handleZodValidation),
