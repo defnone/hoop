@@ -117,7 +117,7 @@ export class TorrentItem implements TorrentItemPort {
     if (!this.databaseData)
       throw new Error('No database data on markAsDownloadRequested');
     const row = await this.repo.update(this.databaseData.id, {
-      controlStatus: 'donwloadRequested',
+      controlStatus: 'downloadRequested',
     });
     this.databaseData = row ?? null;
   }

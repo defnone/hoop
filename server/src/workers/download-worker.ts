@@ -185,7 +185,7 @@ export class DownloadWorker {
     if (!rows) return;
     for (const row of rows) {
       switch (row.controlStatus) {
-        case 'donwloadRequested':
+        case 'downloadRequested':
           await this.startDownload(row);
           break;
         case 'downloading':
