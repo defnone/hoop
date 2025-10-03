@@ -90,7 +90,7 @@ function DataTableRow({
   };
 
   const downloading = status?.state === 'downloading';
-  const paused = status?.state === 'paused';
+  const downloadPaused = status?.state === 'paused';
 
   const downloadedFiles = filterMediaFiles(item.files as string[]).length;
   return (
@@ -105,7 +105,8 @@ function DataTableRow({
         'relative cursor-pointer',
         downloading &&
           'bg-green-500/10 animate-pulse animate-infinite animate-slow',
-        paused && 'bg-zinc-300/10 animate-pulse animate-infinite animate-slow'
+        downloadPaused &&
+          'bg-zinc-300/10 animate-pulse animate-infinite animate-slow'
       )}>
       <TableCell className='w-12'>
         <TrackerLogo tracker={item.tracker || ''} />
