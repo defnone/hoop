@@ -25,7 +25,7 @@ RUN bun run build:single
 ############
 # Runtime  #
 ############
-FROM oven/bun:latest AS runner
+FROM oven/bun:1.2.23 AS runner
 ENV NODE_ENV=production
 ENV DATABASE_URL=data/sqlite.db
 ENV BETTER_AUTH_TELEMETRY=0
