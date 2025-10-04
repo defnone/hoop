@@ -16,7 +16,7 @@ export default function ConfirmDelete({
 }) {
   return (
     <Popover>
-      <PopoverTrigger className='flex mr-auto' asChild>
+      <PopoverTrigger className='flex' asChild>
         {children}
       </PopoverTrigger>
       <PopoverContent className='w-72 bg-card mt-2' side='bottom'>
