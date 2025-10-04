@@ -17,4 +17,14 @@ export interface TorrentItemPort {
   markAsDownloadRequested(): Promise<void>;
 
   updateTrackedEpisodes(episodes: number[]): Promise<void>;
+
+  markAsTrackedAll(): Promise<void>;
+
+  delete(withFiles?: boolean): Promise<void>;
+
+  markAsPaused(): Promise<void>;
+
+  markAsIdle(): Promise<void>;
+
+  deleteFileEpisode(filePath: string): Promise<void>;
 }

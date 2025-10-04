@@ -146,6 +146,20 @@ export class TorrentItem implements TorrentItemPort {
     });
   }
 
+  async markAsPaused() {
+    if (!this.id) throw new Error('ID is not defined');
+    await this.repo.update(this.id, {
+      controlStatus: 'paused',
+    });
+  }
+
+  async markAsIdle() {
+    if (!this.id) throw new Error('ID is not defined');
+    await this.repo.update(this.id, {
+      controlStatus: 'idle',
+    });
+  }
+
   async deleteFileEpisode(filePath: string) {
     if (!this.id) throw new Error('ID is not defined');
     if (!this.databaseData) await this.getById();

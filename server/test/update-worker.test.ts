@@ -2,6 +2,10 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import type { DbTorrentItem, DbUserSettings } from '@server/db/app/app-schema';
 import type { TorrentDataResult } from '@server/external/adapters/tracker-data';
 import type { TorrentItemPort } from '@server/features/torrent-item/torrent-item.port';
+import type {
+  PagedResult,
+  TorrentItemDto,
+} from '@server/features/torrent-item/torrent-item.types';
 
 // Mock logger to keep tests quiet and observable
 vi.mock('@server/lib/logger', () => ({
@@ -17,7 +21,9 @@ vi.mock('@server/workers/workers.repo', () => {
   return {
     WorkersRepo: class {
       public findSettings = vi.fn(async () => settings);
-      public findAllIdle = vi.fn(async () => [{ ...baseItem } satisfies DbTorrentItem]);
+      public findAllIdle = vi.fn(async () => [
+        { ...baseItem } satisfies DbTorrentItem,
+      ]);
     },
   };
 });
@@ -58,10 +64,12 @@ const settings: DbUserSettings = {
 };
 
 // Capture latest created TorrentItem instance for assertions
-let lastTI: (TorrentItemPort & {
-  addOrUpdateMock: ReturnType<typeof vi.fn>;
-  markAsDownloadRequestedMock: ReturnType<typeof vi.fn>;
-}) | null = null;
+let lastTI:
+  | (TorrentItemPort & {
+      addOrUpdateMock: ReturnType<typeof vi.fn>;
+      markAsDownloadRequestedMock: ReturnType<typeof vi.fn>;
+    })
+  | null = null;
 let nextTrackerData: TorrentDataResult | null = null;
 let nextDatabaseData: DbTorrentItem | null = null;
 
@@ -83,12 +91,43 @@ vi.mock('@server/features/torrent-item/torrent-item.service', () => {
       this.trackerData = nextTrackerData;
       return Promise.resolve();
     }
-    async getAll() {
-      return Promise.resolve([]);
+    async getAll(
+      page: number,
+      limit: number
+    ): Promise<PagedResult<TorrentItemDto>> {
+      void limit;
+      return Promise.resolve({
+        items: [],
+        total: 0,
+        page,
+        hasNext: false,
+      });
     }
-    async getById() {
+    async getById(): Promise<TorrentItemDto> {
       this.databaseData = nextDatabaseData;
-      return Promise.resolve({} as never);
+      const dbItem = this.databaseData;
+      return Promise.resolve({
+        id: dbItem?.id ?? 0,
+        trackerId: dbItem?.trackerId ?? '',
+        tracker: dbItem?.tracker ?? '',
+        title: dbItem?.title ?? '',
+        rawTitle: dbItem?.rawTitle ?? '',
+        url: dbItem?.url ?? '',
+        files: Array.isArray(dbItem?.files) ? (dbItem?.files as string[]) : [],
+        season: dbItem?.season ?? null,
+        haveEpisodes: Array.isArray(dbItem?.haveEpisodes)
+          ? (dbItem?.haveEpisodes as number[])
+          : [],
+        totalEpisodes: dbItem?.totalEpisodes ?? null,
+        trackedEpisodes: Array.isArray(dbItem?.trackedEpisodes)
+          ? (dbItem?.trackedEpisodes as number[])
+          : [],
+        magnet: dbItem?.magnet ?? null,
+        controlStatus:
+          (dbItem?.controlStatus as TorrentItemDto['controlStatus']) ?? 'idle',
+        createdAt: dbItem?.createdAt ?? Date.now(),
+        updatedAt: dbItem?.updatedAt ?? Date.now(),
+      });
     }
     async addOrUpdate() {
       this.addOrUpdateMock();
@@ -98,7 +137,22 @@ vi.mock('@server/features/torrent-item/torrent-item.service', () => {
       this.markAsDownloadRequestedMock();
       return Promise.resolve();
     }
-    async updateTrackedEpisodes(): Promise<void> {
+    async updateTrackedEpisodes(_episodes: number[]): Promise<void> {
+      return Promise.resolve();
+    }
+    async markAsTrackedAll(): Promise<void> {
+      return Promise.resolve();
+    }
+    async delete(_withFiles?: boolean): Promise<void> {
+      return Promise.resolve();
+    }
+    async markAsPaused(): Promise<void> {
+      return Promise.resolve();
+    }
+    async markAsIdle(): Promise<void> {
+      return Promise.resolve();
+    }
+    async deleteFileEpisode(_filePath: string): Promise<void> {
       return Promise.resolve();
     }
   }
@@ -109,7 +163,9 @@ vi.mock('@server/features/torrent-item/torrent-item.service', () => {
 // Lightweight repo mock
 class RepoMock {
   public findSettings = vi.fn(async () => settings);
-  public findAllIdle = vi.fn(async () => [{ ...baseItem } satisfies DbTorrentItem]);
+  public findAllIdle = vi.fn(async () => [
+    { ...baseItem } satisfies DbTorrentItem,
+  ]);
 }
 
 describe('UpdateWorker.process', () => {
@@ -259,9 +315,7 @@ describe('UpdateWorker.run', () => {
     const repo = new RepoMock();
     const worker = new UpdateWorker({ repo: repo as unknown as never });
 
-    const processSpy = vi
-      .spyOn(worker, 'process')
-      .mockResolvedValue(undefined);
+    const processSpy = vi.spyOn(worker, 'process').mockResolvedValue(undefined);
 
     const internals = worker as unknown as {
       syncInterval: number;

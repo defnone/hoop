@@ -2,6 +2,15 @@ import { index, int, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { trackersConf } from '@server/shared/trackers-conf';
 
+export const controlStatuses = [
+  'idle',
+  'downloadRequested',
+  'downloading',
+  'downloadCompleted',
+  'processing',
+  'paused',
+] as const;
+
 export const torrentItems = sqliteTable(
   'torrent_items',
   {
@@ -26,13 +35,7 @@ export const torrentItems = sqliteTable(
       .notNull(),
     transmissionId: text('transmission_id').unique(),
     controlStatus: text('control_status', {
-      enum: [
-        'idle',
-        'donwloadRequested',
-        'downloading',
-        'downloadCompleted',
-        'processing',
-      ],
+      enum: controlStatuses,
     })
       .default('idle')
       .notNull(),
