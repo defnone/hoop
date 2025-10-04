@@ -163,7 +163,9 @@ export class DownloadWorker {
           logger.warn(`[DownloadWorker] File not found: ${file}`);
         } else {
           logger.error(
-            `[DownloadWorker] Unexpected error while statting ${file}: ${String(err)}`
+            `[DownloadWorker] Unexpected error while statting ${file}: ${String(
+              err
+            )}`
           );
           existingFiles.push(file);
         }
@@ -195,6 +197,7 @@ export class DownloadWorker {
           await this.processCompletedDownload(row);
           break;
         case 'idle':
+        case 'paused':
           if (
             process.env.HOOP_LAST_SYNC &&
             parseInt(process.env.HOOP_LAST_SYNC) <= Date.now()
