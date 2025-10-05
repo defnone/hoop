@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono } from 'hono/tiny';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import type { ApiResponse } from '@shared/types';
@@ -11,7 +11,10 @@ const connectionSchema = z.object({
 });
 
 const apiKeySchema = connectionSchema.extend({
-  jackettApiKey: z.string({ message: 'Jackett API Key is required' }).trim().min(1, { message: 'Jackett API Key cannot be empty' }),
+  jackettApiKey: z
+    .string({ message: 'Jackett API Key is required' })
+    .trim()
+    .min(1, { message: 'Jackett API Key cannot be empty' }),
 });
 
 const jackettTimeoutMs = 10_000;
