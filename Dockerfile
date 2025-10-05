@@ -53,4 +53,4 @@ RUN mkdir -p /app/data \
 USER ${PUID}:${PGID}
 
 EXPOSE 3000
-CMD ["sh", "-lc", "cd build && bun --bun --smol server.js"]
+CMD ["sh", "-lc", "cd build && exec bun --bun --smol server.js"]
