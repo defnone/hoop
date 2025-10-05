@@ -21,7 +21,7 @@
     "build:server": "cd server && bun run build",
     "build": "bun run build:shared && bun run build:client && bun run build:server",
     "copy:static": "mkdir -p build && rm -rf build/static && cp -r client/dist build/static",
-    "build:single": "bun run build && bun build ./server/src/index.ts --target=node --outfile=./build/server.js --packages bundle --env=inline && bun run copy:static",
+    "build:single": "bun run build && bun build ./server/src/index.ts --target=bun --minify  --outfile=./build/server.js && bun run copy:static",
     "start:single": "cd build && NODE_ENV=production bun server.js",
     "postinstall": "bun run build:shared && bun run build:server",
     "lint": "sh -c 'cd client && bun run lint && cd ../server && bun run lint && cd ../shared && bun run lint'",

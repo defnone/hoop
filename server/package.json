@@ -4,7 +4,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc && bun build ./src/index.ts --target=node --outfile=./dist/server.js --minify",
+    "build": "tsc && bun build ./src/index.ts --target=bun --minify --outfile=./dist/server.js ",
     "dev": "bun --watch run src/index.ts && tsc --watch",
     "lint": "eslint .",
     "test": "bunx vitest --coverage",
