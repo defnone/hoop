@@ -42,8 +42,6 @@ COPY --from=builder /app/build ./build
 # Copy SQL migrations (used in production)
 COPY --from=builder /app/server/src/db/migrations ./migrations
 
-# Install pino logger
-RUN bun i pino-pretty pino-rotating-file-stream pino
 
 # Create data dir and fix permissions for target UID/GID
 RUN mkdir -p /app/data \
