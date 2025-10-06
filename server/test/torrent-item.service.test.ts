@@ -45,7 +45,10 @@ vi.mock('@server/features/file-management/file-management.service', () => ({
 
 type RepoMock = {
   findAll: ReturnType<
-    typeof vi.fn<[number, number], Promise<{ items: DbTorrentItem[]; total: number }>>
+    typeof vi.fn<
+      [number, number],
+      Promise<{ items: DbTorrentItem[]; total: number }>
+    >
   >;
   findById: ReturnType<typeof vi.fn<[number], Promise<DbTorrentItem | null>>>;
   upsert: ReturnType<
@@ -58,15 +61,17 @@ type RepoMock = {
       Promise<DbTorrentItem | undefined>
     >
   >;
-} &
-  Pick<
-    TorrentItemRepo,
-    'findAll' | 'findById' | 'upsert' | 'deleteById' | 'update'
-  >;
+} & Pick<
+  TorrentItemRepo,
+  'findAll' | 'findById' | 'upsert' | 'deleteById' | 'update'
+>;
 
 function createRepoMock(): RepoMock {
   const repo = {
-    findAll: vi.fn<[number, number], Promise<{ items: DbTorrentItem[]; total: number }>>(),
+    findAll: vi.fn<
+      [number, number],
+      Promise<{ items: DbTorrentItem[]; total: number }>
+    >(),
     findById: vi.fn<[number], Promise<DbTorrentItem | null>>(),
     upsert: vi.fn<[DbTorrentItemInsert], Promise<DbTorrentItem | undefined>>(),
     deleteById: vi.fn<[number], Promise<void>>(),
@@ -149,7 +154,10 @@ describe('TorrentItem service', () => {
       total: 5,
     });
 
-    const item = new TorrentItem({ url: 'https://kinozal.tv/details.php?id=1', repo });
+    const item = new TorrentItem({
+      url: 'https://kinozal.tv/details.php?id=1',
+      repo,
+    });
     const result = await item.getAll(1, 2);
 
     expect(result.total).toBe(5);
@@ -278,7 +286,10 @@ describe('TorrentItem service', () => {
   it('marks torrent as download requested using cached data', async () => {
     const repo = createRepoMock();
     const dbItem = createDbTorrentItem();
-    repo.update.mockResolvedValue({ ...dbItem, controlStatus: 'donwloadRequested' });
+    repo.update.mockResolvedValue({
+      ...dbItem,
+      controlStatus: 'downloadRequested',
+    });
 
     const item = new TorrentItem({ id: dbItem.id, repo });
     item.databaseData = dbItem;
@@ -286,9 +297,9 @@ describe('TorrentItem service', () => {
     await item.markAsDownloadRequested();
 
     expect(repo.update).toHaveBeenCalledWith(dbItem.id, {
-      controlStatus: 'donwloadRequested',
+      controlStatus: 'downloadRequested',
     });
-    expect(item.databaseData?.controlStatus).toBe('donwloadRequested');
+    expect(item.databaseData?.controlStatus).toBe('downloadRequested');
   });
 
   it('marks all episodes as tracked', async () => {

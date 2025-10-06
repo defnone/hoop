@@ -13,6 +13,8 @@ import TrackerLogo from '../TrackerLogo';
 import { useTorrentStore } from '@/stores/torrentStore';
 import { cn, formatETA } from '@/lib/utils';
 import type { NormalizedTorrent } from '@ctrl/shared-torrent';
+import { Pause } from 'lucide-react';
+import { TooltipedIcon } from '../TooltipedIcon';
 
 export function TorrentTableData() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -90,7 +92,8 @@ function DataTableRow({
   };
 
   const downloading = status?.state === 'downloading';
-  const paused = status?.state === 'paused';
+  const downloadPaused = status?.state === 'paused';
+  const trackingPaused = item.controlStatus === 'paused';
 
   const downloadedFiles = filterMediaFiles(item.files as string[]).length;
   return (
@@ -105,26 +108,41 @@ function DataTableRow({
         'relative cursor-pointer',
         downloading &&
           'bg-green-500/10 animate-pulse animate-infinite animate-slow',
-        paused && 'bg-zinc-300/10 animate-pulse animate-infinite animate-slow'
+        downloadPaused &&
+          'bg-zinc-300/10 animate-pulse animate-infinite animate-slow'
       )}>
       <TableCell className='w-12'>
         <TrackerLogo tracker={item.tracker || ''} />
       </TableCell>
-      <TableCell className='font-bold'>{item.title}</TableCell>
-      <TableCell className='font-mono text-zinc-300'>
+      <TableCell
+        className={cn(
+          'font-bold',
+          trackingPaused && 'text-muted-foreground/40'
+        )}>
+        {item.title}
+      </TableCell>
+      <TableCell
+        className={cn(
+          'font-mono text-zinc-300',
+          trackingPaused && 'text-muted-foreground/40'
+        )}>
         <span className='p-1 bg-muted rounded-md text-xs font-bold min-w-7 flex w-fit items-center justify-center'>
           {item.season}
         </span>
       </TableCell>
-      <TableCell className='font-mono text-zinc-300'>
+      <TableCell
+        className={cn(
+          'font-mono text-zinc-300',
+          trackingPaused && 'text-muted-foreground/40'
+        )}>
         {(item.haveEpisodes as number[]).length} of {item.totalEpisodes}
       </TableCell>
       <TableCell
         className={cn(
-          'font-mono',
-          (item.trackedEpisodes as number[]).length > 0
-            ? 'text-zinc-300'
-            : 'text-muted-foreground/40'
+          'font-mono text-muted-foreground/40',
+          (item.trackedEpisodes as number[]).length > 0 &&
+            !trackingPaused &&
+            'text-zinc-300'
         )}>
         {(item.trackedEpisodes as number[]).length} of {item.totalEpisodes}
       </TableCell>
@@ -138,9 +156,9 @@ function DataTableRow({
       <TableCell
         className={cn(
           'font-mono text-nowrap',
-          new Date(item.updatedAt).toDateString() === new Date().toDateString()
-            ? 'text-green-500'
-            : 'text-zinc-300'
+          new Date(item.updatedAt).toDateString() ===
+            new Date().toDateString() && 'text-green-500',
+          trackingPaused && 'text-muted-foreground/40'
         )}>
         {item.updatedAt
           ? new Date(item.updatedAt).toLocaleDateString('en-GB', {
@@ -155,9 +173,16 @@ function DataTableRow({
       <TableCell className='font-mono text-zinc-300'>
         {status?.eta &&
         status?.state === 'downloading' &&
+        !trackingPaused &&
         Number(status?.eta) > 0
           ? 'ETA: ' + formatETA(Number(status?.eta))
           : ''}
+        {trackingPaused && (
+          <TooltipedIcon
+            icon={<Pause className='w-4 h-4 cursor-pointer text-orange-500' />}
+            text='Tracking paused'
+          />
+        )}
       </TableCell>
       {item.controlStatus === 'downloading' && (
         <div

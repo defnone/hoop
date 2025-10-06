@@ -117,7 +117,7 @@ export class TorrentItem implements TorrentItemPort {
     if (!this.databaseData)
       throw new Error('No database data on markAsDownloadRequested');
     const row = await this.repo.update(this.databaseData.id, {
-      controlStatus: 'donwloadRequested',
+      controlStatus: 'downloadRequested',
     });
     this.databaseData = row ?? null;
   }
@@ -143,6 +143,20 @@ export class TorrentItem implements TorrentItemPort {
       trackedEpisodes: this.databaseData?.totalEpisodes
         ? makeRange(1, this.databaseData?.totalEpisodes)
         : [],
+    });
+  }
+
+  async markAsPaused() {
+    if (!this.id) throw new Error('ID is not defined');
+    await this.repo.update(this.id, {
+      controlStatus: 'paused',
+    });
+  }
+
+  async markAsIdle() {
+    if (!this.id) throw new Error('ID is not defined');
+    await this.repo.update(this.id, {
+      controlStatus: 'idle',
     });
   }
 

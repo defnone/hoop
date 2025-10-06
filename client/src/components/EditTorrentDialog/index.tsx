@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { useEffect, useState } from 'react';
 import EpPicker from './EpPicker';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Pause, Play, Trash2 } from 'lucide-react';
 import DataTabs from './Tabs';
 import FileList from './FileList';
 import ConfirmDelete from './ConfirmDelete';
@@ -81,7 +81,7 @@ export default function EditTorrentDialog({
 
   const handleSave = async (id: number, episodes: number[]) => {
     const resp = await (
-      await rpc.api.torrents[':id'].save.$post({
+      await rpc.api.torrents[':id']['save-tracked-ep'].$post({
         json: { episodes },
         param: { id: String(id) },
       })
@@ -184,6 +184,34 @@ export default function EditTorrentDialog({
     }
   };
 
+  const handlePauseToggle = async () => {
+    if (!data) return;
+    try {
+      const resp = await (
+        await rpc.api.torrents[':id']['pause-toggle'].$put({
+          param: { id: String(data?.id) },
+        })
+      ).json();
+      if (!resp.success) {
+        customSonner({
+          variant: 'error',
+          text: resp.message || 'Failed to pause/unpause torrent',
+        });
+        return;
+      }
+      customSonner({
+        text: resp.message || 'Paused/unpaused torrent successfully!',
+      });
+    } catch (error) {
+      customSonner({
+        variant: 'error',
+        text: `Failed to pause/unpause torrent: ${(error as Error).message}`,
+      });
+    } finally {
+      setStartFetch(Date.now());
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
@@ -203,6 +231,7 @@ export default function EditTorrentDialog({
               handleDelete={handleDelete}
               handleAddToClient={handleAddToClient}
               handleRmFromClient={handleRmFromClient}
+              handlePauseToggle={handlePauseToggle}
               isAddingToClient={isAddingToClient}
               isRemovingFromClient={isRemovingFromClient}
             />
@@ -283,6 +312,7 @@ function DialogFooterContent({
   handleRmFromClient,
   isAddingToClient,
   isRemovingFromClient,
+  handlePauseToggle,
 }: {
   data: TorrentItemDto;
   handleDelete: (withFiles: boolean) => Promise<void>;
@@ -290,6 +320,7 @@ function DialogFooterContent({
   handleRmFromClient: () => Promise<void>;
   isAddingToClient: boolean;
   isRemovingFromClient: boolean;
+  handlePauseToggle: () => Promise<void>;
 }) {
   return (
     <DialogFooter className='flex flex-row items-center relative border-t border-border px-6 h-20'>
@@ -300,9 +331,24 @@ function DialogFooterContent({
           type='button'
           variant='destructive'
           className='font-extrabold h-10 hover:transform-none'>
-          Delete
+          <Trash2 className='w-4 h-4' />
         </Button>
       </ConfirmDelete>
+      <Button
+        type='button'
+        variant='outline'
+        disabled={
+          data.controlStatus !== 'idle' && data.controlStatus !== 'paused'
+        }
+        onClick={handlePauseToggle}
+        className='font-extrabold h-10 hover:transform-none mr-auto'>
+        {data.controlStatus === 'paused' ? (
+          <Play className='w-4 h-4' />
+        ) : (
+          <Pause className='w-4 h-4' />
+        )}
+      </Button>
+
       {data.controlStatus === 'idle' && (
         <Button
           type='button'
@@ -320,7 +366,8 @@ function DialogFooterContent({
         </Button>
       )}
 
-      {data.controlStatus !== 'idle' && (
+      {(data.controlStatus === 'downloading' ||
+        data.controlStatus === 'downloadCompleted') && (
         <Button
           type='button'
           variant='destructive'
