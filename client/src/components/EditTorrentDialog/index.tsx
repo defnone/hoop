@@ -205,7 +205,7 @@ export default function EditTorrentDialog({
     } catch (error) {
       customSonner({
         variant: 'error',
-        text: 'Failed to pause/unpause torrent: ' + error,
+        text: `Failed to pause/unpause torrent: ${(error as Error).message}`,
       });
     } finally {
       setStartFetch(Date.now());
