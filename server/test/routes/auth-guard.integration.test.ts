@@ -92,6 +92,12 @@ vi.mock('@server/routes/torrents.$id.delete', async () => {
   return { torrentsDeleteRoute: route, default: route };
 });
 
+vi.mock('@server/routes/torrents.pause-toggle', async () => {
+  const { Hono } = await import('hono/tiny');
+  const route = new Hono().put('/', (c) => c.json({ ok: true }));
+  return { torrentsPauseToggleRoute: route, default: route };
+});
+
 vi.mock('@server/routes/torrents.save-tracked-ep', async () => {
   const { Hono } = await import('hono/tiny');
   const route = new Hono().post('/', (c) => c.json({ ok: true }));
@@ -135,6 +141,7 @@ describe('auth middleware integration', () => {
       { torrentsStatusRoute },
       { torrentsAddRoute },
       { torrentsDeleteRoute },
+      { torrentsPauseToggleRoute },
       { torrentsSaveTrackedEpRoute },
       { torrentClientAddRoute },
       { torrentClientDeleteRoute },
@@ -149,6 +156,7 @@ describe('auth middleware integration', () => {
       import('@server/routes/torrents.status'),
       import('@server/routes/torrents.add'),
       import('@server/routes/torrents.$id.delete'),
+      import('@server/routes/torrents.pause-toggle'),
       import('@server/routes/torrents.save-tracked-ep'),
       import('@server/routes/torrent-client.$id.add'),
       import('@server/routes/torrent-client.$id.delete'),
@@ -178,6 +186,7 @@ describe('auth middleware integration', () => {
       .route('/torrents/status', torrentsStatusRoute)
       .route('/torrents/add', torrentsAddRoute)
       .route('/torrents/:id/delete', torrentsDeleteRoute)
+      .route('/torrents/:id/pause-toggle', torrentsPauseToggleRoute)
       .route('/torrents/:id/save-tracked-ep', torrentsSaveTrackedEpRoute)
       .route('/torrent-client/:id/add', torrentClientAddRoute)
       .route('/torrent-client/:id/delete', torrentClientDeleteRoute);
@@ -248,6 +257,7 @@ describe('auth middleware integration', () => {
       path: '/api/torrents/1/delete/',
       body: { withFiles: false },
     },
+    { method: 'PUT', path: '/api/torrents/1/pause-toggle/' },
     {
       method: 'POST',
       path: '/api/torrents/1/save-tracked-ep/',
