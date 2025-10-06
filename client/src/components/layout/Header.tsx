@@ -14,7 +14,7 @@ export default function Header() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const lastSync = useTorrentStore((state) => state.lastSync);
-
+  const setStartFetch = useTorrentStore((state) => state.setStartFetch);
   const { settingsData, errorSettings } = useSettings();
 
   const handleSignOut = async () => {
@@ -45,7 +45,10 @@ export default function Header() {
         <div className='flex items-center gap-2'>
           <span
             className='text-base font-extrabold tracking-tight cursor-pointer'
-            onClick={() => navigate('/')}>
+            onClick={() => {
+              setStartFetch(Date.now());
+              navigate('/');
+            }}>
             <Logo width={50} />
           </span>
           {lastSync && (
