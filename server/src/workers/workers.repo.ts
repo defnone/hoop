@@ -28,10 +28,11 @@ export class WorkersRepo {
       .from(torrentItems)
       .where(
         or(
-          eq(torrentItems.controlStatus, 'donwloadRequested'),
+          eq(torrentItems.controlStatus, 'downloadRequested'),
           eq(torrentItems.controlStatus, 'downloading'),
           eq(torrentItems.controlStatus, 'downloadCompleted'),
-          eq(torrentItems.controlStatus, 'idle')
+          eq(torrentItems.controlStatus, 'idle'),
+          eq(torrentItems.controlStatus, 'paused')
         )
       );
 

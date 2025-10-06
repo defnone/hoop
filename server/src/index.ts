@@ -11,7 +11,7 @@ import { torrentsStatusRoute } from './routes/torrents.status';
 import { torrentsAddRoute } from './routes/torrents.add';
 import { torrentsDeleteRoute } from './routes/torrents.$id.delete';
 import { torrentsRoute } from './routes/torrents';
-import { torrentsSaveRoute } from './routes/torrents.save';
+import { torrentsSaveTrackedEpRoute } from './routes/torrents.save-tracked-ep';
 import { torrentClientAddRoute } from './routes/torrent-client.$id.add';
 import { torrentClientDeleteRoute } from './routes/torrent-client.$id.delete';
 import { runMigrations } from '../scripts/migrate';
@@ -22,6 +22,7 @@ import { jackettVerifyRoute } from './routes/jackett.verify';
 import { systemExitRoute } from './routes/system.exit';
 import { trackersKinozalVerifyRoute } from './routes/trackers.kinozal.verify';
 import { getUserCount } from './lib/utils';
+import { torrentsPauseToggleRoute } from './routes/torrents.pause-toggle';
 
 export const app = new Hono<{
   Variables: {
@@ -84,7 +85,8 @@ export const routes = app
   .route('/torrents/status', torrentsStatusRoute)
   .route('/torrents/add', torrentsAddRoute)
   .route('/torrents/:id/delete', torrentsDeleteRoute)
-  .route('/torrents/:id/save', torrentsSaveRoute)
+  .route('/torrents/:id/save-tracked-ep', torrentsSaveTrackedEpRoute)
+  .route('/torrents/:id/pause-toggle', torrentsPauseToggleRoute)
   .route('/torrent-client/:id/add', torrentClientAddRoute)
   .route('/torrent-client/:id/delete', torrentClientDeleteRoute);
 

@@ -232,7 +232,7 @@ describe('DownloadWorker', () => {
     const repo = new RepoMock();
     const worker = new DownloadWorker({ repo: repo as unknown as never });
 
-    const req = { ...item, controlStatus: 'donwloadRequested' as const };
+    const req = { ...item, controlStatus: 'downloadRequested' as const };
     const dl = { ...item, id: 2, controlStatus: 'downloading' as const };
     const done = { ...item, id: 3, controlStatus: 'downloadCompleted' as const };
 

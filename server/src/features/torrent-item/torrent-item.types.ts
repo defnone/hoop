@@ -1,5 +1,6 @@
 import type { TrackerDataAdapter } from '@server/external/adapters/tracker-data';
 import type { TorrentItemRepo } from './torrent-item.repo';
+import type { controlStatuses } from '@server/db/app/app-schema';
 
 export type TorrentItemDto = {
   id: number;
@@ -14,7 +15,7 @@ export type TorrentItemDto = {
   totalEpisodes: number | null;
   trackedEpisodes: number[];
   magnet: string | null;
-  controlStatus: string;
+  controlStatus: (typeof controlStatuses)[number];
   createdAt: number;
   updatedAt: number;
 };
