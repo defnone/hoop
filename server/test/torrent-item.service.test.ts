@@ -302,14 +302,14 @@ describe('TorrentItem service', () => {
     expect(item.databaseData?.controlStatus).toBe('downloadRequested');
   });
 
-  it('marks all episodes as tracked', async () => {
+  it('sets all episodes as tracked', async () => {
     const repo = createRepoMock();
     repo.update.mockResolvedValue(createDbTorrentItem());
 
     const item = new TorrentItem({ id: 10, repo });
     item.databaseData = createDbTorrentItem({ totalEpisodes: 3 });
 
-    await item.markAsTrackedAll();
+    await item.setAllEpisodesTracked();
 
     expect(repo.update).toHaveBeenCalledWith(10, {
       trackedEpisodes: [1, 2, 3],
