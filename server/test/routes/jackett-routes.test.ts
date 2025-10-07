@@ -17,10 +17,9 @@ type ApiResponse<T> = {
 };
 
 const { getSettingsMock, fetchMock } = vi.hoisted(() => {
-  const getSettingsMock = vi.fn<[], Promise<JackettSettings | null>>();
+  const getSettingsMock = vi.fn<() => Promise<JackettSettings | null>>();
   const fetchMock = vi.fn<
-    [RequestInfo | URL, RequestInit | undefined],
-    Promise<Response>
+    (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
   >();
   return { getSettingsMock, fetchMock } as const;
 });

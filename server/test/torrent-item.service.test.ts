@@ -18,7 +18,7 @@ vi.mock('@server/lib/logger', () => ({
   },
 }));
 
-const trackerCollectMock = vi.fn<[], Promise<TorrentDataResult>>();
+const trackerCollectMock = vi.fn<() => Promise<TorrentDataResult>>();
 const trackerCtorCalls: Array<{ url: string; tracker: string }> = [];
 
 vi.mock('@server/external/adapters/tracker-data', () => ({
@@ -33,7 +33,7 @@ vi.mock('@server/external/adapters/tracker-data', () => ({
   },
 }));
 
-const deleteFileMock = vi.fn<[string], Promise<boolean>>();
+const deleteFileMock = vi.fn<(filePath: string) => Promise<boolean>>();
 
 vi.mock('@server/features/file-management/file-management.service', () => ({
   FileManagementService: class {
@@ -43,24 +43,26 @@ vi.mock('@server/features/file-management/file-management.service', () => ({
   },
 }));
 
+type RepoFindAllFn = (
+  page: number,
+  limit: number
+) => Promise<{ items: DbTorrentItem[]; total: number }>;
+type RepoFindByIdFn = (id: number) => Promise<DbTorrentItem | null>;
+type RepoUpsertFn = (
+  payload: DbTorrentItemInsert
+) => Promise<DbTorrentItem | undefined>;
+type RepoDeleteFn = (id: number) => Promise<void>;
+type RepoUpdateFn = (
+  id: number,
+  payload: Partial<DbTorrentItemInsert>
+) => Promise<DbTorrentItem | undefined>;
+
 type RepoMock = {
-  findAll: ReturnType<
-    typeof vi.fn<
-      [number, number],
-      Promise<{ items: DbTorrentItem[]; total: number }>
-    >
-  >;
-  findById: ReturnType<typeof vi.fn<[number], Promise<DbTorrentItem | null>>>;
-  upsert: ReturnType<
-    typeof vi.fn<[DbTorrentItemInsert], Promise<DbTorrentItem | undefined>>
-  >;
-  deleteById: ReturnType<typeof vi.fn<[number], Promise<void>>>;
-  update: ReturnType<
-    typeof vi.fn<
-      [number, Partial<DbTorrentItemInsert>],
-      Promise<DbTorrentItem | undefined>
-    >
-  >;
+  findAll: ReturnType<typeof vi.fn<RepoFindAllFn>>;
+  findById: ReturnType<typeof vi.fn<RepoFindByIdFn>>;
+  upsert: ReturnType<typeof vi.fn<RepoUpsertFn>>;
+  deleteById: ReturnType<typeof vi.fn<RepoDeleteFn>>;
+  update: ReturnType<typeof vi.fn<RepoUpdateFn>>;
 } & Pick<
   TorrentItemRepo,
   'findAll' | 'findById' | 'upsert' | 'deleteById' | 'update'
@@ -68,17 +70,11 @@ type RepoMock = {
 
 function createRepoMock(): RepoMock {
   const repo = {
-    findAll: vi.fn<
-      [number, number],
-      Promise<{ items: DbTorrentItem[]; total: number }>
-    >(),
-    findById: vi.fn<[number], Promise<DbTorrentItem | null>>(),
-    upsert: vi.fn<[DbTorrentItemInsert], Promise<DbTorrentItem | undefined>>(),
-    deleteById: vi.fn<[number], Promise<void>>(),
-    update: vi.fn<
-      [number, Partial<DbTorrentItemInsert>],
-      Promise<DbTorrentItem | undefined>
-    >(),
+    findAll: vi.fn<RepoFindAllFn>(),
+    findById: vi.fn<RepoFindByIdFn>(),
+    upsert: vi.fn<RepoUpsertFn>(),
+    deleteById: vi.fn<RepoDeleteFn>(),
+    update: vi.fn<RepoUpdateFn>(),
   };
   return repo as RepoMock;
 }
