@@ -29,7 +29,7 @@ export const torrentsAddRoute = new Hono().post(
 
       const dto = await ti.addOrUpdate();
 
-      if (selectAll) await ti.markAsTrackedAll();
+      if (selectAll) await ti.setAllEpisodesTracked();
       if (startDownload && dto) {
         await ti.markAsDownloadRequested();
         dto.controlStatus = 'downloadRequested';

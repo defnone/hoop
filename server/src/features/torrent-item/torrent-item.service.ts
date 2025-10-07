@@ -137,7 +137,7 @@ export class TorrentItem implements TorrentItemPort {
     });
   }
 
-  async markAsTrackedAll() {
+  async setAllEpisodesTracked() {
     if (!this.id) throw new Error('ID is not defined');
     await this.repo.update(this.id, {
       trackedEpisodes: this.databaseData?.totalEpisodes

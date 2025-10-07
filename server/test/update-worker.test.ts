@@ -140,7 +140,7 @@ vi.mock('@server/features/torrent-item/torrent-item.service', () => {
     async updateTrackedEpisodes(_episodes: number[]): Promise<void> {
       return Promise.resolve();
     }
-    async markAsTrackedAll(): Promise<void> {
+    async setAllEpisodesTracked(): Promise<void> {
       return Promise.resolve();
     }
     async delete(_withFiles?: boolean): Promise<void> {

@@ -18,7 +18,7 @@ export interface TorrentItemPort {
 
   updateTrackedEpisodes(episodes: number[]): Promise<void>;
 
-  markAsTrackedAll(): Promise<void>;
+  setAllEpisodesTracked(): Promise<void>;
 
   delete(withFiles?: boolean): Promise<void>;
 

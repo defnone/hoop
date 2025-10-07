@@ -19,7 +19,7 @@ import { TorrentState } from '@ctrl/shared-torrent';
 const {
   getAllMock,
   addOrUpdateMock,
-  markAsTrackedAllMock,
+  setAllEpisodesTrackedMock,
   markAsDownloadRequestedMock,
   deleteMock,
   updateTrackedEpisodesMock,
@@ -34,7 +34,7 @@ const {
     Promise<PagedResult<TorrentItemDto>>
   >();
   const addOrUpdateMock = vi.fn<[], Promise<TorrentItemDto | null>>();
-  const markAsTrackedAllMock = vi.fn<[], Promise<void>>();
+  const setAllEpisodesTrackedMock = vi.fn<[], Promise<void>>();
   const markAsDownloadRequestedMock = vi.fn<[], Promise<void>>();
   const deleteMock = vi.fn<[boolean], Promise<void>>();
   const updateTrackedEpisodesMock = vi.fn<[number[]], Promise<void>>();
@@ -45,7 +45,7 @@ const {
   const torrentItemCtorSpy = vi.fn((params: TorrentItemParams) => ({
     getAll: getAllMock,
     addOrUpdate: addOrUpdateMock,
-    markAsTrackedAll: markAsTrackedAllMock,
+    setAllEpisodesTracked: setAllEpisodesTrackedMock,
     markAsDownloadRequested: markAsDownloadRequestedMock,
     delete: deleteMock,
     updateTrackedEpisodes: updateTrackedEpisodesMock,
@@ -59,7 +59,7 @@ const {
   return {
     getAllMock,
     addOrUpdateMock,
-    markAsTrackedAllMock,
+    setAllEpisodesTrackedMock,
     markAsDownloadRequestedMock,
     deleteMock,
     updateTrackedEpisodesMock,
@@ -214,7 +214,7 @@ describe('torrentsStatusRoute', () => {
 describe('torrentsAddRoute', () => {
   beforeEach(() => {
     addOrUpdateMock.mockReset();
-    markAsTrackedAllMock.mockReset();
+    setAllEpisodesTrackedMock.mockReset();
     markAsDownloadRequestedMock.mockReset();
   });
 
@@ -238,7 +238,7 @@ describe('torrentsAddRoute', () => {
 
     expect(response.status).toBe(200);
     expect(addOrUpdateMock).toHaveBeenCalledTimes(1);
-    expect(markAsTrackedAllMock).not.toHaveBeenCalled();
+    expect(setAllEpisodesTrackedMock).not.toHaveBeenCalled();
     expect(markAsDownloadRequestedMock).not.toHaveBeenCalled();
     expect(body.data?.id).toBe(dto.id);
   });
@@ -246,7 +246,7 @@ describe('torrentsAddRoute', () => {
   it('marks torrent for download and tracking', async () => {
     const dto = createTorrentDto();
     addOrUpdateMock.mockResolvedValueOnce(dto);
-    markAsTrackedAllMock.mockResolvedValueOnce();
+    setAllEpisodesTrackedMock.mockResolvedValueOnce();
     markAsDownloadRequestedMock.mockResolvedValueOnce();
 
     const response = await torrentsAddRoute.request('/', {
@@ -264,7 +264,7 @@ describe('torrentsAddRoute', () => {
     const body = (await response.json()) as ApiResponse<TorrentItemDto | null>;
 
     expect(response.status).toBe(200);
-    expect(markAsTrackedAllMock).toHaveBeenCalledTimes(1);
+    expect(setAllEpisodesTrackedMock).toHaveBeenCalledTimes(1);
     expect(markAsDownloadRequestedMock).toHaveBeenCalledTimes(1);
     expect(body.data?.controlStatus).toBe('downloadRequested');
   });
