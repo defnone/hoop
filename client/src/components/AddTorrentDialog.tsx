@@ -16,6 +16,7 @@ import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { cn } from '@/lib/utils';
 import { rpc } from '@/lib/rpc';
+import { Separator } from '@radix-ui/react-separator';
 
 interface AddTorrentDialogProps {
   open: boolean;
@@ -98,8 +99,8 @@ export default function AddTorrentDialog({
             <DialogDescription asChild>
               <div className='px-6 py-4'>
                 <Input
-                  placeholder='Enter torrent URL (https://rutracker.org/.../)'
-                  className='text-base text-white'
+                  placeholder='e.g. https://rutracker.org/forum/viewtopic...'
+                  className='text-base text-white h-10'
                   value={torrentUrl}
                   onChange={(e) => {
                     setTorrentUrl(e.target.value);
@@ -111,14 +112,19 @@ export default function AddTorrentDialog({
                   }}
                   type='url'
                 />
-                <div className='flex items-center  gap-2 mt-2 mb-5 w-full text-muted-foreground'>
+                <div className='flex items-center gap-2 mt-2 mb-5 w-full text-md text-foreground/90 pl-3'>
                   Supported trackers: Rutracker, NNM-Club, Kinozal (with auth).
                 </div>
 
-                <div className='flex flex-col gap-2 pb-5 pt-2 text-zinc-200'>
+                <Separator className='h-px w-full bg-border my-5' />
+
+                <div className='flex flex-col gap-1  pt-2 text-zinc-200 '>
                   <Label
                     htmlFor='mark-all-episodes'
-                    className='flex items-center  gap-2 text-base'>
+                    className={cn(
+                      'flex items-center gap-2 text-base border rounded-md px-3 py-2 cursor-pointer',
+                      markAll && 'bg-accent'
+                    )}>
                     <Checkbox
                       id='mark-all-episodes'
                       checked={markAll}
@@ -132,8 +138,9 @@ export default function AddTorrentDialog({
                   <Label
                     htmlFor='start-download-immediately'
                     className={cn(
-                      'flex items-center gap-2 text-base',
-                      !markAll && 'opacity-50'
+                      'flex items-center gap-2 text-base border rounded-md px-3 py-2 cursor-pointer',
+                      !markAll && 'opacity-50',
+                      startDownloadImmediately && 'bg-accent'
                     )}>
                     <Checkbox
                       id='start-download-immediately'
