@@ -13,8 +13,8 @@ type ApiResponse<T> = {
 };
 
 const { addMock, removeMock, transmissionCtor } = vi.hoisted(() => {
-  const addMock = vi.fn<[], Promise<void>>();
-  const removeMock = vi.fn<[boolean], Promise<void>>();
+  const addMock = vi.fn<() => Promise<void>>();
+  const removeMock = vi.fn<(withData: boolean) => Promise<void>>();
   const transmissionCtor = vi.fn((params: { id: number }) => ({
     add: addMock,
     remove: removeMock,
@@ -75,7 +75,7 @@ beforeEach(() => {
 
 describe('torrent-client routes', () => {
   it('adds torrent to client', async () => {
-    addMock.mockResolvedValueOnce();
+    addMock.mockResolvedValueOnce(undefined);
     const app = mountRoute('/torrent-client/:id/add', torrentClientAddRoute);
 
     const response = await app.request('/torrent-client/9/add', {
@@ -105,7 +105,7 @@ describe('torrent-client routes', () => {
   });
 
   it('removes torrent from client and clears status', async () => {
-    removeMock.mockResolvedValueOnce();
+    removeMock.mockResolvedValueOnce(undefined);
     statusStorage.set(9, createStatus());
     const app = mountRoute('/torrent-client/:id/delete', torrentClientDeleteRoute);
 

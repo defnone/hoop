@@ -8,7 +8,7 @@ type ApiResponse<T> = {
 };
 
 const { getCookiesMock, trackerAuthCtor, trackersConfMock } = vi.hoisted(() => {
-  const getCookiesMock = vi.fn<[], Promise<string>>();
+  const getCookiesMock = vi.fn<() => Promise<string>>();
   const trackerAuthCtor = vi.fn(
     (params: { login: string; password: string; baseUrl: string; tracker: string }) => ({
       getCookies: getCookiesMock,

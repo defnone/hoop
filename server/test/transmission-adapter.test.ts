@@ -51,13 +51,11 @@ vi.mock('@server/features/settings/settings.service', () => {
 // Repository mock
 class RepoMock {
   public findTorrentItemById = vi.fn<
-    [id: number],
-    Promise<DbTorrentItem | null>
+    (id: number) => Promise<DbTorrentItem | null>
   >(() => Promise.resolve({ ...baseItem }));
 
   public updateTorrentItem = vi.fn<
-    [id: number, data: Partial<DbTorrentItem>],
-    Promise<DbTorrentItem | null>
+    (id: number, data: Partial<DbTorrentItem>) => Promise<DbTorrentItem | null>
   >((_id, data) => Promise.resolve({ ...baseItem, ...data } as DbTorrentItem));
 }
 

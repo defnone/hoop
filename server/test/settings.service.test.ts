@@ -120,14 +120,13 @@ describe('SettingsRepo (mocked database)', () => {
 describe('SettingsService', () => {
   it('throws when updating without data', async () => {
     const repoMock = {
-      findSettings: vi.fn<[], Promise<DbUserSettings | null>>().mockResolvedValue(null),
+      findSettings: vi.fn<() => Promise<DbUserSettings | null>>().mockResolvedValue(null),
       upsert: vi
-        .fn<[Omit<DbUserSettingsInsert, 'id'>], Promise<DbUserSettings | null>>()
+        .fn<(payload: Omit<DbUserSettingsInsert, 'id'>) => Promise<DbUserSettings | null>>()
         .mockResolvedValue(null),
       update: vi
         .fn<
-          [Partial<Omit<DbUserSettingsInsert, 'id'>>],
-          Promise<DbUserSettings | null>
+          (payload: Partial<Omit<DbUserSettingsInsert, 'id'>>) => Promise<DbUserSettings | null>
         >()
         .mockResolvedValue(null),
     } satisfies Pick<SettingsRepo, 'findSettings' | 'upsert' | 'update'>;

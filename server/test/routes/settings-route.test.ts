@@ -25,8 +25,10 @@ type SettingsResponse<T> = {
 };
 
 const { getSettingsMock, upsertMock } = vi.hoisted(() => {
-  const getSettingsMock = vi.fn<[], Promise<SettingsRequestPayload | null>>();
-  const upsertMock = vi.fn<[SettingsPayload], Promise<SettingsPayload | null>>();
+  const getSettingsMock = vi.fn<() => Promise<SettingsRequestPayload | null>>();
+  const upsertMock = vi.fn<
+    (payload: SettingsPayload) => Promise<SettingsPayload | null>
+  >();
   return { getSettingsMock, upsertMock } as const;
 });
 

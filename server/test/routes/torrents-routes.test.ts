@@ -29,19 +29,24 @@ const {
   markAsPausedMock,
   markAsIdleMock,
 } = vi.hoisted(() => {
-  const getAllMock = vi.fn<
-    [number, number],
-    Promise<PagedResult<TorrentItemDto>>
+  type GetAllFn = (
+    page: number,
+    limit: number
+  ) => Promise<PagedResult<TorrentItemDto>>;
+  const getAllMock = vi.fn<GetAllFn>();
+  type AddOrUpdateFn = () => Promise<TorrentItemDto | null>;
+  const addOrUpdateMock = vi.fn<AddOrUpdateFn>();
+  type VoidAsyncFn = () => Promise<void>;
+  const setAllEpisodesTrackedMock = vi.fn<VoidAsyncFn>();
+  const markAsDownloadRequestedMock = vi.fn<VoidAsyncFn>();
+  const deleteMock = vi.fn<(withFiles: boolean) => Promise<void>>();
+  const updateTrackedEpisodesMock = vi.fn<
+    (episodes: number[]) => Promise<void>
   >();
-  const addOrUpdateMock = vi.fn<[], Promise<TorrentItemDto | null>>();
-  const setAllEpisodesTrackedMock = vi.fn<[], Promise<void>>();
-  const markAsDownloadRequestedMock = vi.fn<[], Promise<void>>();
-  const deleteMock = vi.fn<[boolean], Promise<void>>();
-  const updateTrackedEpisodesMock = vi.fn<[number[]], Promise<void>>();
-  const deleteFileEpisodeMock = vi.fn<[string], Promise<void>>();
-  const getByIdMock = vi.fn<[], Promise<void>>(async () => undefined);
-  const markAsPausedMock = vi.fn<[], Promise<void>>(async () => undefined);
-  const markAsIdleMock = vi.fn<[], Promise<void>>(async () => undefined);
+  const deleteFileEpisodeMock = vi.fn<(filePath: string) => Promise<void>>();
+  const getByIdMock = vi.fn<VoidAsyncFn>(async () => undefined);
+  const markAsPausedMock = vi.fn<VoidAsyncFn>(async () => undefined);
+  const markAsIdleMock = vi.fn<VoidAsyncFn>(async () => undefined);
   const torrentItemCtorSpy = vi.fn((params: TorrentItemParams) => ({
     getAll: getAllMock,
     addOrUpdate: addOrUpdateMock,
@@ -246,8 +251,8 @@ describe('torrentsAddRoute', () => {
   it('marks torrent for download and tracking', async () => {
     const dto = createTorrentDto();
     addOrUpdateMock.mockResolvedValueOnce(dto);
-    setAllEpisodesTrackedMock.mockResolvedValueOnce();
-    markAsDownloadRequestedMock.mockResolvedValueOnce();
+    setAllEpisodesTrackedMock.mockResolvedValueOnce(undefined);
+    markAsDownloadRequestedMock.mockResolvedValueOnce(undefined);
 
     const response = await torrentsAddRoute.request('/', {
       method: 'POST',
@@ -381,7 +386,7 @@ describe('torrentsDeleteRoute', () => {
   });
 
   it('deletes torrent and returns success response', async () => {
-    deleteMock.mockResolvedValueOnce();
+    deleteMock.mockResolvedValueOnce(undefined);
     const app = mountRoute('/torrents/:id/delete', torrentsDeleteRoute);
 
     const response = await app.request('/torrents/5/delete', {
@@ -425,7 +430,7 @@ describe('torrentsSaveTrackedEpRoute', () => {
   });
 
   it('saves selected episodes', async () => {
-    updateTrackedEpisodesMock.mockResolvedValueOnce();
+    updateTrackedEpisodesMock.mockResolvedValueOnce(undefined);
     const app = mountRoute('/torrents/:id/save-tracked-ep', torrentsSaveTrackedEpRoute);
 
     const response = await app.request('/torrents/2/save-tracked-ep', {
@@ -468,7 +473,7 @@ describe('deleteFileRoute', () => {
   });
 
   it('deletes episode file', async () => {
-    deleteFileEpisodeMock.mockResolvedValueOnce();
+    deleteFileEpisodeMock.mockResolvedValueOnce(undefined);
     const app = mountRoute('/files/:id/delete', deleteFileRoute);
 
     const response = await app.request('/files/3/delete', {
