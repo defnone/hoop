@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.0 - 2025-10-08
+
+### Added
+- client/server: add torrent pause toggle flow across UI and API (7609ba1)
+
+### Changed
+- server: rename tracked episodes helpers and improve mock signatures (42692d5, 1f0053d)
+- client: refine dialogs and input styling with better error handling (b2bd0c3, fbf815b, 583d199)
+- client: integrate torrent start fetch action in Header (b94c32a)
+- server: switch logger to Winston and update build output to Bun target (40f19fd, 63f5653)
+- docker: update Bun base version and entrypoint exec usage (13e1def, 4e5d882)
+- server: use tiny Hono import for Jackett routes (118c5c5)
+
+### Fixed
+- server: correct control status typo to ensure accurate torrent status mapping (e7add27)
+
 ## 0.3.0 - 2025-10-01
 
 ### Added
