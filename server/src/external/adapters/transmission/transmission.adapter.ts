@@ -94,8 +94,10 @@ export class TransmissionAdapter {
       if (!file || !file.name) return arr;
       const episodeNumber =
         file.name.match(/[Ss](\d+)[Ee](\d+)/i)?.[2] ||
+        file.name.match(/(\d+)[.\-_–—x ]+(\d+)/i)?.[2] ||
         file.name.match(/[Ee](\d+)/i)?.[1] ||
-        file.name.match(/(?<![\w\d])(\d{2,3})(?![\d])/)?.[1];
+        // Fallback: pure 2-3 digit episode token with non-alphanumeric boundaries
+        file.name.match(/(?<![A-Za-z0-9])(\d{2,3})(?![A-Za-z0-9])/g)?.[0];
       if (episodeNumber && !trackedEpisodes.includes(Number(episodeNumber))) {
         arr.push(index);
       }
