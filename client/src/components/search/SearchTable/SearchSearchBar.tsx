@@ -6,14 +6,12 @@ interface SearchSearchBarProps {
   search: string;
   setSearch: Dispatch<SetStateAction<string>>;
   isLoading: boolean;
-  results: number;
 }
 
 export function SearchTopBar({
   search,
   setSearch,
   isLoading,
-  results,
 }: SearchSearchBarProps) {
   return (
     <div className='flex items-center pt-5 w-full'>
@@ -33,11 +31,7 @@ export function SearchTopBar({
         </div>
       </div>
 
-      <div className='flex items-center gap-2'>
-        <div className='flex items-center gap-2 w-full text-zinc-200 text-nowrap bg-zinc-800 rounded-md px-2 py-1'>
-          {results} results found
-        </div>
-      </div>
+      <div className='flex items-center gap-2'></div>
     </div>
   );
 }
