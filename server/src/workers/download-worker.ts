@@ -129,9 +129,9 @@ export class DownloadWorker {
       });
       if (this.settings?.telegramId && this.settings?.botToken)
         new TelegramAdapter(this.settings).sendUpdate(row.title, copyResult);
-    } catch (error) {
-      logger.error(error);
-      await this.repo.markAsCompleted(row.id);
+    } catch (e) {
+      logger.error(e);
+      await this.repo.markAsIdle(row.id);
       return;
     }
     if (this.settings?.deleteAfterDownload) {

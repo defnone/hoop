@@ -124,7 +124,9 @@ export class FileManagementService {
               destinationPath
             );
             logger.info(
-              `${mode === 'linked' ? 'Created hardlink' : 'Copied'} from ${sourcePath} to ${destinationPath}`
+              `${
+                mode === 'linked' ? 'Created hardlink' : 'Copied'
+              } from ${sourcePath} to ${destinationPath}`
             );
           } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
@@ -198,12 +200,12 @@ export class FileManagementService {
   }
 
   private static getEpisodeFromName(name: string): number | null {
-    const sxe = name.match(/[Ss](\d+)[Ee](\d+)/i)?.[2];
-    if (sxe) return Number(sxe);
-    const e = name.match(/[Ee](\d+)/i)?.[1];
+    const e =
+      name.match(/[Ss](\d+)[Ee](\d+)/i)?.[2] ||
+      name.match(/(\d+)[.\-_–—x ]+(\d+)/i)?.[2] ||
+      name.match(/[Ee](\d+)/i)?.[1];
     if (e) return Number(e);
-    const plain = name.match(/(?<![\w\d])(\d{2,3})(?![\d])/u)?.[1];
-    return plain ? Number(plain) : null;
+    throw new Error('Cannot detect episode number from filename: ' + name);
   }
 
   private static detectKind(base: string): 'video' | 'other' {
