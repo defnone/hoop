@@ -22,7 +22,6 @@ export default function SearchTable({
         isLoading={isLoading}
         search={search}
         setSearch={setSearch}
-        results={filteredData.length}
       />
       <SearchDataTable
         isLoading={isLoading}

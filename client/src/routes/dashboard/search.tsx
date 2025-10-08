@@ -30,6 +30,9 @@ export default function SearchPage() {
   const [filteredData, setFilteredData] = useState<JackettSearchResult[]>([]);
   const [isFirstRender, setIsFirstRender] = useState(true);
   const [tracker, setTracker] = useState<string>('all');
+  const [resultsByTracker, setResultsByTracker] = useState<
+    Record<string, number>
+  >({});
 
   const [trackers, setTrackers] = useState([
     { value: 'all', label: 'All' },
@@ -54,6 +57,15 @@ export default function SearchPage() {
   useEffect(() => {
     if (items.length > 0) {
       setFilteredData(items);
+      setResultsByTracker(
+        items.reduce(
+          (acc: Record<string, number>, item) => {
+            acc[item.TrackerId] = (acc[item.TrackerId] || 0) + 1;
+            return acc;
+          },
+          { all: items.length }
+        )
+      );
     }
   }, [items]);
 
@@ -157,19 +169,26 @@ export default function SearchPage() {
       <div className='flex flex-col w-full pb-10 gap-4'>
         <h1 className='text-2xl font-black text-zinc-100'>Jackett Search</h1>
         <p className='text-zinc-400 mb-1'>
-          Make sure you have properly configured rutracker.org, nnm-club and
-          kinozal.tv in Jackett.
+          Make sure you have properly configured the RuTracker, NNM-Club, and
+          Kinozal indexers in Jackett.
         </p>
         <div className='flex flex-col w-full max-w-[1000px]'>
           <div className='flex flex-row w-full gap-2'>
-            <Input
-              disabled={isLoading}
-              placeholder='TV Show Name'
-              autoFocus
-              value={tvName}
-              onChange={(e) => setTvName(e.target.value)}
-              onKeyDown={handleEnter}
-            />
+            <div className='flex flex-col gap-2 w-full relative'>
+              <Input
+                disabled={isLoading}
+                placeholder='TV Show Name'
+                autoFocus
+                value={tvName}
+                onChange={(e) => setTvName(e.target.value)}
+                onKeyDown={handleEnter}
+              />
+              {filteredData.length > 0 && (
+                <div className='absolute top-1 right-1 h-8 bg-muted px-3 rounded-sm flex items-center gap-2 text-sm text-white z-20'>
+                  {`${filteredData.length} results`}
+                </div>
+              )}
+            </div>
             <Input
               disabled={isLoading}
               className='w-40'
@@ -181,7 +200,10 @@ export default function SearchPage() {
               }
               onKeyDown={handleEnter}
             />
-            <Button onClick={handleSearch} disabled={isLoading}>
+            <Button
+              onClick={handleSearch}
+              disabled={isLoading}
+              variant={'secondary'}>
               <SearchIcon className='w-4 h-4' />
             </Button>
           </div>
@@ -192,6 +214,7 @@ export default function SearchPage() {
               tracker={tracker}
               setTracker={setTracker}
               trackers={trackers}
+              resultsByTracker={resultsByTracker}
             />
           </div>
         </div>

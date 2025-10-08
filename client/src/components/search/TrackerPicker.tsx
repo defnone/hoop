@@ -1,14 +1,17 @@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { cn } from '@/lib/utils';
 import { useId } from 'react';
 
 export default function TrackerPicker({
   tracker,
   setTracker,
   trackers,
+  resultsByTracker,
 }: {
   tracker: string;
   setTracker: React.Dispatch<React.SetStateAction<string>>;
   trackers: { value: string; label: string }[];
+  resultsByTracker: Record<string, number>;
 }) {
   const id = useId();
 
@@ -29,12 +32,23 @@ export default function TrackerPicker({
             />
             <p
               className={
-                'text-xs font-extrabold leading-none ' +
+                'text-xs font-extrabold leading-none' +
                 (tracker === item.value
                   ? ' text-primary'
                   : ' text-muted-foreground')
               }>
               {item.label}
+
+              {tracker === 'all' && resultsByTracker[item.value] > 0 && (
+                <span
+                  className={cn(
+                    'bg-muted ml-2 p-1 rounded-sm text-muted-foreground',
+                    item.value === tracker &&
+                      'text-primary border border-primary/10'
+                  )}>
+                  {resultsByTracker[item.value] || 0}
+                </span>
+              )}
             </p>
           </label>
         ))}
