@@ -2,6 +2,7 @@ import type { TorrentItemPort } from '@server/features/torrent-item/torrent-item
 import { WorkersRepo } from './workers.repo';
 import { TorrentItem } from '@server/features/torrent-item/torrent-item.service';
 import logger from '@server/lib/logger';
+import { formatErrorMessage } from '@server/lib/error-message';
 
 export class UpdateWorker {
   // Torrent item service instance used during current iteration
@@ -48,13 +49,23 @@ export class UpdateWorker {
         trackerId: row.trackerId,
       });
       // Pull latest data from tracker and the DB snapshot
-      await this.ti?.fetchData();
-      await this.ti?.getById();
+      try {
+        Promise.all([await this.ti?.getById(), await this.ti?.fetchData()]);
+      } catch (e) {
+        logger.error(`[UpdateWorker] Error on fetch: ${e}`);
+        this.repo.update(row.id, {
+          errorMessage: 'Error on fetch data, ' + formatErrorMessage(e),
+        });
+        continue;
+      }
 
       if (!this.ti?.trackerData?.rawTitle) {
         logger.error(
           `[UpdateWorker] No tracker title found for ${this.ti?.databaseData?.title}.`
         );
+        this.repo.update(row.id, {
+          errorMessage: 'Error on fetch data, no tracker title found',
+        });
         continue;
       }
 
@@ -92,12 +103,15 @@ export class UpdateWorker {
           `[UpdateWorker] No new data found for ${this.ti?.databaseData?.title}`
         );
       }
+      if (row.errorMessage) this.repo.update(row.id, { errorMessage: null });
     }
     // Record this sync and log the next planned moment for observability
     this.lastSync = Date.now();
     process.env.HOOP_LAST_SYNC = this.lastSync.toString();
     logger.info(
-      `[UpdateWorker] Next sync in ${new Date(this.lastSync + this.syncInterval).toLocaleString()}`
+      `[UpdateWorker] Next sync in ${new Date(
+        this.lastSync + this.syncInterval
+      ).toLocaleString()}`
     );
   }
 
