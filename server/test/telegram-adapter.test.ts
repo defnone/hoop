@@ -65,7 +65,8 @@ describe('TelegramAdapter', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0];
+    const call = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, init] = call;
     expect(url).toBe('https://api.telegram.org/bottoken-123/sendMessage');
     expect(init?.method).toBe('POST');
     expect(init?.headers).toEqual({ 'Content-Type': 'application/json' });

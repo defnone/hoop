@@ -128,6 +128,7 @@ vi.mock('@server/features/torrent-item/torrent-item.service', () => {
           (dbItem?.controlStatus as TorrentItemDto['controlStatus']) ?? 'idle',
         createdAt: dbItem?.createdAt ?? Date.now(),
         updatedAt: dbItem?.updatedAt ?? Date.now(),
+        errorMessage: dbItem?.errorMessage ?? null,
       });
     }
     async addOrUpdate() {

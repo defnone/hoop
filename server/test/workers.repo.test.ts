@@ -13,6 +13,7 @@ import type {
   DbUserSettings,
 } from '@server/db/app/app-schema';
 import type { BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
+import type { Database } from 'bun:sqlite';
 import { logger } from 'better-auth';
 
 const selectFromQueue: Array<Array<DbTorrentItem | DbUserSettings> | null> = [];
@@ -68,7 +69,10 @@ const database = {
   })),
 } as const;
 
-const repo = new WorkersRepo(database as unknown as BunSQLiteDatabase);
+const repo = new WorkersRepo({
+  ...database,
+  $client: {} as unknown as Database,
+} as unknown as BunSQLiteDatabase & { $client: Database });
 
 function makeTorrent(
   override: Partial<DbTorrentItem> = {}

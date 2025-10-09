@@ -7,6 +7,7 @@ import type {
   DbTorrentItemInsert,
 } from '@server/db/app/app-schema';
 import type { BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
+import type { Database } from 'bun:sqlite';
 
 const selectQueue: Array<Array<DbTorrentItem>> = [];
 const updateQueue: Array<Array<DbTorrentItem> | null> = [];
@@ -38,7 +39,10 @@ const database = {
   })),
 } as const;
 
-const repo = new TransmissionClientRepo(database as unknown as BunSQLiteDatabase);
+const repo = new TransmissionClientRepo({
+  ...database,
+  $client: {} as unknown as Database,
+} as unknown as BunSQLiteDatabase & { $client: Database });
 
 function makeRow(override: Partial<DbTorrentItem> = {}): DbTorrentItem {
   return {

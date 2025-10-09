@@ -67,23 +67,29 @@ class TransmissionMock {
   } | null = null;
   public lastRemoveArgs: { id: string; deleteLocal: boolean } | null = null;
 
-  async addMagnet(magnet: string, options: Record<string, unknown>) {
+  async addMagnet(
+    magnet: string,
+    options: Record<string, unknown>
+  ): Promise<{ arguments: Record<string, unknown> }> {
     this.lastAddArgs = { magnet, options };
     return Promise.resolve({
       arguments: { 'torrent-added': { hashString: 'abc123' } },
     });
   }
 
-  async removeTorrent(id: string, deleteLocal: boolean) {
+  async removeTorrent(
+    id: string,
+    deleteLocal: boolean
+  ): Promise<Record<string, unknown>> {
     this.lastRemoveArgs = { id, deleteLocal };
     return Promise.resolve({ id, deleteLocal });
   }
 
-  async getTorrent(id: string) {
+  async getTorrent(id: string): Promise<Record<string, unknown>> {
     return Promise.resolve({ id, name: 'some-torrent' });
   }
 
-  async listTorrents() {
+  async listTorrents(): Promise<{ arguments: { torrents: Array<Record<string, unknown>> } }> {
     return Promise.resolve({ arguments: { torrents: [{ hashString: 'x1' }] } });
   }
 }
@@ -133,7 +139,8 @@ describe('TransmissionAdapter', () => {
 
     // Verifies item update
     expect(repo.updateTorrentItem).toHaveBeenCalledTimes(1);
-    const [idArg, dataArg] = repo.updateTorrentItem.mock.calls[0];
+    const call = repo.updateTorrentItem.mock.calls[0] as [number, Partial<DbTorrentItem>];
+    const [idArg, dataArg] = call;
     expect(idArg).toBe(1);
     expect(dataArg).toMatchObject({
       controlStatus: 'downloading',
@@ -184,7 +191,8 @@ describe('TransmissionAdapter', () => {
     await adapter.add();
 
     expect(repo.updateTorrentItem).toHaveBeenCalledTimes(1);
-    const [, dataArg] = repo.updateTorrentItem.mock.calls[0];
+    const call2 = repo.updateTorrentItem.mock.calls[0] as [number, Partial<DbTorrentItem>];
+    const [, dataArg] = call2;
     expect(dataArg).toMatchObject({
       transmissionId: 'dup123',
       controlStatus: 'downloading',
@@ -217,7 +225,8 @@ describe('TransmissionAdapter', () => {
     await adapter.remove();
 
     expect(repo.updateTorrentItem).toHaveBeenCalledTimes(1);
-    const [, dataArg] = repo.updateTorrentItem.mock.calls[0];
+    const call3 = repo.updateTorrentItem.mock.calls[0] as [number, Partial<DbTorrentItem>];
+    const [, dataArg] = call3;
     expect(dataArg).toMatchObject({
       controlStatus: 'idle',
       transmissionId: null,
@@ -347,7 +356,10 @@ describe('TransmissionAdapter', () => {
 
   it('add(): wraps errors from transmission client', async () => {
     class TransmissionErrorMock extends TransmissionMock {
-      override async addMagnet() {
+      override async addMagnet(
+        _magnet: string,
+        _options: Record<string, unknown>
+      ): Promise<{ arguments: Record<string, unknown> }> {
         throw new Error('boom');
       }
     }
@@ -377,7 +389,7 @@ describe('TransmissionAdapter', () => {
       override async addMagnet(
         magnet: string,
         options: Record<string, unknown>
-      ) {
+      ): Promise<{ arguments: Record<string, unknown> }> {
         this.lastAddArgs = { magnet, options };
         return Promise.resolve({ arguments: {} });
       }
@@ -436,7 +448,7 @@ describe('TransmissionAdapter', () => {
     class TransmissionSelectMock extends TransmissionMock {
       public setCalls: Array<{ id: string; payload: Record<string, unknown> }> =
         [];
-      override async getTorrent(_id: string) {
+      override async getTorrent(_id: string): Promise<Record<string, unknown>> {
         return Promise.resolve({
           raw: {
             files: [
@@ -486,7 +498,7 @@ describe('TransmissionAdapter', () => {
   it('selectEpisodes(): does nothing when all files are tracked', async () => {
     class TransmissionSelectNoopMock extends TransmissionMock {
       public setCalled = false;
-      override async getTorrent(_id: string) {
+      override async getTorrent(_id: string): Promise<Record<string, unknown>> {
         return Promise.resolve({ raw: { files: [{ name: 'S01E01' }] } });
       }
       async setTorrent() {
@@ -522,7 +534,7 @@ describe('TransmissionAdapter', () => {
 
   it('selectEpisodes(): throws when no transmissionId', async () => {
     class TransmissionSelectErrMock extends TransmissionMock {
-      override async getTorrent(_id: string) {
+      override async getTorrent(_id: string): Promise<Record<string, unknown>> {
         return Promise.resolve({ raw: { files: [{ name: 'S01E01' }] } });
       }
       async setTorrent() {
@@ -591,7 +603,7 @@ describe('TransmissionAdapter', () => {
     class TransmissionSelectAltMock extends TransmissionMock {
       public setCalls: Array<{ id: string; payload: Record<string, unknown> }> =
         [];
-      override async getTorrent(_id: string) {
+      override async getTorrent(_id: string): Promise<Record<string, unknown>> {
         return Promise.resolve({
           raw: {
             files: [

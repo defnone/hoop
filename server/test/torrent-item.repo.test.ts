@@ -62,7 +62,11 @@ const database = {
   })),
 } as const;
 
-const repo = new TorrentItemRepo(database);
+import type { Database } from 'bun:sqlite';
+const repo = new TorrentItemRepo({
+  ...database,
+  $client: {} as unknown as Database,
+} as never);
 
 function makeRow(
   override: Partial<DbTorrentItem> = {}

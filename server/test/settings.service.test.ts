@@ -15,6 +15,8 @@ const updateQueue: Array<Array<Record<string, unknown>>> = [];
 let lastUpsertValues: Omit<DbUserSettingsInsert, 'id'> | null = null;
 let lastUpdateValues: Partial<Omit<DbUserSettingsInsert, 'id'>> | null = null;
 
+import type { Database } from 'bun:sqlite';
+
 const database = {
   select: vi.fn(() => ({
     from: vi.fn(() => ({
@@ -44,7 +46,10 @@ const database = {
   })),
 } as const;
 
-const repo = new SettingsRepo(database);
+const repo = new SettingsRepo({
+  ...database,
+  $client: {} as unknown as Database,
+} as never);
 
 function makeSettingsRow(
   override: Partial<DbUserSettings> = {}
@@ -119,19 +124,15 @@ describe('SettingsRepo (mocked database)', () => {
 
 describe('SettingsService', () => {
   it('throws when updating without data', async () => {
-    const repoMock = {
-      findSettings: vi.fn<() => Promise<DbUserSettings | null>>().mockResolvedValue(null),
-      upsert: vi
-        .fn<(payload: Omit<DbUserSettingsInsert, 'id'>) => Promise<DbUserSettings | null>>()
-        .mockResolvedValue(null),
-      update: vi
-        .fn<
-          (payload: Partial<Omit<DbUserSettingsInsert, 'id'>>) => Promise<DbUserSettings | null>
-        >()
-        .mockResolvedValue(null),
-    } satisfies Pick<SettingsRepo, 'findSettings' | 'upsert' | 'update'>;
+    class RepoMock extends SettingsRepo {
+      public findSettings = vi.fn(async (): Promise<DbUserSettings | null> => null);
+      public upsert = vi
+        .fn(async (_payload: Omit<DbUserSettingsInsert, 'id'>): Promise<DbUserSettings | null> => null);
+      public update = vi
+        .fn(async (_payload: Partial<Omit<DbUserSettingsInsert, 'id'>>): Promise<DbUserSettings | null> => null);
+    }
 
-    const service = new SettingsService({ repo: repoMock });
+    const service = new SettingsService({ repo: new RepoMock({} as never) });
 
     await expect(service.upsert()).rejects.toThrow('No data provided');
     await expect(service.update()).rejects.toThrow('No data provided');
@@ -150,48 +151,76 @@ describe('SettingsService', () => {
       kinozalUsername: null,
       kinozalPassword: null,
     };
+    const fullData = data as Required<Omit<DbUserSettingsInsert, 'id'>>;
 
-    const findSettings = vi
-      .fn<[], Promise<DbUserSettings | null>>()
-      .mockResolvedValue({ id: 1, ...data } satisfies DbUserSettings);
-    const upsert = vi
-      .fn<[Omit<DbUserSettingsInsert, 'id'>], Promise<DbUserSettings | null>>()
-      .mockImplementation(async (payload) => ({ id: 1, ...payload } satisfies DbUserSettings));
-    const update = vi
-      .fn<
-        [Partial<Omit<DbUserSettingsInsert, 'id'>>],
-        Promise<DbUserSettings | null>
-      >()
-      .mockImplementation(async (payload) =>
-        ({
+    class RepoMock2 extends SettingsRepo {
+      public findSettings = vi.fn(async (): Promise<DbUserSettings | null> => ({
+        id: 1,
+        telegramId: fullData.telegramId,
+        botToken: fullData.botToken,
+        downloadDir: fullData.downloadDir,
+        mediaDir: fullData.mediaDir,
+        deleteAfterDownload: fullData.deleteAfterDownload,
+        syncInterval: fullData.syncInterval,
+        jackettApiKey: fullData.jackettApiKey,
+        jackettUrl: fullData.jackettUrl,
+        kinozalUsername: fullData.kinozalUsername,
+        kinozalPassword: fullData.kinozalPassword,
+      } satisfies DbUserSettings));
+      public upsert = vi.fn(
+        async (payload: Omit<DbUserSettingsInsert, 'id'>): Promise<DbUserSettings | null> => ({
           id: 1,
-          downloadDir: data.downloadDir,
-          mediaDir: data.mediaDir,
-          deleteAfterDownload: data.deleteAfterDownload,
-          syncInterval: data.syncInterval,
-          jackettApiKey: data.jackettApiKey,
-          jackettUrl: data.jackettUrl,
-          kinozalUsername: data.kinozalUsername,
-          kinozalPassword: data.kinozalPassword,
-          ...payload,
+          telegramId: payload.telegramId ?? fullData.telegramId,
+          botToken: payload.botToken ?? fullData.botToken,
+          downloadDir: payload.downloadDir ?? fullData.downloadDir,
+          mediaDir: payload.mediaDir ?? fullData.mediaDir,
+          deleteAfterDownload:
+            payload.deleteAfterDownload ?? fullData.deleteAfterDownload,
+          syncInterval: payload.syncInterval ?? fullData.syncInterval,
+          jackettApiKey: payload.jackettApiKey ?? fullData.jackettApiKey,
+          jackettUrl: payload.jackettUrl ?? fullData.jackettUrl,
+          kinozalUsername: payload.kinozalUsername ?? fullData.kinozalUsername,
+          kinozalPassword: payload.kinozalPassword ?? fullData.kinozalPassword,
         } satisfies DbUserSettings)
       );
+      public update = vi.fn(
+        async (
+          payload: Partial<Omit<DbUserSettingsInsert, 'id'>>
+        ): Promise<DbUserSettings | null> =>
+          ({
+            id: 1,
+            telegramId: payload.telegramId ?? fullData.telegramId,
+            botToken: payload.botToken ?? fullData.botToken,
+            downloadDir: payload.downloadDir ?? fullData.downloadDir,
+            mediaDir: payload.mediaDir ?? fullData.mediaDir,
+            deleteAfterDownload:
+              payload.deleteAfterDownload ?? fullData.deleteAfterDownload,
+            syncInterval: payload.syncInterval ?? fullData.syncInterval,
+            jackettApiKey: payload.jackettApiKey ?? fullData.jackettApiKey,
+            jackettUrl: payload.jackettUrl ?? fullData.jackettUrl,
+            kinozalUsername:
+              payload.kinozalUsername ?? fullData.kinozalUsername,
+            kinozalPassword:
+              payload.kinozalPassword ?? fullData.kinozalPassword,
+          } satisfies DbUserSettings)
+      );
+    }
 
     const service = new SettingsService({
-      repo: { findSettings, upsert, update },
+      repo: new RepoMock2({} as never),
       data,
     });
 
     const inserted = await service.upsert();
     expect(inserted?.id).toBe(1);
-    expect(upsert).toHaveBeenCalledWith(data);
+    expect((service as unknown as { repo: RepoMock2 }).repo.upsert).toHaveBeenCalledWith(data);
 
     const fetched = await service.getSettings();
     expect(fetched?.id).toBe(1);
-    expect(findSettings).toHaveBeenCalledTimes(1);
+    expect((service as unknown as { repo: RepoMock2 }).repo.findSettings).toHaveBeenCalledTimes(1);
 
     const updated = await service.update();
     expect(updated?.id).toBe(1);
-    expect(update).toHaveBeenCalledWith(data);
+    expect((service as unknown as { repo: RepoMock2 }).repo.update).toHaveBeenCalledWith(data);
   });
 });
