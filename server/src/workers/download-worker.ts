@@ -6,6 +6,7 @@ import type { NormalizedTorrent } from '@ctrl/shared-torrent';
 import { promises as fs } from 'fs';
 import { FileManagementService } from '@server/features/file-management/file-management.service';
 import { TelegramAdapter } from '@server/external/adapters/telegram/telegram.adapter';
+import { formatErrorMessage } from '@server/lib/error-message';
 
 // In-memory cache for the last known Transmission status per torrent item
 export const statusStorage = new Map<number, NormalizedTorrent | undefined>();
@@ -19,6 +20,7 @@ export class DownloadWorker {
   private settings: DbUserSettings | undefined;
   // Handle for the active interval; used to prevent duplicate schedulers
   private intervalId: ReturnType<typeof setInterval> | null = null;
+  private error: string | null = null;
 
   constructor({ repo }: { repo?: WorkersRepo }) {
     // Default polling cadence for download processing
@@ -46,6 +48,7 @@ export class DownloadWorker {
     } catch (e) {
       logger.error(`[DownloadWorker] Failed to start downloading ${row.title}`);
       logger.error(e);
+      this.error = 'Failed to start downloading, ' + formatErrorMessage(e);
     }
   }
 
@@ -70,6 +73,7 @@ export class DownloadWorker {
         await this.repo.markAsIdle(row.id);
         statusStorage.delete(row.id);
       }
+      this.error = 'Failed to check download status, ' + formatErrorMessage(e);
     }
     const isDone = Boolean(
       status?.isCompleted &&
@@ -90,6 +94,7 @@ export class DownloadWorker {
           `[DownloadWorker] Error selecting episodes for ${row.title}: ${e}`
         );
         if (status) logger.error(JSON.stringify(status, null, 2));
+        this.error = 'Error selecting episodes, ' + formatErrorMessage(e);
       }
     }
   }
@@ -132,6 +137,8 @@ export class DownloadWorker {
     } catch (e) {
       logger.error(e);
       await this.repo.markAsIdle(row.id);
+      this.error =
+        'Error processing completed download, ' + formatErrorMessage(e);
       return;
     }
     if (this.settings?.deleteAfterDownload) {
@@ -156,19 +163,21 @@ export class DownloadWorker {
           missingFiles.push(file);
           logger.warn(`[DownloadWorker] Path is not a regular file: ${file}`);
         }
-      } catch (err) {
-        const code = (err as NodeJS.ErrnoException).code;
+      } catch (e) {
+        const code = (e as NodeJS.ErrnoException).code;
         if (code === 'ENOENT') {
           missingFiles.push(file);
           logger.warn(`[DownloadWorker] File not found: ${file}`);
         } else {
           logger.error(
             `[DownloadWorker] Unexpected error while statting ${file}: ${String(
-              err
+              e
             )}`
           );
           existingFiles.push(file);
         }
+
+        this.error = 'Failed to check files, ' + formatErrorMessage(e);
       }
     }
 
@@ -183,9 +192,10 @@ export class DownloadWorker {
   // Entry point for a single polling iteration
   async process() {
     await this.getSetting();
-    const rows = await this.repo.findAllDownloads();
+    const rows = await this.repo.findAllNeedToControl();
     if (!rows) return;
     for (const row of rows) {
+      this.error = null;
       switch (row.controlStatus) {
         case 'downloadRequested':
           await this.startDownload(row);
@@ -204,6 +214,13 @@ export class DownloadWorker {
           )
             await this.checkFiles(row);
           break;
+      }
+      if (this.error) {
+        logger.error(`[DownloadWorker] !!! Error: ${this.error}`);
+        this.repo.update(row.id, { errorMessage: this.error });
+        this.error = null;
+      } else if (row.errorMessage) {
+        await this.repo.update(row.id, { errorMessage: null });
       }
     }
   }
