@@ -155,6 +155,7 @@ export class FileManagementService {
     return name
       .replace(/[<>:"/\\|?*]/g, '')
       .replace(/\s+/g, ' ')
+      .replace('.', ' ')
       .trim();
   }
 
