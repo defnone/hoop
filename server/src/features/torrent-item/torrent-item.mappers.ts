@@ -18,6 +18,7 @@ export function toTorrentItemDto(row: DbTorrentItem): TorrentItemDto {
     trackedEpisodes: (row.trackedEpisodes as number[]) ?? [],
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    errorMessage: row.errorMessage,
   };
 }
 

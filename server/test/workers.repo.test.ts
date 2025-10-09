@@ -136,23 +136,23 @@ describe('WorkersRepo (mocked database)', () => {
     expect(rows?.every((row) => row.controlStatus === 'idle')).toBe(true);
   });
 
-  it('returns downloads for expected statuses', async () => {
+  it('returns items for expected statuses', async () => {
     selectFromQueue.push(null);
     selectWhereQueue.push([
       makeTorrent({ controlStatus: 'downloading' }),
       makeTorrent({ controlStatus: 'downloadCompleted' }),
     ]);
 
-    const rows = await repo.findAllDownloads();
+    const rows = await repo.findAllNeedToControl();
 
     expect(rows).toHaveLength(2);
   });
 
-  it('returns null when no downloads exist', async () => {
+  it('returns null when no items exist', async () => {
     selectFromQueue.push(null);
     selectWhereQueue.push(null);
 
-    const rows = await repo.findAllDownloads();
+    const rows = await repo.findAllNeedToControl();
 
     expect(rows).toBeNull();
   });

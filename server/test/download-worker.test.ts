@@ -63,10 +63,18 @@ vi.mock('@server/external/adapters/transmission', () => ({
   TransmissionAdapter: class {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     constructor(_: any) {}
-    async add() { return add(); }
-    async status() { return status(); }
-    async selectEpisodes() { return selectEpisodes(); }
-    async remove() { return remove(); }
+    async add() {
+      return add();
+    }
+    async status() {
+      return status();
+    }
+    async selectEpisodes() {
+      return selectEpisodes();
+    }
+    async remove() {
+      return remove();
+    }
   },
 }));
 
@@ -94,7 +102,9 @@ vi.mock('@server/features/file-management/file-management.service', () => ({
 // Mock repo to drive worker behavior
 class RepoMock {
   public findSettings = vi.fn(async () => settings);
-  public findAllDownloads = vi.fn(async (): Promise<DbTorrentItem[]> => []);
+  public findAllNeedToControl = vi.fn(
+    async (): Promise<DbTorrentItem[] | null> => []
+  );
   public markAsCompleted = vi.fn(async (_id: number) => undefined);
   public markAsProcessing = vi.fn(async (_id: number) => undefined);
   public markAsIdle = vi.fn(async (_id: number) => undefined);
@@ -189,9 +199,12 @@ describe('DownloadWorker', () => {
     const worker = new DownloadWorker({ repo: repo as unknown as never });
 
     // Ensure settings is loaded by invoking process() prelude
-    repo.findAllDownloads.mockResolvedValueOnce([]);
+    repo.findAllNeedToControl.mockResolvedValueOnce([]);
     // Enable deletion after download to match removal expectation
-    repo.findSettings.mockResolvedValueOnce({ ...settings, deleteAfterDownload: true });
+    repo.findSettings.mockResolvedValueOnce({
+      ...settings,
+      deleteAfterDownload: true,
+    });
     await worker.process();
 
     await worker.processCompletedDownload({ ...item });
@@ -218,7 +231,7 @@ describe('DownloadWorker', () => {
     const worker = new DownloadWorker({ repo: repo as unknown as never });
 
     // Prepare settings
-    repo.findAllDownloads.mockResolvedValueOnce([]);
+    repo.findAllNeedToControl.mockResolvedValueOnce([]);
     await worker.process();
 
     copyTrackedEpisodes.mockRejectedValueOnce(new Error('copy failed'));
@@ -234,11 +247,18 @@ describe('DownloadWorker', () => {
 
     const req = { ...item, controlStatus: 'downloadRequested' as const };
     const dl = { ...item, id: 2, controlStatus: 'downloading' as const };
-    const done = { ...item, id: 3, controlStatus: 'downloadCompleted' as const };
+    const done = {
+      ...item,
+      id: 3,
+      controlStatus: 'downloadCompleted' as const,
+    };
 
     // Ensure deletion after download to assert remove()
-    repo.findSettings.mockResolvedValueOnce({ ...settings, deleteAfterDownload: true });
-    repo.findAllDownloads.mockResolvedValueOnce([req, dl, done]);
+    repo.findSettings.mockResolvedValueOnce({
+      ...settings,
+      deleteAfterDownload: true,
+    });
+    repo.findAllNeedToControl.mockResolvedValueOnce([req, dl, done]);
 
     await worker.process();
 
@@ -260,7 +280,7 @@ describe('DownloadWorker', () => {
     const missingFile = '/tmp/missing.mkv';
     const errorFile = '/tmp/error.mkv';
 
-    repo.findAllDownloads.mockResolvedValueOnce([
+    repo.findAllNeedToControl.mockResolvedValueOnce([
       {
         ...item,
         controlStatus: 'idle',
@@ -272,8 +292,12 @@ describe('DownloadWorker', () => {
     process.env.HOOP_LAST_SYNC = Date.now().toString();
 
     const statSpy = vi.spyOn(fs, 'stat');
-    statSpy.mockImplementationOnce(async () => ({ isFile: () => true } as never));
-    statSpy.mockImplementationOnce(async () => ({ isFile: () => false } as never));
+    statSpy.mockImplementationOnce(
+      async () => ({ isFile: () => true } as never)
+    );
+    statSpy.mockImplementationOnce(
+      async () => ({ isFile: () => false } as never)
+    );
     statSpy.mockImplementationOnce(async () => {
       const err = new Error('missing') as NodeJS.ErrnoException;
       err.code = 'ENOENT';
@@ -306,11 +330,11 @@ describe('DownloadWorker', () => {
 
     const telegramSettings: DbUserSettings = {
       ...settings,
-      telegramId: '123',
+      telegramId: 123,
       botToken: 'token',
     };
 
-    repo.findAllDownloads.mockResolvedValueOnce([]);
+    repo.findAllNeedToControl.mockResolvedValueOnce([]);
     repo.findSettings.mockResolvedValueOnce(telegramSettings);
 
     const copyResult: Record<number, string> = { 1: '/media/file1.mkv' };
@@ -334,9 +358,7 @@ describe('DownloadWorker', () => {
 
     vi.useFakeTimers();
 
-    const processSpy = vi
-      .spyOn(worker, 'process')
-      .mockResolvedValue(undefined);
+    const processSpy = vi.spyOn(worker, 'process').mockResolvedValue(undefined);
 
     await worker.run();
     await vi.advanceTimersByTimeAsync(5000);
