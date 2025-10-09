@@ -5,10 +5,12 @@ describe('systemExitRoute', () => {
   it('invokes process exit with code 0', async () => {
     const exitSpy = vi
       .spyOn(process, 'exit')
-      .mockImplementation(((code?: number | undefined) => {
-        void code;
-        return undefined as never;
-      }) as (code?: number | undefined) => never);
+      .mockImplementation(
+        ((code?: string | number | null | undefined) => {
+          void code;
+          return undefined as never;
+        }) as never
+      );
 
     try {
       const response = await systemExitRoute.request('/', { method: 'POST' });

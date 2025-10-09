@@ -36,13 +36,16 @@ vi.mock('@server/external/adapters/telegram/telegram.adapter', () => ({
   },
 }));
 
-const copyTrackedEpisodes = vi.fn(async () => ({} as Record<number, string>));
+const copyTrackedEpisodes = vi.fn(
+  async (_ti: DbTorrentItem, _s: DbUserSettings) =>
+    ({} as Record<number, string>)
+);
 vi.mock('@server/features/file-management/file-management.service', () => ({
   FileManagementService: class {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     constructor(_: any) {}
-    async copyTrackedEpisodes(...args: unknown[]) {
-      return copyTrackedEpisodes(...(args as [unknown, unknown]));
+    async copyTrackedEpisodes(ti: DbTorrentItem, s: DbUserSettings) {
+      return copyTrackedEpisodes(ti, s);
     }
   },
 }));

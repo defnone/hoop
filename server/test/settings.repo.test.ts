@@ -7,6 +7,7 @@ import type {
   DbUserSettingsInsert,
 } from '@server/db/app/app-schema';
 import type { BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
+import type { Database } from 'bun:sqlite';
 
 const selectQueue: Array<Array<DbUserSettings>> = [];
 const upsertQueue: Array<Array<DbUserSettings>> = [];
@@ -43,7 +44,11 @@ const database = {
   })),
 } as const;
 
-const repo = new SettingsRepo(database as unknown as BunSQLiteDatabase);
+const repoDb = {
+  ...database,
+  $client: {} as unknown as Database,
+} as unknown as BunSQLiteDatabase & { $client: Database };
+const repo = new SettingsRepo(repoDb);
 
 function makeSettings(
   override: Partial<DbUserSettings> = {}

@@ -3,8 +3,13 @@ import { Hono } from 'hono/tiny';
 import healthRoute from '@server/routes/health';
 
 const { handlerMock, getSessionMock, usersCountStorage } = vi.hoisted(() => {
-  const handlerMock = vi.fn(async () => new Response(null, { status: 200 }));
-  const getSessionMock = vi.fn(async () => null);
+  const handlerMock: (req: Request) => Promise<Response> = vi.fn(
+    async (_req: Request): Promise<Response> => new Response(null, { status: 200 })
+  );
+  type GetSessionOpts = { headers: Headers };
+  const getSessionMock: (opts: GetSessionOpts) => Promise<null> = vi.fn(
+    async (_opts: GetSessionOpts): Promise<null> => null
+  );
   const usersCountStorage = new Map<string, number>();
   usersCountStorage.set('count', 0);
   return { handlerMock, getSessionMock, usersCountStorage } as const;
@@ -28,11 +33,11 @@ vi.mock('@server/lib/utils', () => ({
 
 vi.mock('hono/bun', () => ({
   serveStatic: () => () => new Response(null, { status: 404 }),
-}), { virtual: true });
+}));
 
-vi.mock('bun:sqlite', () => ({ Database: class {} }), { virtual: true });
+vi.mock('bun:sqlite', () => ({ Database: class {} }));
 
-vi.mock('@server/db', () => ({ default: {} }), { virtual: true });
+vi.mock('@server/db', () => ({ default: {} }));
 
 vi.mock('@server/routes/jackett.search', async () => {
   const { Hono } = await import('hono/tiny');
@@ -122,11 +127,13 @@ vi.mock('@server/routes/system.exit', async () => {
   return { systemExitRoute: route, default: route };
 });
 
-let app: Hono;
+let app: Hono<{ Variables: { user: unknown | null; session: unknown | null } }>;
 
 describe('auth middleware integration', () => {
   beforeAll(async () => {
-    app = new Hono().basePath('/api');
+    app = new Hono<{
+      Variables: { user: unknown | null; session: unknown | null };
+    }>().basePath('/api');
     app.route('/health', healthRoute);
 
     app.on(['POST', 'GET'], '/auth/*', (c) => handlerMock(c.req.raw));
@@ -166,13 +173,13 @@ describe('auth middleware integration', () => {
     app.use('*', async (c, next) => {
       const session = await getSessionMock({ headers: c.req.raw.headers });
       if (!session) {
-        c.set('user', null);
-        c.set('session', null);
+        c.set('user' as never, null as never);
+        c.set('session' as never, null as never);
         return c.json({ error: 'Unauthorized' }, 401);
       }
 
-      c.set('user', session.user);
-      c.set('session', session.session);
+      c.set('user' as never, (session as never as { user: null }).user as never);
+      c.set('session' as never, (session as never as { session: null }).session as never);
       return next();
     });
 

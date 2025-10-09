@@ -113,6 +113,7 @@ function createTorrentDto(
     controlStatus: 'idle',
     createdAt: Date.now(),
     updatedAt: Date.now(),
+    errorMessage: null,
     ...override,
   } satisfies TorrentItemDto;
 }

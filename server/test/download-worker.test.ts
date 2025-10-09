@@ -54,10 +54,18 @@ const settings: DbUserSettings = {
 
 // Mocks for collaborators
 const add = vi.fn(async () => undefined);
-const status = vi.fn(async () => ({ isCompleted: false }));
+import type { NormalizedTorrent } from '@ctrl/shared-torrent';
+const status = vi.fn(
+  async (): Promise<Pick<NormalizedTorrent, 'isCompleted'> & { dateCompleted?: string }> => ({
+    isCompleted: false,
+  })
+);
 const selectEpisodes = vi.fn(async () => undefined);
 const remove = vi.fn(async () => undefined);
-const sendUpdate = vi.fn(() => undefined);
+const sendUpdate = vi.fn((title: string, payload: Record<number, string>) => {
+  void title;
+  void payload;
+});
 
 vi.mock('@server/external/adapters/transmission', () => ({
   TransmissionAdapter: class {
@@ -82,19 +90,22 @@ vi.mock('@server/external/adapters/telegram/telegram.adapter', () => ({
   TelegramAdapter: class {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     constructor(_: any) {}
-    sendUpdate(...args: Parameters<typeof sendUpdate>) {
-      return sendUpdate(...args);
+    sendUpdate(title: string, payload: Record<number, string>) {
+      return sendUpdate(title, payload);
     }
   },
 }));
 
-const copyTrackedEpisodes = vi.fn(async () => ({} as Record<number, string>));
+const copyTrackedEpisodes = vi.fn(
+  async (_ti: DbTorrentItem, _s: DbUserSettings) =>
+    ({} as Record<number, string>)
+);
 vi.mock('@server/features/file-management/file-management.service', () => ({
   FileManagementService: class {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     constructor(_: any) {}
-    async copyTrackedEpisodes(...args: unknown[]) {
-      return copyTrackedEpisodes(...(args as [unknown, unknown]));
+    async copyTrackedEpisodes(ti: DbTorrentItem, s: DbUserSettings) {
+      return copyTrackedEpisodes(ti, s);
     }
   },
 }));
