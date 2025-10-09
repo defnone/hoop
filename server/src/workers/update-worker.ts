@@ -50,10 +50,13 @@ export class UpdateWorker {
       });
       // Pull latest data from tracker and the DB snapshot
       try {
-        Promise.all([await this.ti?.getById(), await this.ti?.fetchData()]);
+        await Promise.all([
+          await this.ti?.getById(),
+          await this.ti?.fetchData(),
+        ]);
       } catch (e) {
         logger.error(`[UpdateWorker] Error on fetch: ${e}`);
-        this.repo.update(row.id, {
+        await this.repo.update(row.id, {
           errorMessage: 'Error on fetch data, ' + formatErrorMessage(e),
         });
         continue;
@@ -103,7 +106,8 @@ export class UpdateWorker {
           `[UpdateWorker] No new data found for ${this.ti?.databaseData?.title}`
         );
       }
-      if (row.errorMessage) this.repo.update(row.id, { errorMessage: null });
+      if (row.errorMessage)
+        await this.repo.update(row.id, { errorMessage: null });
     }
     // Record this sync and log the next planned moment for observability
     this.lastSync = Date.now();
