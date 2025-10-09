@@ -24,6 +24,7 @@ vi.mock('@server/workers/workers.repo', () => {
       public findAllIdle = vi.fn(async () => [
         { ...baseItem } satisfies DbTorrentItem,
       ]);
+      public update = vi.fn(async () => undefined);
     },
   };
 });
@@ -166,6 +167,7 @@ class RepoMock {
   public findAllIdle = vi.fn(async () => [
     { ...baseItem } satisfies DbTorrentItem,
   ]);
+  public update = vi.fn(async (_id: number, _data: unknown) => undefined);
 }
 
 describe('UpdateWorker.process', () => {
