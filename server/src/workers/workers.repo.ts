@@ -22,7 +22,7 @@ export class WorkersRepo {
       .where(eq(torrentItems.controlStatus, 'idle'));
   }
 
-  async findAllDownloads() {
+  async findAllNeedToControl() {
     const rows = await this.database
       .select()
       .from(torrentItems)
