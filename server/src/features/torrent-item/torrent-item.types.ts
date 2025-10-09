@@ -15,6 +15,7 @@ export type TorrentItemDto = {
   totalEpisodes: number | null;
   trackedEpisodes: number[];
   magnet: string | null;
+  errorMessage: string | null;
   controlStatus: (typeof controlStatuses)[number];
   createdAt: number;
   updatedAt: number;
