@@ -216,7 +216,9 @@ export class DownloadWorker {
           break;
       }
       if (this.error) {
-        logger.error(`[DownloadWorker] !!! Error: ${this.error}`);
+        logger.error(
+          `[DownloadWorker] Error on process ${row.id}: ${this.error}`
+        );
         await this.repo.update(row.id, { errorMessage: this.error });
         this.error = null;
       } else if (row.errorMessage) {
