@@ -64,7 +64,7 @@ export class FileManagementService {
     for (const episodeNumber of trackedNumbers) {
       const matches = episodeFiles.filter((x) => x.episode === episodeNumber);
       if (matches.length === 0) {
-        logger.error(`No file found for episode ${episodeNumber}`);
+        logger.info(`No file found for episode ${episodeNumber}`);
         continue;
       }
 
@@ -72,7 +72,9 @@ export class FileManagementService {
         (m) => FileManagementService.detectKind(m.base) === 'video'
       );
       if (videos.length === 0) {
-        logger.error(`No video file found for episode ${episodeNumber}`);
+        logger.error(
+          `No video file found for tracked episode ${episodeNumber}, continuing`
+        );
         continue;
       }
 
