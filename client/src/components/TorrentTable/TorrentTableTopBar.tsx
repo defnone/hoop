@@ -35,7 +35,7 @@ export function TorrentTopBar() {
 
         <div className='flex items-center gap-2'>
           <Button
-            size='sm'
+            size='lg'
             variant={'secondary'}
             className='font-extrabold rounded-md text-sm justify-center items-center bg-blue-700'
             onClick={() => setDialogOpen(true)}>

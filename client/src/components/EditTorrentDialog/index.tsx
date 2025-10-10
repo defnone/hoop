@@ -323,29 +323,31 @@ function DialogFooterContent({
   handlePauseToggle: () => Promise<void>;
 }) {
   return (
-    <DialogFooter className='flex flex-row items-center relative border-t border-border px-6 h-20'>
+    <DialogFooter className='flex flex-row items-center relative border-t border-border px-6 h-20 -mt-4'>
       <ConfirmDelete
         onDelete={(withFiles) => handleDelete(withFiles)}
         files={data.files as string[]}>
         <Button
+          size={'icon-lg'}
           type='button'
           variant='destructive'
-          className='font-extrabold h-10 hover:transform-none'>
-          <Trash2 className='w-4 h-4' />
+          className='font-extrabold h-10 w-10 hover:transform-none'>
+          <Trash2 strokeWidth={3} className='w-4 h-4' />
         </Button>
       </ConfirmDelete>
       <Button
+        size={'icon-lg'}
         type='button'
-        variant='outline'
+        variant={data.controlStatus !== 'paused' ? 'outline' : 'secondary'}
         disabled={
           data.controlStatus !== 'idle' && data.controlStatus !== 'paused'
         }
         onClick={handlePauseToggle}
-        className='font-extrabold h-10 hover:transform-none mr-auto'>
+        className='font-extrabold h-10 w-10 hover:transform-none mr-auto'>
         {data.controlStatus === 'paused' ? (
-          <Play className='w-4 h-4' />
+          <Play strokeWidth={4} className='w-4 h-4' />
         ) : (
-          <Pause className='w-4 h-4' />
+          <Pause strokeWidth={3} className='w-4 h-4' />
         )}
       </Button>
 
@@ -354,7 +356,7 @@ function DialogFooterContent({
           type='button'
           variant='default'
           onClick={handleAddToClient}
-          disabled={isAddingToClient}
+          disabled={isAddingToClient || data.trackedEpisodes.length === 0}
           className='font-bold'>
           {isAddingToClient ? (
             <Loader2 className='w-4 h-4 animate-spin' />

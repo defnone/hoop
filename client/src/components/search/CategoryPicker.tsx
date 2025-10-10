@@ -1,5 +1,7 @@
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useId } from 'react';
+import { ButtonGroup } from '../ui/button-group';
+import { Button } from '../ui/button';
+import { cn } from '@/lib/utils';
 
 export default function CategoryPicker({
   category,
@@ -11,37 +13,26 @@ export default function CategoryPicker({
   const id = useId();
 
   const items = [
-    { value: '5000', label: 'All' },
-    { value: '5030', label: 'SD' },
-    { value: '5040', label: 'HD' },
-    { value: '5045', label: '4K' },
+    { value: 5000, label: 'All' },
+    { value: 5030, label: 'SD' },
+    { value: 5040, label: 'HD' },
+    { value: 5045, label: '4K' },
   ];
 
   return (
-    <fieldset className='space-y-4'>
-      <RadioGroup className='grid grid-cols-4 gap-2 pt-4' defaultValue='5000'>
-        {items.map((item) => (
-          <label
-            key={`${id}-${item.value}`}
-            className='relative flex cursor-pointer flex-col items-center gap-3 rounded-lg border border-input px-2 py-3 text-center shadow-sm shadow-black/5 outline-offset-2 transition-colors has-[[data-disabled]]:cursor-not-allowed has-[[data-state=checked]]:border-transparent has-[[data-state=checked]]:bg-accent has-[[data-disabled]]:opacity-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring/70'>
-            <RadioGroupItem
-              id={`${id}-${item.value}`}
-              value={item.value}
-              className='sr-only after:absolute after:inset-0'
-              onClick={() => setCategory(Number(item.value))}
-            />
-            <p
-              className={
-                'text-xs font-extrabold leading-none ' +
-                (category === Number(item.value)
-                  ? ' text-primary'
-                  : ' text-muted-foreground')
-              }>
-              {item.label}
-            </p>
-          </label>
-        ))}
-      </RadioGroup>
-    </fieldset>
+    <ButtonGroup>
+      {items.map((item) => (
+        <Button
+          className={cn(
+            'font-bold',
+            category === item.value && 'border border-border'
+          )}
+          variant={category === item.value ? 'secondary' : 'outline'}
+          key={`${id}-${item.value}`}
+          onClick={() => setCategory(item.value)}>
+          {item.label}
+        </Button>
+      ))}
+    </ButtonGroup>
   );
 }

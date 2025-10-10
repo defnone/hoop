@@ -1,6 +1,7 @@
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { useId } from 'react';
+import { ButtonGroup } from '../ui/button-group';
+import { Button } from '../ui/button';
 
 export default function TrackerPicker({
   tracker,
@@ -14,45 +15,28 @@ export default function TrackerPicker({
   resultsByTracker: Record<string, number>;
 }) {
   const id = useId();
-
   const items = trackers;
 
   return (
-    <fieldset className='space-y-4'>
-      <RadioGroup className='grid grid-cols-4 gap-2 pt-4' defaultValue='all'>
-        {items.map((item) => (
-          <label
-            key={`${id}-${item.value}`}
-            className='relative flex cursor-pointer flex-col items-center gap-3 rounded-lg border border-input px-2 py-3 text-center shadow-sm shadow-black/5 outline-offset-2 transition-colors has-[[data-disabled]]:cursor-not-allowed has-[[data-state=checked]]:border-transparent has-[[data-state=checked]]:bg-accent has-[[data-disabled]]:opacity-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring/70'>
-            <RadioGroupItem
-              id={`${id}-${item.value}`}
-              value={item.value}
-              className='sr-only after:absolute after:inset-0'
-              onClick={() => setTracker(item.value)}
-            />
-            <p
-              className={
-                'text-xs font-extrabold leading-none' +
-                (tracker === item.value
-                  ? ' text-primary'
-                  : ' text-muted-foreground')
-              }>
-              {item.label}
-
-              {tracker === 'all' && resultsByTracker[item.value] > 0 && (
-                <span
-                  className={cn(
-                    'bg-muted ml-2 p-1 rounded-sm text-muted-foreground',
-                    item.value === tracker &&
-                      'text-primary border border-primary/10'
-                  )}>
-                  {resultsByTracker[item.value] || 0}
-                </span>
-              )}
-            </p>
-          </label>
-        ))}
-      </RadioGroup>
-    </fieldset>
+    <ButtonGroup className=''>
+      {items.map((item) => (
+        <Button
+          className={cn(
+            ' font-bold',
+            tracker === item.value && 'border border-border'
+          )}
+          variant={tracker === item.value ? 'secondary' : 'outline'}
+          key={`${id}-${item.value}`}
+          onClick={() => setTracker(item.value)}>
+          {item.label}{' '}
+          {resultsByTracker[item.value] > 0 &&
+            (tracker === 'all' || tracker === item.value) && (
+              <span className='text-xs rounded-2xl bg-zinc-700 p-1 min-w-6'>
+                {resultsByTracker[item.value] || 0}
+              </span>
+            )}
+        </Button>
+      ))}
+    </ButtonGroup>
   );
 }

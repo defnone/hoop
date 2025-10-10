@@ -90,18 +90,18 @@ export default function EpPicker({
             <Label htmlFor={`${id}-${item.id}`}>{item.title}</Label>
           </div>
         ))}
-        <div className='flex gap-2 w-full flex-row col-span-3'>
+        <div className='flex gap-1 w-full flex-row col-span-3'>
           <Button
             size='sm'
             variant='secondary'
-            className='font-bold w-1/2 flex '
+            className='font-bold w-[50%] flex'
             onClick={handleSelectAll}>
             Select All
           </Button>
           <Button
             size='sm'
             variant='secondary'
-            className='font-bold w-1/2 flex'
+            className='font-bold w-[49%] flex'
             onClick={handleUnselectAll}>
             Unselect All
           </Button>
