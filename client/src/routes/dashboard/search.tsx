@@ -68,6 +68,7 @@ export default function SearchPage() {
     const filtered = items.filter((item) => {
       const phrases = search.toLowerCase().split(' ');
       for (const phrase of phrases) {
+        if (!phrase.length) continue;
         if (!item.Title.toLowerCase().includes(phrase)) return false;
       }
       return true;

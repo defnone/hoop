@@ -40,12 +40,12 @@ export default function CategoryPicker({
       <ButtonGroup>
         <Popover>
           <PopoverTrigger>
-            <Button size={'icon-sm'} variant={'ghost'} className='rounded-full'>
-              <BadgeQuestionMark />
-            </Button>
+            <div className='rounded-full cursor-pointer ml-1'>
+              <BadgeQuestionMark className='w-4 h-4 hover:text-muted-foreground' />
+            </div>
           </PopoverTrigger>
           <PopoverContent
-            sideOffset={10}
+            sideOffset={15}
             align='start'
             className='text-sm shadow-lg'>
             These are the categories sent to Jackett for searching on trackers.
