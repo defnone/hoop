@@ -31,7 +31,7 @@ export function SearchTopBar({
         <ButtonGroup className='relative flex'>
           <InputGroup className='w-72 rounded-md h-10'>
             <InputGroupAddon align={'inline-start'}>
-              <ListFilter size={17} className='' />
+              <ListFilter className='h-3 w-3' />
             </InputGroupAddon>
             <InputGroupInput
               disabled={isLoading}
