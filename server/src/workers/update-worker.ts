@@ -66,7 +66,7 @@ export class UpdateWorker {
         logger.error(
           `[UpdateWorker] No tracker title found for ${this.ti?.databaseData?.title}.`
         );
-        this.repo.update(row.id, {
+        await this.repo.update(row.id, {
           errorMessage: 'Error on fetch data, no tracker title found',
         });
         continue;
