@@ -8,6 +8,7 @@ import customSonner from '@/components/CustomSonner';
 import { useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import useSettings from '@/hooks/useSettings';
+import { ButtonGroup } from '@/components/ui/button-group';
 
 export default function Discover() {
   const [period, setPeriod] = useState<'daily' | 'weekly'>('weekly');
@@ -60,21 +61,28 @@ export default function Discover() {
         </div>
 
         <div className='w-full flex gap-2 pb-10'>
-          <Button
-            variant={period === 'weekly' ? 'secondary' : 'outline'}
-            className='font-bold'
-            onClick={() => setSearchParams({ period: 'weekly' })}>
-            Last Week
-          </Button>
-          <Button
-            variant={period === 'daily' ? 'secondary' : 'outline'}
-            className={cn(
-              'font-bold',
-              period !== 'daily' ? 'border border-border' : ''
-            )}
-            onClick={() => setSearchParams({ period: 'daily' })}>
-            Last 24h
-          </Button>
+          <ButtonGroup>
+            <Button
+              size={'lg'}
+              variant={period === 'weekly' ? 'secondary' : 'outline'}
+              className={cn(
+                'font-bold',
+                period == 'weekly' ? 'border border-border' : ''
+              )}
+              onClick={() => setSearchParams({ period: 'weekly' })}>
+              Last Week
+            </Button>
+            <Button
+              size={'lg'}
+              variant={period === 'daily' ? 'secondary' : 'outline'}
+              className={cn(
+                'font-bold',
+                period == 'daily' ? 'border border-border' : ''
+              )}
+              onClick={() => setSearchParams({ period: 'daily' })}>
+              Last 24h
+            </Button>
+          </ButtonGroup>
         </div>
 
         {isLoading && (

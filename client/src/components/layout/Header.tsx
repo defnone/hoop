@@ -60,41 +60,41 @@ export default function Header() {
         <div className='flex items-center gap-2'>
           <Button
             onClick={() => navigate('/discover?period=weekly')}
-            size='sm'
+            size='icon'
             variant='outline'
             className={cn(
               pathname === '/discover' &&
                 'bg-secondary text-secondary-foreground'
             )}>
-            <Binoculars size={16} />
+            <Binoculars strokeWidth={2} size={16} />
           </Button>
 
           <Separator orientation='vertical' className='h-4 mx-1' />
 
           <Button
             disabled={!settingsData?.jackettUrl || !settingsData.jackettApiKey}
-            size='sm'
+            size='icon'
             variant='outline'
             onClick={() => navigate('/search')}
             className={cn(
               pathname === '/search' && 'bg-secondary text-secondary-foreground'
             )}>
-            <Search size={16} />
+            <Search strokeWidth={3} size={16} />
           </Button>
 
           <Button
-            size='sm'
+            size='icon'
             variant='outline'
             onClick={() => navigate('/settings')}
             className={cn(
               pathname === '/settings' &&
                 'bg-secondary text-secondary-foreground'
             )}>
-            <Cog size={16} />
+            <Cog strokeWidth={2} size={16} />
           </Button>
 
-          <Button size='sm' variant='outline' onClick={handleSignOut}>
-            <LogOutIcon size={16} />
+          <Button size='icon' variant='outline' onClick={handleSignOut}>
+            <LogOutIcon strokeWidth={3} size={16} />
           </Button>
         </div>
       </div>

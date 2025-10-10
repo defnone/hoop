@@ -11,6 +11,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { getJackett } from '@/lib/getJackett';
 import { JackettSearchResult } from '@/types/search';
 import useSettings from '@/hooks/useSettings';
+import { ButtonGroup } from '@/components/ui/button-group';
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -55,22 +56,21 @@ export default function SearchPage() {
   }, [category, tracker]);
 
   useEffect(() => {
-    if (items.length > 0) {
-      setFilteredData(items);
-      setResultsByTracker(
-        items.reduce(
-          (acc: Record<string, number>, item) => {
-            acc[item.TrackerId] = (acc[item.TrackerId] || 0) + 1;
-            return acc;
-          },
-          { all: items.length }
-        )
-      );
+    if (!items || items.length === 0) {
+      setResultsByTracker({});
+      setFilteredData([]);
+      return;
     }
-  }, [items]);
-
-  useEffect(() => {
-    if (!items || items.length === 0) return;
+    setResultsByTracker(
+      items.reduce(
+        (acc: Record<string, number>, item) => {
+          acc[item.TrackerId] = (acc[item.TrackerId] || 0) + 1;
+          return acc;
+        },
+        { all: items.length }
+      )
+    );
+    setFilteredData(items);
     const filtered = items.filter((item) =>
       item.Title.toLowerCase().includes(search.toLowerCase())
     );
@@ -173,25 +173,25 @@ export default function SearchPage() {
           Kinozal indexers in Jackett.
         </p>
         <div className='flex flex-col w-full max-w-[1000px]'>
-          <div className='flex flex-row w-full gap-2'>
-            <div className='flex flex-col gap-2 w-full relative'>
-              <Input
-                disabled={isLoading}
-                placeholder='TV Show Name'
-                autoFocus
-                value={tvName}
-                onChange={(e) => setTvName(e.target.value)}
-                onKeyDown={handleEnter}
-              />
-              {filteredData.length > 0 && (
-                <div className='absolute top-1 right-1 h-8 bg-muted px-3 rounded-sm flex items-center gap-2 text-sm text-white z-20'>
-                  {`${filteredData.length} results`}
-                </div>
-              )}
-            </div>
+          <ButtonGroup className='w-full relative'>
             <Input
               disabled={isLoading}
-              className='w-40'
+              placeholder='TV Show Name'
+              autoFocus
+              value={tvName}
+              className='w-full'
+              onChange={(e) => setTvName(e.target.value)}
+              onKeyDown={handleEnter}
+            />
+            {filteredData.length > 0 && (
+              <div className='absolute top-1 right-55 h-8 bg-muted px-3 rounded-md flex items-center gap-2 text-sm text-white z-20'>
+                {`${filteredData.length} results`}
+              </div>
+            )}
+
+            <Input
+              disabled={isLoading}
+              className='w-40 max-w-40'
               type='number'
               placeholder='Season'
               value={season}
@@ -203,20 +203,23 @@ export default function SearchPage() {
             <Button
               onClick={handleSearch}
               disabled={isLoading}
+              size={'icon-lg'}
+              className='w-14'
               variant={'secondary'}>
-              <SearchIcon className='w-4 h-4' />
+              <SearchIcon strokeWidth={4} className='w-4 h-4' />
             </Button>
-          </div>
-          <div className='flex flex-row w-full gap-2 h-10 mb-5'>
+          </ButtonGroup>
+
+          <ButtonGroup className='h-10 mt-5 flex items-center justify-center'>
             <CategoryPicker category={category} setCategory={setCategory} />
-            <Separator orientation='vertical' className='flex mx-2 mt-3.5' />
+            <Separator orientation='vertical' className='flex mx-2  h-10' />
             <TrackerPicker
               tracker={tracker}
               setTracker={setTracker}
               trackers={trackers}
               resultsByTracker={resultsByTracker}
             />
-          </div>
+          </ButtonGroup>
         </div>
         <SearchTable
           filteredData={filteredData}
