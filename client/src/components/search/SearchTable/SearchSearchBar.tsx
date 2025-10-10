@@ -21,10 +21,23 @@ export function SearchTopBar({
   isLoading,
   currentSeason,
 }: SearchSearchBarProps) {
+  const handleQualityChange = (prev: string, q: string) => {
+    if (prev.match(/\s?\d{3,4}p\s?/i)) {
+      return prev.trim().replace(/\d{3,4}p/i, `${q}`);
+    } else {
+      return prev.trim() + ` ${q}`;
+    }
+  };
+
+  const inputQualityMatch = (q: number) => {
+    return search.match(new RegExp(`\\s?${q}p\\s?`, 'i')) ? true : false;
+  };
+
   useEffect(() => {
-    if (search.includes('S'))
-      setSearch((prev) => prev.replace(/['S'][\d]/i, `S${currentSeason}`));
+    if (search.match(/S\d+/i) && currentSeason)
+      setSearch((prev) => prev.replace(/S\d+/i, `S${currentSeason}`));
   }, [currentSeason]);
+
   return (
     <div className='flex items-center pt-7 w-full'>
       <div className='flex items-center gap-2 w-full'>
@@ -55,8 +68,10 @@ export function SearchTopBar({
             <Button
               variant={'outline'}
               size={'lg'}
-              onClick={() => setSearch((prev) => `S${currentSeason} ${prev}`)}
-              disabled={search.includes('S')}>
+              onClick={() =>
+                setSearch((prev) => `S${currentSeason} ${prev.trim()}`)
+              }
+              disabled={(search.match(/S\d+/i) ? true : false) || isLoading}>
               S{currentSeason}
             </Button>
           )}
@@ -64,33 +79,27 @@ export function SearchTopBar({
             variant={'outline'}
             size={'lg'}
             onClick={() =>
-              setSearch((prev) =>
-                prev.includes('S') ? `S${currentSeason} 720p` : `720p`
-              )
+              setSearch((prev) => handleQualityChange(prev, '720p'))
             }
-            disabled={search.includes('720p')}>
+            disabled={inputQualityMatch(720)}>
             720p
           </Button>
           <Button
             variant={'outline'}
             size={'lg'}
             onClick={() =>
-              setSearch((prev) =>
-                prev.includes('S') ? `S${currentSeason} 1080p` : `1080p`
-              )
+              setSearch((prev) => handleQualityChange(prev, '1080p'))
             }
-            disabled={search.includes('1080p')}>
+            disabled={inputQualityMatch(1080)}>
             1080p
           </Button>
           <Button
             variant={'outline'}
             size={'lg'}
             onClick={() =>
-              setSearch((prev) =>
-                prev.includes('S') ? `S${currentSeason} 2160p` : `2160p`
-              )
+              setSearch((prev) => handleQualityChange(prev, '2160p'))
             }
-            disabled={search.includes('2160p')}>
+            disabled={inputQualityMatch(2160)}>
             2160p
           </Button>
         </ButtonGroup>
