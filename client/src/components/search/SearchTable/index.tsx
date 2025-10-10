@@ -9,12 +9,14 @@ export default function SearchTable({
   setSearch,
   items,
   isLoading,
+  currentSeason,
 }: {
   filteredData: JackettSearchResult[];
   search: string;
   setSearch: Dispatch<SetStateAction<string>>;
   items: JackettSearchResult[];
   isLoading: boolean;
+  currentSeason: number | string;
 }) {
   return (
     <>
@@ -22,6 +24,7 @@ export default function SearchTable({
         isLoading={isLoading}
         search={search}
         setSearch={setSearch}
+        currentSeason={currentSeason}
       />
       <SearchDataTable
         isLoading={isLoading}

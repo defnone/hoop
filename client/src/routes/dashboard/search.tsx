@@ -1,8 +1,7 @@
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import CategoryPicker from '@/components/search/CategoryPicker';
 import { useEffect, useState } from 'react';
-import { SearchIcon } from 'lucide-react';
+import { Loader2, SearchIcon } from 'lucide-react';
 import SearchTable from '@/components/search/SearchTable';
 import customSonner from '@/components/CustomSonner';
 import TrackerPicker from '@/components/search/TrackerPicker';
@@ -12,6 +11,11 @@ import { getJackett } from '@/lib/getJackett';
 import { JackettSearchResult } from '@/types/search';
 import useSettings from '@/hooks/useSettings';
 import { ButtonGroup } from '@/components/ui/button-group';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from '@/components/ui/input-group';
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -61,20 +65,32 @@ export default function SearchPage() {
       setFilteredData([]);
       return;
     }
-    setResultsByTracker(
-      items.reduce(
-        (acc: Record<string, number>, item) => {
-          acc[item.TrackerId] = (acc[item.TrackerId] || 0) + 1;
-          return acc;
-        },
-        { all: items.length }
-      )
+    const filtered = items.filter((item) => {
+      const phrases = search.toLowerCase().split(' ');
+      for (const phrase of phrases) {
+        if (!item.Title.toLowerCase().includes(phrase)) return false;
+      }
+      return true;
+    });
+    if (search.length > 0) {
+      setFilteredData(filtered);
+    } else {
+      setFilteredData(items);
+    }
+
+    // Count results by tracker and set the resultsByTracker state
+    const trackerCounts = filtered.reduce(
+      (acc: Record<string, number>, item) => {
+        acc[item.TrackerId] = (acc[item.TrackerId] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
     );
-    setFilteredData(items);
-    const filtered = items.filter((item) =>
-      item.Title.toLowerCase().includes(search.toLowerCase())
-    );
-    setFilteredData(filtered);
+
+    setResultsByTracker({
+      all: filtered.length,
+      ...trackerCounts,
+    });
   }, [search, items]);
 
   useEffect(() => {
@@ -174,32 +190,32 @@ export default function SearchPage() {
         </p>
         <div className='flex flex-col w-full max-w-[1000px]'>
           <ButtonGroup className='w-full relative'>
-            <Input
-              disabled={isLoading}
-              placeholder='TV Show Name'
-              autoFocus
-              value={tvName}
-              className='w-full'
-              onChange={(e) => setTvName(e.target.value)}
-              onKeyDown={handleEnter}
-            />
-            {filteredData.length > 0 && (
-              <div className='absolute top-1 right-55 h-8 bg-muted px-3 rounded-md flex items-center gap-2 text-sm text-white z-20'>
-                {`${filteredData.length} results`}
-              </div>
-            )}
-
-            <Input
-              disabled={isLoading}
-              className='w-40 max-w-40'
-              type='number'
-              placeholder='Season'
-              value={season}
-              onChange={(e) =>
-                setSeason(e.target.value === '' ? '' : Number(e.target.value))
-              }
-              onKeyDown={handleEnter}
-            />
+            <InputGroup className='w-full h-10'>
+              <InputGroupInput
+                disabled={isLoading}
+                placeholder='TV Show Name'
+                autoFocus
+                value={tvName}
+                onChange={(e) => setTvName(e.target.value)}
+                onKeyDown={handleEnter}
+              />
+              <InputGroupAddon align='inline-end'>
+                {isLoading && <Loader2 className='w-4 h-4 animate-spin' />}
+              </InputGroupAddon>
+            </InputGroup>
+            <InputGroup className='w-30 max-w-30 h-10'>
+              <InputGroupInput
+                disabled={isLoading}
+                className=''
+                type='number'
+                placeholder='Season'
+                value={season}
+                onChange={(e) =>
+                  setSeason(e.target.value === '' ? '' : Number(e.target.value))
+                }
+                onKeyDown={handleEnter}
+              />
+            </InputGroup>
             <Button
               onClick={handleSearch}
               disabled={isLoading}
@@ -222,6 +238,7 @@ export default function SearchPage() {
           </ButtonGroup>
         </div>
         <SearchTable
+          currentSeason={season}
           filteredData={filteredData}
           search={search}
           setSearch={setSearch}
