@@ -1,7 +1,7 @@
 ###########
 # Builder #
 ###########
-FROM oven/bun:1.2.23 AS builder
+FROM oven/bun:1.3 AS builder
 WORKDIR /app
 ENV NODE_ENV=production
 
@@ -13,7 +13,7 @@ COPY shared/package.json ./shared/
 COPY trakt-proxy/package.json ./trakt-proxy/
 
 # Install all dependencies for building (dev+prod)
-RUN bun install --frozen-lockfile --ignore-scripts
+RUN bun install --frozen-lockfile --ignore-scripts --linker=hoisted
 
 COPY . .
 
@@ -25,7 +25,7 @@ RUN bun run build:single
 ############
 # Runtime  #
 ############
-FROM oven/bun:1.2.23 AS runner
+FROM oven/bun:1.3 AS runner
 ENV NODE_ENV=production
 ENV DATABASE_URL=data/sqlite.db
 ENV BETTER_AUTH_TELEMETRY=0
