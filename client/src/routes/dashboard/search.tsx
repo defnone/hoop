@@ -66,6 +66,7 @@ export default function SearchPage() {
       return;
     }
     const filtered = items.filter((item) => {
+      if (item.Title.match(/S\d+-\d+/i)) return false; // Multiple seasons in title, skip
       const phrases = search.toLowerCase().split(' ');
       for (const phrase of phrases) {
         if (!phrase.length) continue;
