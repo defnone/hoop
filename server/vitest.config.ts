@@ -26,6 +26,9 @@ export default defineConfig({
         'src/db/index.ts',
         'src/db/auth/auth-schema.ts',
         'src/external/**/index.ts',
+        // Exclude type-only modules from coverage
+        'src/**/*.types.ts',
+        'src/**/types.ts',
       ],
     },
   },
