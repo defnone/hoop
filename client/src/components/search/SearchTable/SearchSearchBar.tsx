@@ -81,7 +81,7 @@ export function SearchTopBar({
             onClick={() =>
               setSearch((prev) => handleQualityChange(prev, '720p'))
             }
-            disabled={inputQualityMatch(720)}>
+            disabled={inputQualityMatch(720) || isLoading}>
             720p
           </Button>
           <Button
@@ -90,7 +90,7 @@ export function SearchTopBar({
             onClick={() =>
               setSearch((prev) => handleQualityChange(prev, '1080p'))
             }
-            disabled={inputQualityMatch(1080)}>
+            disabled={inputQualityMatch(1080) || isLoading}>
             1080p
           </Button>
           <Button
@@ -99,7 +99,7 @@ export function SearchTopBar({
             onClick={() =>
               setSearch((prev) => handleQualityChange(prev, '2160p'))
             }
-            disabled={inputQualityMatch(2160)}>
+            disabled={inputQualityMatch(2160) || isLoading}>
             2160p
           </Button>
         </ButtonGroup>
