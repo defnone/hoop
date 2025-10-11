@@ -191,6 +191,7 @@ function DataTableRow({
               <BadgeAlert className='w-4 h-4 cursor-pointer text-red-500' />
             }
             text={item.errorMessage}
+            align='end'
           />
         )}
       </TableCell>
