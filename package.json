@@ -39,7 +39,7 @@
   ],
   "devDependencies": {
     "bun-osv-scanner": "1.0.0",
-    "bun-types": "1.3.0"
+    "bun-types": "latest"
   },
   "peerDependencies": {
     "typescript": "^5.9.3"
