@@ -30,6 +30,7 @@ export const trackersConf: Record<string, TrackerConf> = {
     epsAndSeasonRegExps: [
       /Сезон:\s*(\d+)\s*\/\s*Серии:\s*(\d+)-(\d+)\s*из\s*(\d+)/i,
       /Сезон:\s*(\d+)\s*\/\s*Серии:\s*(\d+)\s*из\s*(\d+)/i,
+      /Сезон\S?\s*(\d+)\s*\/?\s*Серии\S?\s*(\d+)-(\d+)\s*\S?(\d+)\S?/i,
     ],
     trackerId: (url: string) => new URL(url).searchParams.get('t'),
     isAuthRequired: false,
