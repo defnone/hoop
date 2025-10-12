@@ -21,6 +21,7 @@ export class DownloadWorker {
   // Handle for the active interval; used to prevent duplicate schedulers
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private error: string | null = null;
+  private isProcessing = false;
 
   constructor({ repo }: { repo?: WorkersRepo }) {
     // Default polling cadence for download processing
@@ -191,43 +192,52 @@ export class DownloadWorker {
 
   // Entry point for a single polling iteration
   async process() {
-    await this.getSetting();
-    const rows = await this.repo.findAllNeedToControl();
-    if (!rows) return;
-    for (const row of rows) {
-      this.error = null;
-      switch (row.controlStatus) {
-        case 'downloadRequested':
-          await this.startDownload(row);
-          break;
-        case 'downloading':
-          await this.processDownloading(row);
-          break;
-        case 'downloadCompleted':
-          await this.processCompletedDownload(row);
-          break;
-        case 'idle':
-        case 'paused':
-          if (
-            process.env.HOOP_LAST_SYNC &&
-            parseInt(process.env.HOOP_LAST_SYNC) <= Date.now()
-          )
-            await this.checkFiles(row);
-          break;
-      }
-      if (this.error) {
-        logger.error(
-          `[DownloadWorker] Error on process ${row.id}: ${this.error}`
-        );
-        await this.repo.update(row.id, { errorMessage: this.error });
+    if (this.isProcessing) {
+      logger.warn('[DownloadWorker] Process already in progress');
+      return;
+    }
+    this.isProcessing = true;
+    try {
+      await this.getSetting();
+      const rows = await this.repo.findAllNeedToControl();
+      if (!rows) return;
+      for (const row of rows) {
         this.error = null;
-      } else if (row.errorMessage) {
-        const msg = String(row.errorMessage);
-        const isUpdateWorkerError = msg.startsWith('UpdateWorker:');
-        if (!isUpdateWorkerError) {
-          await this.repo.update(row.id, { errorMessage: null });
+        switch (row.controlStatus) {
+          case 'downloadRequested':
+            await this.startDownload(row);
+            break;
+          case 'downloading':
+            await this.processDownloading(row);
+            break;
+          case 'downloadCompleted':
+            await this.processCompletedDownload(row);
+            break;
+          case 'idle':
+          case 'paused':
+            if (
+              process.env.HOOP_LAST_SYNC &&
+              parseInt(process.env.HOOP_LAST_SYNC) <= Date.now()
+            )
+              await this.checkFiles(row);
+            break;
+        }
+        if (this.error) {
+          logger.error(
+            `[DownloadWorker] Error on process ${row.id}: ${this.error}`
+          );
+          await this.repo.update(row.id, { errorMessage: this.error });
+          this.error = null;
+        } else if (row.errorMessage) {
+          const msg = String(row.errorMessage);
+          const isUpdateWorkerError = msg.startsWith('UpdateWorker:');
+          if (!isUpdateWorkerError) {
+            await this.repo.update(row.id, { errorMessage: null });
+          }
         }
       }
+    } finally {
+      this.isProcessing = false;
     }
   }
 
