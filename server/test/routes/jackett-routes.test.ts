@@ -18,9 +18,7 @@ type ApiResponse<T> = {
 
 const { getSettingsMock, fetchMock } = vi.hoisted(() => {
   const getSettingsMock = vi.fn<() => Promise<JackettSettings | null>>();
-  const fetchMock = vi.fn<
-    (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
-  >();
+  const fetchMock = vi.fn<typeof fetch>();
   return { getSettingsMock, fetchMock } as const;
 });
 
@@ -35,7 +33,7 @@ vi.mock('@server/features/settings/settings.service', () => ({
 beforeEach(() => {
   getSettingsMock.mockReset();
   fetchMock.mockReset();
-  vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+  vi.stubGlobal('fetch', fetchMock);
 });
 
 afterEach(() => {
