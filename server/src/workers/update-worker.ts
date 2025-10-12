@@ -16,6 +16,8 @@ export class UpdateWorker {
   // Timestamp of the most recent successful sync, ms
   private lastSync: number;
   private intervalId: ReturnType<typeof setInterval> | null = null;
+  // Prevent concurrent runs of process()
+  private isProcessing = false;
 
   constructor({ repo }: { repo?: WorkersRepo }) {
     // Polling cadence: worker wakes up every timerMs and checks sync window
@@ -40,6 +42,7 @@ export class UpdateWorker {
     // Refresh settings and pick idle items to check for updates
     await this.getSetting();
     const allRows = await this.repo.findAllIdle();
+
     for (const row of allRows) {
       logger.info(`[UpdateWorker] Starting sync ${row.title}`);
       // Build service instance for the DB row and refresh state
@@ -50,14 +53,14 @@ export class UpdateWorker {
       });
       // Pull latest data from tracker and the DB snapshot
       try {
-        await Promise.all([
-          await this.ti?.getById(),
-          await this.ti?.fetchData(),
-        ]);
+        await Promise.all([this.ti.getById(), this.ti.fetchData()]);
       } catch (e) {
-        logger.error(`[UpdateWorker] Error on fetch: ${e}`);
+        logger.error(
+          '[UpdateWorker] Error on fetch data, ' + formatErrorMessage(e)
+        );
         await this.repo.update(row.id, {
-          errorMessage: 'Error on fetch data, ' + formatErrorMessage(e),
+          errorMessage:
+            'UpdateWorker: Error on fetch data, ' + formatErrorMessage(e),
         });
         continue;
       }
@@ -67,7 +70,8 @@ export class UpdateWorker {
           `[UpdateWorker] No tracker title found for ${this.ti?.databaseData?.title}.`
         );
         await this.repo.update(row.id, {
-          errorMessage: 'Error on fetch data, no tracker title found',
+          errorMessage:
+            'UpdateWorker: Error on fetch data, no tracker title found',
         });
         continue;
       }
@@ -127,11 +131,17 @@ export class UpdateWorker {
       this.intervalId = null;
     }
     this.intervalId = setInterval(async () => {
-      if (Date.now() > this.lastSync + this.syncInterval) {
+      if (
+        !this.isProcessing &&
+        Date.now() > this.lastSync + this.syncInterval
+      ) {
+        this.isProcessing = true;
         try {
           await this.process();
         } catch (e) {
           logger.error(`[UpdateWorker] Error on process: ${e}`);
+        } finally {
+          this.isProcessing = false;
         }
       }
     }, this.timerMs);
