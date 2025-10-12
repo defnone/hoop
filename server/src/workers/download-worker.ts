@@ -222,7 +222,11 @@ export class DownloadWorker {
         await this.repo.update(row.id, { errorMessage: this.error });
         this.error = null;
       } else if (row.errorMessage) {
-        await this.repo.update(row.id, { errorMessage: null });
+        const msg = String(row.errorMessage);
+        const isUpdateWorkerError = msg.startsWith('UpdateWorker:');
+        if (!isUpdateWorkerError) {
+          await this.repo.update(row.id, { errorMessage: null });
+        }
       }
     }
   }
