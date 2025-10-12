@@ -11,6 +11,7 @@ import { customFetch } from '@server/shared/custom-fetch';
 import { TrackerAuth } from './tracker-data.auth';
 import type { TrackerConf } from '@server/shared/types';
 import { SettingsService } from '@server/features/settings/settings.service';
+import { detectCloudflareChallenge } from './utils';
 
 export class TrackerDataAdapter {
   private timeout: number;
@@ -39,12 +40,12 @@ export class TrackerDataAdapter {
 
   private async fetchDom(url: string = this.rawUrl, cookies: string = '') {
     try {
-      const data = await customFetch(
+      const resp = await customFetch(
         url,
         { headers: { Cookie: cookies } },
         this.timeout
       );
-      const buffer = await data.arrayBuffer();
+      const buffer = await resp.arrayBuffer();
       const detectedEncoding =
         jschardet.detect(Buffer.from(buffer)).encoding || 'utf-8';
       const decodedContent = iconv.decode(
@@ -54,6 +55,10 @@ export class TrackerDataAdapter {
       const root = parse(decodedContent);
       if (!root) throw new Error('No dom found');
       this.domRoot = root;
+
+      if (resp.status === 403) {
+        detectCloudflareChallenge(this.domRoot);
+      }
     } catch (e) {
       throw new Error(`Error fetching ${url}`, { cause: e });
     }

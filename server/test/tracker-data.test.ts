@@ -49,6 +49,64 @@ describe('TrackerData.collect', () => {
     vi.restoreAllMocks();
   });
 
+  it('throws with Cloudflare Challenge cause when 403 page indicates challenge', async () => {
+    const cfHtml = `
+      <html>
+        <head><title>Just a moment...</title></head>
+        <body><span class="challenge-error-text">Checking your browser...</span></body>
+      </html>`;
+
+    vi.mocked(customFetch).mockResolvedValueOnce(
+      new Response(cfHtml, {
+        status: 403,
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      })
+    );
+
+    const url = 'https://rutracker.org/forum/viewtopic.php?t=999';
+    const td = new TrackerDataAdapter({ url, tracker: 'rutracker' });
+
+    try {
+      await td.collect();
+      throw new Error('should throw');
+    } catch (err) {
+      const e = err as Error & { cause?: unknown };
+      expect(e.message).toMatch(/^Error fetching/);
+      const causeMsg =
+        e.cause instanceof Error ? e.cause.message : String(e.cause);
+      expect(String(causeMsg)).toContain('Cloudflare Challenge detected');
+    }
+  });
+
+  it('throws with 403 cause when 403 page does not indicate challenge', async () => {
+    const plain403 = `
+      <html>
+        <head><title>Forbidden</title></head>
+        <body><h1>403 Forbidden</h1></body>
+      </html>`;
+
+    vi.mocked(customFetch).mockResolvedValueOnce(
+      new Response(plain403, {
+        status: 403,
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      })
+    );
+
+    const url = 'https://rutracker.org/forum/viewtopic.php?t=1000';
+    const td = new TrackerDataAdapter({ url, tracker: 'rutracker' });
+
+    try {
+      await td.collect();
+      throw new Error('should throw');
+    } catch (err) {
+      const e = err as Error & { cause?: unknown };
+      expect(e.message).toMatch(/^Error fetching/);
+      const causeMsg =
+        e.cause instanceof Error ? e.cause.message : String(e.cause);
+      expect(String(causeMsg)).toContain(`Server responded with 403`);
+    }
+  });
+
   it('rutracker: parses data from anchor href (no auth)', async () => {
     const topicHtml = `
       <html>
@@ -274,7 +332,10 @@ describe('TrackerData.collect', () => {
     const badTracker =
       'unknown' as unknown as keyof typeof import('@server/shared/trackers-conf').trackersConf;
     const create = () =>
-      new TrackerDataAdapter({ url: 'https://example.com', tracker: badTracker });
+      new TrackerDataAdapter({
+        url: 'https://example.com',
+        tracker: badTracker,
+      });
     expect(create).toThrow(/Tracker not found/);
   });
 
