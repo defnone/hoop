@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.5.0 - 2025-10-13
+
+### Added
+- Workers: add processing locks to prevent concurrent runs; persist error messages and expose via DTO for better diagnostics (de4f6ea, ee36003, 2dc352d, 32f401a).
+- Client: surface worker error messages in torrent rows; improve tracking status handling (f904358, 32f401a).
+- Search: add quality selection, new filters, input validation, and category info popover; support tooltip alignment (97a5e01, 03e8f02, ee5c6ee, c0f27af).
+
+### Changed
+- Reliability: ensure awaited repo updates to avoid race conditions; refine error handling and logging across workers/services, including Cloudflare challenge handling and timeout reporting (4afd2e9, 16e3a06, dfb708d, a16e13b, e0cf858, ec01876).
+- Parsing: enhance episode/season detection for rutracker/nnmclub; sanitize filenames to reduce copy errors (022bd52, d895431, c2acc63, 99113df).
+- UX: disable quality buttons while loading; skip multi-season items in search; responsive tooltip widths; dialog/layout/button polish (30f9c39, 7ca83a5, 8c34811, 3e7bb5e).
+
+### Fixed
+- Workers: avoid clearing persisted error messages; refine error clearing logic (ec01876, 58aa150).
+
+### Build/Infra
+- Build: add production flags/optimizations; update bun-types; pin @ctrl/shared-torrent; adjust bunfig settings (3077913, e1cd2aa, 104294f, 2e89cd0, 86a7f13).
+- TypeScript: add tsconfig.app.json; include test files for stricter type checking (9265196, f0534d1).
+- Docker: bump Bun to 1.3; simplify .dockerignore (ba1e970, 8257f95).
+
+### Tests
+- Workers: add tests for error persistence and mocks; enforce stricter typings; exclude type-only modules from coverage (35f37d1, 036dc7e, 92215ac, 9c8807e, 5fd89f0, bb333e9).
+
+### Notes
+- No breaking changes expected; TorrentItemDto extended with error details for better diagnostics.
+
 ## 0.4.0 - 2025-10-08
 
 ### Added
