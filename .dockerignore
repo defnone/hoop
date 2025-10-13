@@ -10,3 +10,5 @@ coverage
 Dockerfile
 docker-compose.yml
 server/static
+build
+.DS_Store
