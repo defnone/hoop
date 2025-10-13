@@ -49,7 +49,9 @@ export class DownloadWorker {
     } catch (e) {
       logger.error(`[DownloadWorker] Failed to start downloading ${row.title}`);
       logger.error(e);
-      this.error = 'Failed to start downloading, ' + formatErrorMessage(e);
+      this.error =
+        'DownloadWorker: Failed to start downloading, ' +
+        formatErrorMessage(e);
     }
   }
 
@@ -74,7 +76,9 @@ export class DownloadWorker {
         await this.repo.markAsIdle(row.id);
         statusStorage.delete(row.id);
       }
-      this.error = 'Failed to check download status, ' + formatErrorMessage(e);
+      this.error =
+        'DownloadWorker: Failed to check download status, ' +
+        formatErrorMessage(e);
     }
     const isDone = Boolean(
       status?.isCompleted &&
@@ -95,7 +99,9 @@ export class DownloadWorker {
           `[DownloadWorker] Error selecting episodes for ${row.title}: ${e}`
         );
         if (status) logger.error(JSON.stringify(status, null, 2));
-        this.error = 'Error selecting episodes, ' + formatErrorMessage(e);
+        this.error =
+          'DownloadWorker: Error selecting episodes, ' +
+          formatErrorMessage(e);
       }
     }
   }
@@ -139,7 +145,8 @@ export class DownloadWorker {
       logger.error(e);
       await this.repo.markAsIdle(row.id);
       this.error =
-        'Error processing completed download, ' + formatErrorMessage(e);
+        'DownloadWorker: Error processing completed download, ' +
+        formatErrorMessage(e);
       return;
     }
     if (this.settings?.deleteAfterDownload) {
@@ -178,7 +185,8 @@ export class DownloadWorker {
           existingFiles.push(file);
         }
 
-        this.error = 'Failed to check files, ' + formatErrorMessage(e);
+        this.error =
+          'DownloadWorker: Failed to check files, ' + formatErrorMessage(e);
       }
     }
 

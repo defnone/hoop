@@ -110,8 +110,13 @@ export class UpdateWorker {
           `[UpdateWorker] No new data found for ${this.ti?.databaseData?.title}`
         );
       }
-      if (row.errorMessage)
-        await this.repo.update(row.id, { errorMessage: null });
+      if (row.errorMessage) {
+        const msg = String(row.errorMessage);
+        const isUpdateWorkerError = msg.startsWith('UpdateWorker:');
+        if (isUpdateWorkerError) {
+          await this.repo.update(row.id, { errorMessage: null });
+        }
+      }
     }
     // Record this sync and log the next planned moment for observability
     this.lastSync = Date.now();
