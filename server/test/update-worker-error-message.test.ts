@@ -161,10 +161,13 @@ describe('UpdateWorker errorMessage handling', () => {
     expect(String(errUpdate?.data.errorMessage)).toContain('no tracker title found');
   });
 
-  it('clears errorMessage on successful iteration', async () => {
+  it('clears UpdateWorker errorMessage on successful iteration', async () => {
     const { UpdateWorker } = await import('@server/workers/update-worker');
     mode = 'success';
-    const repo = new RepoMock([{ ...baseItem, errorMessage: 'prev' }], settings);
+    const repo = new RepoMock(
+      [{ ...baseItem, errorMessage: 'UpdateWorker: prev' }],
+      settings
+    );
     const worker = new UpdateWorker({ repo: repo as unknown as never });
 
     await worker.process();
@@ -172,5 +175,22 @@ describe('UpdateWorker errorMessage handling', () => {
     const clearUpdate = repo.updates.find((u) => Object.prototype.hasOwnProperty.call(u.data, 'errorMessage'));
     expect(clearUpdate).toBeDefined();
     expect(clearUpdate?.data.errorMessage).toBeNull();
+  });
+
+  it("doesn't clear DownloadWorker errorMessage on successful iteration", async () => {
+    const { UpdateWorker } = await import('@server/workers/update-worker');
+    mode = 'success';
+    const repo = new RepoMock(
+      [{ ...baseItem, errorMessage: 'DownloadWorker: prev' }],
+      settings
+    );
+    const worker = new UpdateWorker({ repo: repo as unknown as never });
+
+    await worker.process();
+
+    const clearUpdate = repo.updates.find((u) =>
+      Object.prototype.hasOwnProperty.call(u.data, 'errorMessage')
+    );
+    expect(clearUpdate).toBeUndefined();
   });
 });
