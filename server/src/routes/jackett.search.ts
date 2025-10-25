@@ -1,10 +1,10 @@
 import { Hono } from 'hono/tiny';
 import type { ApiResponse } from '@shared/types';
 import { SettingsService } from '@server/features/settings/settings.service';
-import { z } from 'zod';
-import { zValidator } from '@hono/zod-validator';
 import { customFetch } from '@server/shared/custom-fetch';
-import { handleZodValidation } from '@server/lib/validation';
+import { z } from 'zod';
+import { sValidator } from '@hono/standard-validator';
+import { handleStandardValidation } from '@server/lib/validation';
 
 type JackettItem = {
   Tracker: string;
@@ -27,7 +27,7 @@ const querySchema = z.object({
 
 export const jackettSearchRoute = new Hono().get(
   '/',
-  zValidator('query', querySchema, handleZodValidation),
+  sValidator('query', querySchema, handleStandardValidation),
   async (c) => {
     const { query, season, category, tracker } = c.req.valid('query');
 

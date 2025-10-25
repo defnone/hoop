@@ -4,8 +4,8 @@ import logger from '@server/lib/logger';
 import { SettingsService } from '@server/features/settings/settings.service';
 import { userSettings } from '@server/db/app/app-schema';
 import { createSelectSchema } from 'drizzle-zod';
-import { zValidator } from '@hono/zod-validator';
-import { handleZodValidation } from '@server/lib/validation';
+import { sValidator } from '@hono/standard-validator';
+import { handleStandardValidation } from '@server/lib/validation';
 
 const jsonSchema = createSelectSchema(userSettings);
 
@@ -27,7 +27,7 @@ export const settingsRoute = new Hono()
       return c.json(response, 400);
     }
   })
-  .post('/', zValidator('json', jsonSchema, handleZodValidation), async (c) => {
+  .post('/', sValidator('json', jsonSchema, handleStandardValidation), async (c) => {
     const data = c.req.valid('json');
     try {
       const resp = await new SettingsService({ data }).upsert();

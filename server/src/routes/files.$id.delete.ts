@@ -1,9 +1,10 @@
 import { Hono } from 'hono/tiny';
 import type { ApiResponse } from 'shared/dist';
-import { z } from 'zod';
 import { TorrentItem } from '@server/features/torrent-item/torrent-item.service';
 import logger from '@server/lib/logger';
-import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
+import { sValidator } from '@hono/standard-validator';
+import { handleStandardValidation } from '@server/lib/validation';
 
 const jsonSchema = z.object({
   filePath: z.string(),
@@ -14,8 +15,8 @@ const paramSchema = z.object({
 
 export const deleteFileRoute = new Hono().delete(
   '/',
-  zValidator('json', jsonSchema),
-  zValidator('param', paramSchema),
+  sValidator('json', jsonSchema, handleStandardValidation),
+  sValidator('param', paramSchema, handleStandardValidation),
   async (c) => {
     const { filePath } = c.req.valid('json');
     const { id } = c.req.valid('param');

@@ -1,10 +1,10 @@
 import { Hono } from 'hono/tiny';
 import type { ApiResponse } from 'shared/dist';
 import { TorrentItem } from '@server/features/torrent-item/torrent-item.service';
-import { z } from 'zod';
 import logger from '@server/lib/logger';
-import { zValidator } from '@hono/zod-validator';
-import { handleZodValidation } from '@server/lib/validation';
+import { z } from 'zod';
+import { sValidator } from '@hono/standard-validator';
+import { handleStandardValidation } from '@server/lib/validation';
 
 const paramSchema = z.object({
   id: z.coerce.number().min(1),
@@ -12,7 +12,7 @@ const paramSchema = z.object({
 
 export const torrentsPauseToggleRoute = new Hono().put(
   '/',
-  zValidator('param', paramSchema, handleZodValidation),
+  sValidator('param', paramSchema, handleStandardValidation),
 
   async (c) => {
     const { id } = c.req.valid('param');

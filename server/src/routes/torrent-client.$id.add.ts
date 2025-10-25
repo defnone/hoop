@@ -1,9 +1,10 @@
 import { Hono } from 'hono/tiny';
 import type { ApiResponse } from 'shared/dist';
-import { z } from 'zod';
 import { TransmissionAdapter } from '@server/external/adapters/transmission';
 import logger from '@server/lib/logger';
-import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
+import { sValidator } from '@hono/standard-validator';
+import { handleStandardValidation } from '@server/lib/validation';
 
 const paramSchema = z.object({
   id: z.coerce.number(),
@@ -11,7 +12,7 @@ const paramSchema = z.object({
 
 export const torrentClientAddRoute = new Hono().post(
   '/',
-  zValidator('param', paramSchema),
+  sValidator('param', paramSchema, handleStandardValidation),
   async (c) => {
     const { id } = c.req.valid('param');
 

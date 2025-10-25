@@ -4,8 +4,8 @@ import { TorrentItem } from '@server/features/torrent-item/torrent-item.service'
 import { statusStorage } from '@server/workers/download-worker';
 import logger from '@server/lib/logger';
 import z from 'zod';
-import { zValidator } from '@hono/zod-validator';
-import { handleZodValidation } from '@server/lib/validation';
+import { sValidator } from '@hono/standard-validator';
+import { handleStandardValidation } from '@server/lib/validation';
 
 const schema = z.object({
   page: z.coerce.number({ message: 'page is required' }).min(1),
@@ -14,7 +14,7 @@ const schema = z.object({
 
 export const torrentsRoute = new Hono().get(
   '/',
-  zValidator('query', schema, handleZodValidation),
+  sValidator('query', schema, handleStandardValidation),
   async (c) => {
     const { page, limit } = c.req.valid('query');
 
