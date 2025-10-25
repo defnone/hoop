@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1 - 2025-10-25
+
+### Security
+- Server: ship Hono upgrade with upstream patch for CVE-2025-62610 to ensure patched runtime in production.
+
 ## 0.5.0 - 2025-10-13
 
 ### Added
