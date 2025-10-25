@@ -41,7 +41,9 @@ vi.mock('@server/external/adapters/tracker-data', () => ({
   },
 }));
 
-const deleteFileMock = vi.fn(async (_filePath: string): Promise<boolean> => true);
+const deleteFileMock = vi.fn(
+  async (_filePath: string): Promise<boolean> => true
+);
 
 vi.mock('@server/features/file-management/file-management.service', () => ({
   FileManagementService: class {
@@ -53,14 +55,21 @@ vi.mock('@server/features/file-management/file-management.service', () => ({
 
 class RepoMock extends TorrentItemRepo {
   public findAll = vi.fn(
-    async (page: number, limit: number): Promise<{ items: DbTorrentItem[]; total: number }> =>
-      ({ items: [], total: 0 })
+    async (): Promise<{ items: DbTorrentItem[]; total: number }> => ({
+      items: [],
+      total: 0,
+    })
   );
-  public findById = vi.fn(async (_id: number): Promise<DbTorrentItem | null> => null);
+  public findById = vi.fn(
+    async (_id: number): Promise<DbTorrentItem | null> => null
+  );
   public upsert = vi.fn(
-    async (_payload: DbTorrentItemInsert): Promise<DbTorrentItem | undefined> => undefined
+    async (_payload: DbTorrentItemInsert): Promise<DbTorrentItem | undefined> =>
+      undefined
   );
-  public deleteById = vi.fn(async (_id: number): Promise<void> => undefined as unknown as void);
+  public deleteById = vi.fn(
+    async (_id: number): Promise<void> => undefined as unknown as void
+  );
   public update = vi.fn(
     async (
       _id: number,
