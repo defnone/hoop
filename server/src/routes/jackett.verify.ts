@@ -1,10 +1,10 @@
 import { Hono } from 'hono/tiny';
-import { z } from 'zod';
-import { zValidator } from '@hono/zod-validator';
 import type { ApiResponse } from '@shared/types';
 import logger from '@server/lib/logger';
-import { handleZodValidation } from '@server/lib/validation';
 import { customFetch } from '@server/shared/custom-fetch';
+import { z } from 'zod';
+import { sValidator } from '@hono/standard-validator';
+import { handleStandardValidation } from '@server/lib/validation';
 
 const connectionSchema = z.object({
   jackettUrl: z.url({ message: 'Jackett URL is required' }).trim(),
@@ -22,7 +22,7 @@ const jackettTimeoutMs = 10_000;
 export const jackettVerifyRoute = new Hono()
   .post(
     '/connection',
-    zValidator('json', connectionSchema, handleZodValidation),
+    sValidator('json', connectionSchema, handleStandardValidation),
     async (c) => {
       const { jackettUrl } = c.req.valid('json');
 
@@ -70,7 +70,7 @@ export const jackettVerifyRoute = new Hono()
   )
   .post(
     '/api-key',
-    zValidator('json', apiKeySchema, handleZodValidation),
+    sValidator('json', apiKeySchema, handleStandardValidation),
     async (c) => {
       const { jackettUrl, jackettApiKey } = c.req.valid('json');
 

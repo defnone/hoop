@@ -1,12 +1,12 @@
 import { Hono } from 'hono/tiny';
 import type { ApiResponse } from 'shared/dist';
-import { z } from 'zod';
-import { zValidator } from '@hono/zod-validator';
 import logger from '@server/lib/logger';
 import { TrackerAuth } from '@server/external/adapters/tracker-data/tracker-data.auth';
 import { trackersConf } from '@server/shared/trackers-conf';
 import { normalizeBaseUrl } from '@server/lib/utils';
-import { handleZodValidation } from '@server/lib/validation';
+import { z } from 'zod';
+import { sValidator } from '@hono/standard-validator';
+import { handleStandardValidation } from '@server/lib/validation';
 
 const credentialsSchema = z.object({
   username: z
@@ -19,7 +19,7 @@ const credentialsSchema = z.object({
 
 export const trackersKinozalVerifyRoute = new Hono().post(
   '/',
-  zValidator('json', credentialsSchema, handleZodValidation),
+  sValidator('json', credentialsSchema, handleStandardValidation),
   async (c) => {
     const { username, password } = c.req.valid('json');
 
