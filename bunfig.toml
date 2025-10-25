@@ -2,5 +2,5 @@
 scanner = "bun-osv-scanner"
 [install]
 minimumReleaseAge = 604800
-minimumReleaseAgeExcludes = ["@types/node", "@types/bun", "bun-types", "typescript"]
+minimumReleaseAgeExcludes = ["@types/node", "@types/bun", "bun-types", "typescript", "hono"]
 linker = "hoisted"
