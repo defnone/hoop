@@ -131,3 +131,24 @@ describe('FileManagementService.copyTrackedEpisodes', () => {
     expect(fs.existsSync(dest)).toBe(true);
   });
 });
+
+describe('FileManagementService.getEpisodeFromName', () => {
+  const getEpisodeFromName = FileManagementService[
+    'getEpisodeFromName'
+  ] as (name: string) => number | null;
+
+  it('returns episode number for classic SxxEyy pattern', () => {
+    expect(getEpisodeFromName('Show.S01E05.mkv')).toBe(5);
+  });
+
+  it('returns episode number when season and episode are separated', () => {
+    expect(getEpisodeFromName('Show.S01.E04.2025.WEB-DL.mkv')).toBe(4);
+    expect(getEpisodeFromName('Show.S02-E07.mkv')).toBe(7);
+  });
+
+  it('throws when episode number cannot be detected', () => {
+    expect(() => getEpisodeFromName('Show.Special.mkv')).toThrow(
+      'Cannot detect episode number from filename: Show.Special.mkv'
+    );
+  });
+});
