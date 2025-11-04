@@ -650,4 +650,55 @@ describe('TransmissionAdapter', () => {
       payload: { 'files-unwanted': [2] },
     });
   });
+
+  it('selectEpisodes(): supports separator between season and episode tokens', async () => {
+    class TransmissionSelectSeparatorMock extends TransmissionMock {
+      public setCalls: Array<{ id: string; payload: Record<string, unknown> }> =
+        [];
+      override async getTorrent(_id: string): Promise<Record<string, unknown>> {
+        return Promise.resolve({
+          raw: {
+            files: [
+              { name: 'Show.S01.E04.mkv' }, // separator dot between season and episode
+              { name: 'Show.S01E05.mkv' }, // baseline pattern still supported
+              { name: 'Show.S01.E06.mkv' }, // should be unselected
+            ],
+          },
+        });
+      }
+      async setTorrent(id: string, payload: Record<string, unknown>) {
+        this.setCalls.push({ id, payload });
+        return Promise.resolve();
+      }
+    }
+
+    vi.resetModules();
+    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
+      return { TransmissionClientRepo: class {} };
+    });
+    const { TransmissionAdapter } = await import(
+      '@server/external/adapters/transmission'
+    );
+
+    const repo = new RepoMock();
+    repo.findTorrentItemById.mockResolvedValueOnce({
+      ...baseItem,
+      transmissionId: 'abc123',
+      trackedEpisodes: [4, 5],
+    });
+    const client = new TransmissionSelectSeparatorMock();
+
+    const adapter = new TransmissionAdapter({
+      id: 1,
+      client: client as unknown as Transmission,
+      repo: repo as unknown as never,
+    });
+
+    await adapter.selectEpisodes();
+    expect(client.setCalls).toHaveLength(1);
+    expect(client.setCalls[0]).toEqual({
+      id: 'abc123',
+      payload: { 'files-unwanted': [2] },
+    });
+  });
 });
