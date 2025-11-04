@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.app.json",
     "dev": "bun --watch run src/index.ts && tsc --watch",
-    "lint": "eslint .",
+    "lint": "eslint . && bunx tsc --noEmit",
     "test": "bunx vitest --coverage",
     "migrate": "bun run scripts/migrate.ts"
   },
