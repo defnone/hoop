@@ -93,7 +93,7 @@ export class TransmissionAdapter {
     const forUnselect = filesFromClient.reduce((arr: number[], file, index) => {
       if (!file || !file.name) return arr;
       const episodeNumber =
-        file.name.match(/[Ss](\d+)[Ee](\d+)/i)?.[2] ||
+        file.name.match(/[Ss](\d+)[.\-_–—x ]*[Ee](\d+)/i)?.[2] ||
         file.name.match(/(\d+)[.\-_–—x ]+(\d+)/i)?.[2] ||
         file.name.match(/[Ee](\d+)/i)?.[1] ||
         // Fallback: pure 2-3 digit episode token with non-alphanumeric boundaries
