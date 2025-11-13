@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.2 - 2025-11-13
+
+### Added
+- Client: enable `babel-plugin-react-compiler` to leverage the latest React compiler optimizations (22883af).
+
+### Fixed
+- Transmission/File management: extend episode parsing regexes to recognize additional delimiters across helpers (89b8314, 5d8ffac).
+
+### Build/Infra
+- Tooling: run `tsc --noEmit` inside lint scripts to surface type issues earlier (3cdf8ec).
+
+### Tests
+- Parsing: add coverage for `getEpisodeFromName` and `selectEpisodes` to prevent regressions in delimiter handling (98d5d08, f3a8bab).
+
 ## 0.5.1 - 2025-10-25
 
 ### Security
