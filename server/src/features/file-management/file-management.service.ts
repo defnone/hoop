@@ -204,9 +204,9 @@ export class FileManagementService {
 
   private static getEpisodeFromName(name: string): number | null {
     const e =
-      name.match(/[Ss](\d+)[.\-_–—x ]*[Ee](\d+)/i)?.[2] ||
+      name.match(/[Ss](\d+)[.\-_–—x ]*[Ee][Pp]?(\d+)/i)?.[2] ||
       name.match(/(\d+)[.\-_–—x ]+(\d+)/i)?.[2] ||
-      name.match(/[Ee](\d+)/i)?.[1];
+      name.match(/[Ee][Pp]?(\d+)/i)?.[1];
     if (e) return Number(e);
     throw new Error('Cannot detect episode number from filename: ' + name);
   }
