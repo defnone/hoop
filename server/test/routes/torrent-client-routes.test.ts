@@ -15,11 +15,15 @@ type ApiResponse<T> = {
 const { addMock, removeMock, transmissionCtor } = vi.hoisted(() => {
   const addMock = vi.fn<() => Promise<void>>();
   const removeMock = vi.fn<(withData: boolean) => Promise<void>>();
-  const transmissionCtor = vi.fn((params: { id: number }) => ({
-    add: addMock,
-    remove: removeMock,
-    ...params,
-  }));
+  const transmissionCtor = vi.fn(function transmissionCtor(params: {
+    id: number;
+  }) {
+    return {
+      add: addMock,
+      remove: removeMock,
+      ...params,
+    };
+  });
   return { addMock, removeMock, transmissionCtor } as const;
 });
 
@@ -107,7 +111,10 @@ describe('torrent-client routes', () => {
   it('removes torrent from client and clears status', async () => {
     removeMock.mockResolvedValueOnce(undefined);
     statusStorage.set(9, createStatus());
-    const app = mountRoute('/torrent-client/:id/delete', torrentClientDeleteRoute);
+    const app = mountRoute(
+      '/torrent-client/:id/delete',
+      torrentClientDeleteRoute
+    );
 
     const response = await app.request('/torrent-client/9/delete', {
       method: 'DELETE',
@@ -124,7 +131,10 @@ describe('torrent-client routes', () => {
   it('returns error when removal fails', async () => {
     removeMock.mockRejectedValueOnce(new Error('remove failed'));
     statusStorage.set(9, createStatus());
-    const app = mountRoute('/torrent-client/:id/delete', torrentClientDeleteRoute);
+    const app = mountRoute(
+      '/torrent-client/:id/delete',
+      torrentClientDeleteRoute
+    );
 
     const response = await app.request('/torrent-client/9/delete', {
       method: 'DELETE',

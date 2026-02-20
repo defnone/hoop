@@ -40,27 +40,30 @@ const {
   const setAllEpisodesTrackedMock = vi.fn<VoidAsyncFn>();
   const markAsDownloadRequestedMock = vi.fn<VoidAsyncFn>();
   const deleteMock = vi.fn<(withFiles: boolean) => Promise<void>>();
-  const updateTrackedEpisodesMock = vi.fn<
-    (episodes: number[]) => Promise<void>
-  >();
+  const updateTrackedEpisodesMock =
+    vi.fn<(episodes: number[]) => Promise<void>>();
   const deleteFileEpisodeMock = vi.fn<(filePath: string) => Promise<void>>();
   const getByIdMock = vi.fn<VoidAsyncFn>(async () => undefined);
   const markAsPausedMock = vi.fn<VoidAsyncFn>(async () => undefined);
   const markAsIdleMock = vi.fn<VoidAsyncFn>(async () => undefined);
-  const torrentItemCtorSpy = vi.fn((params: TorrentItemParams) => ({
-    getAll: getAllMock,
-    addOrUpdate: addOrUpdateMock,
-    setAllEpisodesTracked: setAllEpisodesTrackedMock,
-    markAsDownloadRequested: markAsDownloadRequestedMock,
-    delete: deleteMock,
-    updateTrackedEpisodes: updateTrackedEpisodesMock,
-    deleteFileEpisode: deleteFileEpisodeMock,
-    getById: getByIdMock,
-    markAsPaused: markAsPausedMock,
-    markAsIdle: markAsIdleMock,
-    databaseData: null as TorrentItemDto | null,
-    ...params,
-  }));
+  const torrentItemCtorSpy = vi.fn(function torrentItemCtor(
+    params: TorrentItemParams
+  ) {
+    return {
+      getAll: getAllMock,
+      addOrUpdate: addOrUpdateMock,
+      setAllEpisodesTracked: setAllEpisodesTrackedMock,
+      markAsDownloadRequested: markAsDownloadRequestedMock,
+      delete: deleteMock,
+      updateTrackedEpisodes: updateTrackedEpisodesMock,
+      deleteFileEpisode: deleteFileEpisodeMock,
+      getById: getByIdMock,
+      markAsPaused: markAsPausedMock,
+      markAsIdle: markAsIdleMock,
+      databaseData: null as TorrentItemDto | null,
+      ...params,
+    };
+  });
   return {
     getAllMock,
     addOrUpdateMock,
@@ -171,7 +174,7 @@ describe('torrentsRoute', () => {
           total: 1,
           page,
           hasNext: false,
-        } satisfies PagedResult<TorrentItemDto>)
+        }) satisfies PagedResult<TorrentItemDto>
     );
     statusStorage.set(1, createStatus());
 
@@ -307,11 +310,16 @@ describe('torrentsPauseToggleRoute', () => {
   });
 
   it('pauses idle torrent', async () => {
-    getByIdMock.mockImplementationOnce(async function (this: { databaseData: TorrentItemDto | null }) {
+    getByIdMock.mockImplementationOnce(async function (this: {
+      databaseData: TorrentItemDto | null;
+    }) {
       this.databaseData = createTorrentDto({ controlStatus: 'idle' });
     });
 
-    const app = mountRoute('/torrents/:id/pause-toggle', torrentsPauseToggleRoute);
+    const app = mountRoute(
+      '/torrents/:id/pause-toggle',
+      torrentsPauseToggleRoute
+    );
     const response = await app.request('/torrents/7/pause-toggle', {
       method: 'PUT',
     });
@@ -326,11 +334,16 @@ describe('torrentsPauseToggleRoute', () => {
   });
 
   it('unpauses paused torrent', async () => {
-    getByIdMock.mockImplementationOnce(async function (this: { databaseData: TorrentItemDto | null }) {
+    getByIdMock.mockImplementationOnce(async function (this: {
+      databaseData: TorrentItemDto | null;
+    }) {
       this.databaseData = createTorrentDto({ controlStatus: 'paused' });
     });
 
-    const app = mountRoute('/torrents/:id/pause-toggle', torrentsPauseToggleRoute);
+    const app = mountRoute(
+      '/torrents/:id/pause-toggle',
+      torrentsPauseToggleRoute
+    );
     const response = await app.request('/torrents/9/pause-toggle', {
       method: 'PUT',
     });
@@ -345,11 +358,18 @@ describe('torrentsPauseToggleRoute', () => {
   });
 
   it('returns error when torrent is not idle or paused', async () => {
-    getByIdMock.mockImplementationOnce(async function (this: { databaseData: TorrentItemDto | null }) {
-      this.databaseData = createTorrentDto({ controlStatus: 'downloadRequested' });
+    getByIdMock.mockImplementationOnce(async function (this: {
+      databaseData: TorrentItemDto | null;
+    }) {
+      this.databaseData = createTorrentDto({
+        controlStatus: 'downloadRequested',
+      });
     });
 
-    const app = mountRoute('/torrents/:id/pause-toggle', torrentsPauseToggleRoute);
+    const app = mountRoute(
+      '/torrents/:id/pause-toggle',
+      torrentsPauseToggleRoute
+    );
     const response = await app.request('/torrents/11/pause-toggle', {
       method: 'PUT',
     });
@@ -359,7 +379,9 @@ describe('torrentsPauseToggleRoute', () => {
     expect(response.status).toBe(400);
     expect(markAsPausedMock).not.toHaveBeenCalled();
     expect(markAsIdleMock).not.toHaveBeenCalled();
-    expect(body.message).toBe('Torrent is not idle or paused, cannot toggle pause status');
+    expect(body.message).toBe(
+      'Torrent is not idle or paused, cannot toggle pause status'
+    );
   });
 
   it('returns error when toggle fails', async () => {
@@ -367,7 +389,10 @@ describe('torrentsPauseToggleRoute', () => {
       throw new Error('lookup failed');
     });
 
-    const app = mountRoute('/torrents/:id/pause-toggle', torrentsPauseToggleRoute);
+    const app = mountRoute(
+      '/torrents/:id/pause-toggle',
+      torrentsPauseToggleRoute
+    );
     const response = await app.request('/torrents/13/pause-toggle', {
       method: 'PUT',
     });
@@ -432,7 +457,10 @@ describe('torrentsSaveTrackedEpRoute', () => {
 
   it('saves selected episodes', async () => {
     updateTrackedEpisodesMock.mockResolvedValueOnce(undefined);
-    const app = mountRoute('/torrents/:id/save-tracked-ep', torrentsSaveTrackedEpRoute);
+    const app = mountRoute(
+      '/torrents/:id/save-tracked-ep',
+      torrentsSaveTrackedEpRoute
+    );
 
     const response = await app.request('/torrents/2/save-tracked-ep', {
       method: 'POST',
@@ -451,7 +479,10 @@ describe('torrentsSaveTrackedEpRoute', () => {
 
   it('returns error when save fails', async () => {
     updateTrackedEpisodesMock.mockRejectedValueOnce(new Error('save failed'));
-    const app = mountRoute('/torrents/:id/save-tracked-ep', torrentsSaveTrackedEpRoute);
+    const app = mountRoute(
+      '/torrents/:id/save-tracked-ep',
+      torrentsSaveTrackedEpRoute
+    );
 
     const response = await app.request('/torrents/2/save-tracked-ep', {
       method: 'POST',
