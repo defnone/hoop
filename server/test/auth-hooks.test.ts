@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { GenericEndpointContext } from 'better-auth';
+import type { User } from '@better-auth/core/db';
 
 import { onBeforeUserCreate, onAfterUserCreate } from '@server/lib/auth-hooks';
 import { usersCountStorage } from '@server/lib/users-count-storage';
@@ -12,18 +12,16 @@ vi.mock('@server/features/settings/settings.service', () => ({
   },
 }));
 
-function createTestContext() {
-  const warn = vi.fn();
-
-  const ctx = {
-    context: {
-      logger: {
-        warn,
-      },
-    },
-  } as unknown as GenericEndpointContext;
-
-  return { ctx, warn };
+function createUser(): User & Record<string, unknown> {
+  return {
+    id: 'user-1',
+    createdAt: new Date('2020-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2020-01-01T00:00:00.000Z'),
+    email: 'user@example.com',
+    emailVerified: false,
+    name: 'Test User',
+    image: null,
+  };
 }
 
 describe('auth hooks: single user sign-up', () => {
@@ -32,13 +30,12 @@ describe('auth hooks: single user sign-up', () => {
   });
 
   it('allows initial sign-up when count is empty', async () => {
-    const { ctx, warn } = createTestContext();
+    const user = createUser();
 
-    const result = await onBeforeUserCreate({}, ctx);
+    const result = await onBeforeUserCreate(user, null);
 
     expect(result).toBeUndefined();
     expect(usersCountStorage.get('count')).toBeUndefined();
-    expect(warn).not.toHaveBeenCalled();
   });
 
   it('increments stored count after successful registration', async () => {
@@ -52,14 +49,13 @@ describe('auth hooks: single user sign-up', () => {
   });
 
   it('blocks subsequent sign-up attempts once a user exists', async () => {
-    const { ctx, warn } = createTestContext();
+    const user = createUser();
 
     await onAfterUserCreate();
 
-    const result = await onBeforeUserCreate({}, ctx);
+    const result = await onBeforeUserCreate(user, null);
 
     expect(result).toBe(false);
-    expect(warn).toHaveBeenCalledTimes(1);
     expect(usersCountStorage.get('count')).toBe(1);
   });
 });

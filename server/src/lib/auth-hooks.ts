@@ -1,10 +1,19 @@
-import type { GenericEndpointContext } from 'better-auth';
+import type { GenericEndpointContext } from '@better-auth/core';
+import type { User } from '@better-auth/core/db';
 import { usersCountStorage } from './users-count-storage';
 import { SettingsService } from '@server/features/settings/settings.service';
 
 export async function onBeforeUserCreate(
-  _user: unknown,
+  _user: User & Record<string, unknown>,
+  ctx: GenericEndpointContext | null
+): Promise<boolean | void>;
+export async function onBeforeUserCreate(
+  _user: User & Record<string, unknown>,
   ctx?: GenericEndpointContext
+): Promise<boolean | void>;
+export async function onBeforeUserCreate(
+  _user: User & Record<string, unknown>,
+  ctx?: GenericEndpointContext | null
 ): Promise<boolean | void> {
   if ((usersCountStorage.get('count') ?? 0) > 0) {
     ctx?.context.logger.warn('Sign-up disabled');
