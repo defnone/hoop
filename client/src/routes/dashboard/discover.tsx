@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import OneItem from '@/components/discover/OneItem';
@@ -11,11 +11,11 @@ import useSettings from '@/hooks/useSettings';
 import { ButtonGroup } from '@/components/ui/button-group';
 
 export default function Discover() {
-  const [period, setPeriod] = useState<'daily' | 'weekly'>('weekly');
   const [searchParams, setSearchParams] = useSearchParams();
   const weeklyData = 'https://hoop-api.defnone.workers.dev/api/trakt/weekly';
   const dailyData = 'https://hoop-api.defnone.workers.dev/api/trakt/daily';
   const { settingsData } = useSettings();
+  const period = searchParams.get('period') === 'daily' ? 'daily' : 'weekly';
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['trakt', period],
@@ -37,18 +37,14 @@ export default function Discover() {
         text: 'Failed to fetch data from Trakt: ' + error,
       });
     }
-  }, [isError]);
+  }, [isError, error]);
 
   useEffect(() => {
-    if (searchParams.get('period') === 'weekly') {
-      setPeriod('weekly');
-    } else if (searchParams.get('period') === 'daily') {
-      setPeriod('daily');
-    } else {
-      setPeriod('weekly');
-      setSearchParams({ period: 'weekly' });
+    const queryPeriod = searchParams.get('period');
+    if (queryPeriod !== 'weekly' && queryPeriod !== 'daily') {
+      setSearchParams({ period: 'weekly' }, { replace: true });
     }
-  }, [searchParams]);
+  }, [searchParams, setSearchParams]);
 
   return (
     <>

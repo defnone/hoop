@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Input } from './ui/input';
 import { Loader2 } from 'lucide-react';
 import customSonner from '@/components/CustomSonner';
@@ -32,23 +32,23 @@ export default function AddTorrentDialog({
   setStartFetch,
   url,
 }: AddTorrentDialogProps) {
-  const [torrentUrl, setTorrentUrl] = useState(url || '');
+  const [torrentUrl, setTorrentUrl] = useState(() => url ?? '');
+  const [prevUrl, setPrevUrl] = useState(url);
   const [isLoading, setIsLoading] = useState(false);
   const [markAll, setMarkAll] = useState(false);
+  const [prevMarkAll, setPrevMarkAll] = useState(markAll);
   const [startDownloadImmediately, setStartDownloadImmediately] =
     useState(false);
 
-  useEffect(() => {
-    if (url) {
-      setTorrentUrl(url);
-    }
-  }, [url]);
+  if (url !== prevUrl) {
+    setPrevUrl(url);
+    setTorrentUrl(url ?? '');
+  }
 
-  useEffect(() => {
-    if (!markAll) {
-      setStartDownloadImmediately(false);
-    }
-  }, [markAll]);
+  if (markAll !== prevMarkAll) {
+    setPrevMarkAll(markAll);
+    setStartDownloadImmediately(false);
+  }
 
   const handleAddTorrent = async () => {
     setIsLoading(true);

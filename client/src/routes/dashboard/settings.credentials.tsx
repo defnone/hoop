@@ -3,29 +3,28 @@ import KinozalSettings from '@/components/settings/trackers/kinozal';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import useSettings from '@/hooks/useSettings';
+import type { DbUserSettings } from '@server/db/app/app-schema';
 import { Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 export default function CredentialsSettings() {
   const { settingsData, saveSettings, isSavingSettings, isLoadingSettings } =
     useSettings();
-  const [data, setData] = useState<typeof settingsData | undefined>();
-
-  useEffect(() => {
-    if (settingsData) {
-      setData(settingsData);
-    }
-  }, [settingsData]);
+  const [pendingData, setPendingData] = useState<DbUserSettings | undefined>();
+  const data = pendingData ?? settingsData ?? undefined;
 
   const handleKinozalSettingsChange = (settings: {
     username: string;
     password: string;
   }) => {
-    if (!data) return;
-    setData({
-      ...data,
-      kinozalUsername: settings.username,
-      kinozalPassword: settings.password,
+    setPendingData((currentData) => {
+      const nextData = currentData ?? settingsData ?? undefined;
+      if (!nextData) return undefined;
+      return {
+        ...nextData,
+        kinozalUsername: settings.username,
+        kinozalPassword: settings.password,
+      };
     });
   };
 

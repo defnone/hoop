@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState, useRef } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 
 type Direction = 'left' | 'right' | 'none';
 
@@ -19,35 +19,33 @@ export default function TransitionWrapper({
 }: TransitionWrapperProps) {
   const [shouldRender, setShouldRender] = useState(isVisible);
   const [isAnimating, setIsAnimating] = useState(isVisible);
-  const firstRender = useRef(true);
 
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      if (isVisible) {
-        setShouldRender(true);
-        setIsAnimating(true);
-      }
-      return;
-    }
+    let frameId: number | undefined;
+    let startAnimationTimer: ReturnType<typeof setTimeout> | undefined;
+    let hideTimer: ReturnType<typeof setTimeout> | undefined;
 
     if (isVisible) {
-      setShouldRender(true);
-
-      requestAnimationFrame(() => {
-        setTimeout(() => {
+      frameId = requestAnimationFrame(() => {
+        setShouldRender(true);
+        startAnimationTimer = setTimeout(() => {
           setIsAnimating(true);
         }, 20);
       });
     } else {
-      setIsAnimating(false);
-
-      const timer = setTimeout(() => {
+      frameId = requestAnimationFrame(() => {
+        setIsAnimating(false);
+      });
+      hideTimer = setTimeout(() => {
         setShouldRender(false);
       }, duration);
-
-      return () => clearTimeout(timer);
     }
+
+    return () => {
+      if (frameId !== undefined) cancelAnimationFrame(frameId);
+      if (startAnimationTimer !== undefined) clearTimeout(startAnimationTimer);
+      if (hideTimer !== undefined) clearTimeout(hideTimer);
+    };
   }, [isVisible, duration]);
 
   const getTranslateValue = (direction: Direction) => {
