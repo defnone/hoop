@@ -9,12 +9,17 @@ type ApiResponse<T> = {
 
 const { getCookiesMock, trackerAuthCtor, trackersConfMock } = vi.hoisted(() => {
   const getCookiesMock = vi.fn<() => Promise<string>>();
-  const trackerAuthCtor = vi.fn(
-    (params: { login: string; password: string; baseUrl: string; tracker: string }) => ({
+  const trackerAuthCtor = vi.fn(function trackerAuthCtor(params: {
+    login: string;
+    password: string;
+    baseUrl: string;
+    tracker: string;
+  }) {
+    return {
       getCookies: getCookiesMock,
       ...params,
-    })
-  );
+    };
+  });
   const trackersConfMock: { kinozal: { urls: string[] } | undefined } = {
     kinozal: { urls: ['kinozal.test'] },
   };
