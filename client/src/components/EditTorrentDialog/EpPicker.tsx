@@ -1,7 +1,7 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Clock, FileVideo, Popcorn } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useTorrentStore } from '@/stores/torrentStore';
 
@@ -21,16 +21,12 @@ export default function EpPicker({
   itemId: number;
 }) {
   const id = useId();
-  const [selectedEpisodes, setSelectedEpisodes] = useState<number[]>([]);
+  const [selectedEpisodes, setSelectedEpisodes] = useState<number[]>(() =>
+    episodes
+      .filter((episode) => episode.trackedEpisodes)
+      .map((episode) => episode.id)
+  );
   const { setStartFetch } = useTorrentStore();
-
-  useEffect(() => {
-    setSelectedEpisodes(
-      episodes
-        .filter((episode) => episode.trackedEpisodes)
-        .map((episode) => episode.id)
-    );
-  }, []);
 
   const handleCheckedChange = (checked: boolean, episodeId: number) => {
     const newSelected = checked

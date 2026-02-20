@@ -8,7 +8,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { changePassword } from '@/lib/auth-client';
 import { Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -23,7 +23,10 @@ export default function ChangePassword({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const error =
+    password !== confirmPassword && password !== '' && confirmPassword !== ''
+      ? 'Passwords do not match.'
+      : '';
 
   const handleChange = () => {
     setIsLoading(true);
@@ -48,18 +51,6 @@ export default function ChangePassword({
       },
     });
   };
-
-  useEffect(() => {
-    if (
-      password !== confirmPassword &&
-      password !== '' &&
-      confirmPassword !== ''
-    ) {
-      setError('Passwords do not match.');
-    } else {
-      setError('');
-    }
-  }, [password, confirmPassword]);
 
   return (
     <Dialog>

@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import CategoryPicker from '@/components/search/CategoryPicker';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, SearchIcon } from 'lucide-react';
 import SearchTable from '@/components/search/SearchTable';
 import customSonner from '@/components/CustomSonner';
@@ -32,40 +32,64 @@ export default function SearchPage() {
   const [season, setSeason] = useState<number | string>(seasonQuery || '');
   const [items, setItems] = useState<JackettSearchResult[]>([]);
   const [search, setSearch] = useState('');
-  const [filteredData, setFilteredData] = useState<JackettSearchResult[]>([]);
-  const [isFirstRender, setIsFirstRender] = useState(true);
   const [tracker, setTracker] = useState<string>('all');
-  const [resultsByTracker, setResultsByTracker] = useState<
-    Record<string, number>
-  >({});
+  const isFirstRenderRef = useRef(true);
 
-  const [trackers, setTrackers] = useState([
-    { value: 'all', label: 'All' },
-    { value: 'rutracker', label: 'Rutracker' },
-    { value: 'noname-club', label: 'NNM-Club' },
-  ]);
+  const trackers = useMemo(() => {
+    const defaultTrackers = [
+      { value: 'all', label: 'All' },
+      { value: 'rutracker', label: 'Rutracker' },
+      { value: 'noname-club', label: 'NNM-Club' },
+    ];
+
+    if (settingsData?.kinozalUsername && settingsData?.kinozalPassword) {
+      return [...defaultTrackers, { value: 'kinozal', label: 'Kinozal' }];
+    }
+
+    return defaultTrackers;
+  }, [settingsData?.kinozalPassword, settingsData?.kinozalUsername]);
+
+  const handleSearch = async () => {
+    if (tvName.length === 0) return;
+    try {
+      setIsLoading(true);
+      const data = await getJackett(
+        tvName,
+        parseInt(season as string),
+        category,
+        tracker
+      );
+      const sortedData = data?.sort((a, b) => b.Seeders - a.Seeders);
+      setItems(sortedData || []);
+      setIsLoading(false);
+    } catch (error) {
+      customSonner({
+        variant: 'error',
+        text: 'Error while searching',
+        description: 'Please check your Jackett configuration. ' + error,
+      });
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (tvName.length === 0) return;
-    if (isFirstRender) {
-      if (searchQuery) {
-        setIsFirstRender(false);
-        void handleSearch();
-        return;
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      if (searchQuery && tvName.length > 0) {
+        queueMicrotask(() => {
+          void handleSearch();
+        });
       }
-      setIsFirstRender(false);
       return;
     }
-    handleSearch();
+    if (tvName.length === 0) return;
+    queueMicrotask(() => {
+      void handleSearch();
+    });
   }, [category, tracker]);
 
-  useEffect(() => {
-    if (!items || items.length === 0) {
-      setResultsByTracker({});
-      setFilteredData([]);
-      return;
-    }
-    const filtered = items.filter((item) => {
+  const searchFilteredData = useMemo(() => {
+    return items.filter((item) => {
       if (item.Title.match(/S\d+-\d+/i)) return false; // Multiple seasons in title, skip
       const phrases = search.toLowerCase().split(' ');
       for (const phrase of phrases) {
@@ -74,14 +98,16 @@ export default function SearchPage() {
       }
       return true;
     });
-    if (search.length > 0) {
-      setFilteredData(filtered);
-    } else {
-      setFilteredData(items);
+  }, [items, search]);
+
+  const filteredData = search.length > 0 ? searchFilteredData : items;
+
+  const resultsByTracker = useMemo(() => {
+    if (searchFilteredData.length === 0) {
+      return {};
     }
 
-    // Count results by tracker and set the resultsByTracker state
-    const trackerCounts = filtered.reduce(
+    const trackerCounts = searchFilteredData.reduce(
       (acc: Record<string, number>, item) => {
         acc[item.TrackerId] = (acc[item.TrackerId] || 0) + 1;
         return acc;
@@ -89,14 +115,17 @@ export default function SearchPage() {
       {} as Record<string, number>
     );
 
-    setResultsByTracker({
-      all: filtered.length,
+    return {
+      all: searchFilteredData.length,
       ...trackerCounts,
-    });
-  }, [search, items]);
+    };
+  }, [searchFilteredData]);
 
   useEffect(() => {
     void refetchSettings();
+  }, [refetchSettings]);
+
+  useEffect(() => {
     if (isLoadingSettings) return;
 
     if (!settingsData?.jackettUrl) {
@@ -108,21 +137,8 @@ export default function SearchPage() {
       });
 
       router('/settings');
-      return;
     }
-
-    const isKinozalInMenu = trackers.some(
-      (tracker) => tracker.value === 'kinozal'
-    );
-
-    if (
-      settingsData?.kinozalUsername &&
-      settingsData?.kinozalPassword &&
-      !isKinozalInMenu
-    ) {
-      setTrackers([...trackers, { value: 'kinozal', label: 'Kinozal' }]);
-    }
-  }, [settingsData, trackers]);
+  }, [isLoadingSettings, router, settingsData?.jackettUrl]);
 
   const handleEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -157,30 +173,6 @@ export default function SearchPage() {
       { replace: true }
     );
   }, [tvName, season, setSearchParams]);
-
-  const handleSearch = async () => {
-    if (tvName.length === 0) return;
-    try {
-      setIsLoading(true);
-      const data = await getJackett(
-        tvName,
-        parseInt(season as string),
-        category,
-        tracker
-      );
-      const sortedData = data?.sort((a, b) => b.Seeders - a.Seeders);
-      setItems(sortedData || []);
-      setIsLoading(false);
-      setIsFirstRender(false);
-    } catch (error) {
-      customSonner({
-        variant: 'error',
-        text: 'Error while searching',
-        description: 'Please check your Jackett configuration. ' + error,
-      });
-      setIsLoading(false);
-    }
-  };
 
   return (
     <>
