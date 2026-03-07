@@ -44,6 +44,7 @@ tmp
 .tmp
 
 AGENTS.md
+vitest-version-check.json
 
 server/data
 

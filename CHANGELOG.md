@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.3 - 2026-03-07
+
+### Security
+- Updated Hono to 4.12.5 to include the latest upstream security fixes, including patches for recent Hono vulnerabilities addressed in the 4.11.x line.
+
+### Fixed
+- Improved episode parsing in Transmission and file-management helpers to support additional title and filename formats.
+
+### Changed
+- Tightened server-side validation typing and response handling for more consistent validation failures.
+- Aligned Better Auth hook typing and simplified dashboard state/effect handling for more predictable internal behavior.
+
 ## 0.5.2 - 2025-11-13
 
 ### Added
