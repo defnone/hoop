@@ -6,11 +6,11 @@
   },
   "dependencies": {
     "@hono-rate-limiter/cloudflare": "^0.2.2",
-    "hono-rate-limiter": "^0.4.2",
-    "hono": "4.12.5"
+    "hono-rate-limiter": "^0.5.3",
+    "hono": "4.12.9"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260307.1",
-    "wrangler": "^4.71.0"
+    "@cloudflare/workers-types": "^4.20260317.1",
+    "wrangler": "^4.77.0"
   }
 }
