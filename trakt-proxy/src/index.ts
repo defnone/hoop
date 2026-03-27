@@ -21,7 +21,7 @@ type AppType = {
 
 const app = new Hono<AppType>();
 
-const resolveRateLimitKey = (c: Context<AppType>): string => {
+const resolveRateLimitKey = (c: Context<AppType, '*', {}>): string => {
   const cfIp = c.req.header('cf-connecting-ip');
   if (cfIp) return cfIp;
 
@@ -43,7 +43,8 @@ const resolveRateLimitKey = (c: Context<AppType>): string => {
 
 // Initialize rate limiter middleware
 app.use(
-  cloudflareRateLimiter<AppType>({
+  '*',
+  cloudflareRateLimiter<AppType, '*', {}>({
     rateLimitBinding: (c) => c.env.RATE_LIMITER,
     keyGenerator: (c) => resolveRateLimitKey(c),
   })
