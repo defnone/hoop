@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.4 - 2026-03-27
+
+### Changed
+- Trakt proxy: extracted watched-shows URL construction into a dedicated utility to keep request parameters centralized and easier to maintain.
+- Trakt proxy: aligned rate-limiter middleware typing with the current Hono middleware signatures.
+
+### Build/Infra
+- Updated runtime and worker tooling used by the Trakt proxy, including Hono, hono-rate-limiter, Wrangler, Cloudflare worker types, and bun-types.
+
+### Tests
+- Added Vitest coverage for `getTraktData` and the watched-shows URL builder in `trakt-proxy`.
+
 ## 0.5.3 - 2026-03-07
 
 ### Security
