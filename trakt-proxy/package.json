@@ -8,7 +8,7 @@
   "dependencies": {
     "@hono-rate-limiter/cloudflare": "^0.2.2",
     "hono-rate-limiter": "^0.5.3",
-    "hono": "4.12.9"
+    "hono": "4.12.12"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260317.1",
