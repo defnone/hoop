@@ -1,6 +1,6 @@
 {
   "name": "hoop",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "",
   "author": "defnone",
   "license": "MIT",
@@ -45,6 +45,6 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "hono": "4.12.18"
+    "hono": "4.12.25"
   }
 }
