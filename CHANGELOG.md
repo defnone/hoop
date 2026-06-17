@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.6 - 2026-06-17
+
+### Security
+
+- Updated Hono to 4.12.25 across the root workspace, server, and Trakt proxy.
+- Updated Better Auth to 1.6.18 across the server and client workspaces.
+
+### Build/Infra
+
+- Synced Bun lockfiles for the dependency security update.
+
 ## 0.5.5 - 2026-05-12
 
 ### Security
