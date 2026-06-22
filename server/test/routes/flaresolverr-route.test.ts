@@ -34,7 +34,7 @@ describe('flaresolverrVerifyRoute', () => {
     const response = await flaresolverrVerifyRoute.request('/', {
       method: 'POST',
       body: JSON.stringify({
-        flaresolverrUrl: 'http://localhost:8191',
+        flaresolverrUrl: ' http://localhost:8191/proxy ',
         timeoutSeconds: 60,
       }),
       headers: {
@@ -52,7 +52,7 @@ describe('flaresolverrVerifyRoute', () => {
     expect(body.success).toBe(true);
     expect(requestBody).toEqual({ cmd: 'sessions.list' });
     expect(vi.mocked(customFetch)).toHaveBeenCalledWith(
-      'http://localhost:8191/v1',
+      'http://localhost:8191/proxy/v1',
       expect.objectContaining({ method: 'POST' }),
       60_000,
       1,

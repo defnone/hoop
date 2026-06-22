@@ -12,11 +12,7 @@ import { TrackerAuth } from './tracker-data.auth';
 import type { TrackerConf } from '@server/shared/types';
 import { SettingsService } from '@server/features/settings/settings.service';
 import logger from '@server/lib/logger';
-import {
-  assertNotCloudflareChallenge,
-  CloudflareChallengeError,
-  isCloudflareChallenge,
-} from './utils';
+import { CloudflareChallengeError, isCloudflareChallenge } from './utils';
 import {
   buildCookieHeader,
   fetchWithFlareSolverr,
@@ -97,12 +93,8 @@ export class TrackerDataAdapter {
     cookies: string,
     root: HTMLElement,
   ): Promise<void> {
-    try {
-      assertNotCloudflareChallenge(root);
-    } catch (error) {
-      if (!(error instanceof CloudflareChallengeError)) {
-        throw error;
-      }
+    if (!isCloudflareChallenge(root)) {
+      throw new Error('Server responded with 403');
     }
 
     const settings = await new SettingsService().getSettings();
