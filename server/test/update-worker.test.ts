@@ -62,6 +62,9 @@ const settings: DbUserSettings = {
   jackettUrl: null,
   kinozalUsername: null,
   kinozalPassword: null,
+  flaresolverrEnabled: false,
+  flaresolverrUrl: null,
+  flaresolverrTimeoutSeconds: 60,
 };
 
 // Capture latest created TorrentItem instance for assertions
@@ -94,7 +97,7 @@ vi.mock('@server/features/torrent-item/torrent-item.service', () => {
     }
     async getAll(
       page: number,
-      limit: number
+      limit: number,
     ): Promise<PagedResult<TorrentItemDto>> {
       void limit;
       return Promise.resolve({
