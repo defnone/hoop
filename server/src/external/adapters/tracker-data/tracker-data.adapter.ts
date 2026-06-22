@@ -11,11 +11,25 @@ import { customFetch } from '@server/shared/custom-fetch';
 import { TrackerAuth } from './tracker-data.auth';
 import type { TrackerConf } from '@server/shared/types';
 import { SettingsService } from '@server/features/settings/settings.service';
-import { detectCloudflareChallenge } from './utils';
+import logger from '@server/lib/logger';
+import {
+  assertNotCloudflareChallenge,
+  CloudflareChallengeError,
+  isCloudflareChallenge,
+} from './utils';
+import {
+  buildCookieHeader,
+  fetchWithFlareSolverr,
+  type FlareSolverrSolution,
+} from './flaresolverr';
+
+const DEFAULT_FLARESOLVERR_TIMEOUT_SECONDS = 60;
 
 export class TrackerDataAdapter {
   private timeout: number;
   private domRoot: HTMLElement | null = null;
+  private cloudflareCookies: string = '';
+  private cloudflareUserAgent: string = '';
   private rawTitle: string = '';
   private showTitle: string = '';
   private rawUrl: string;
@@ -40,28 +54,105 @@ export class TrackerDataAdapter {
 
   private async fetchDom(url: string = this.rawUrl, cookies: string = '') {
     try {
-      const resp = await customFetch(
-        url,
-        { headers: { Cookie: cookies } },
-        this.timeout
-      );
+      const headers = this.buildRequestHeaders(cookies);
+      const resp = await customFetch(url, { headers }, this.timeout);
       const buffer = await resp.arrayBuffer();
       const detectedEncoding =
         jschardet.detect(Buffer.from(buffer)).encoding || 'utf-8';
       const decodedContent = iconv.decode(
         Buffer.from(buffer),
-        detectedEncoding
+        detectedEncoding,
       );
       const root = parse(decodedContent);
       if (!root) throw new Error('No dom found');
-      this.domRoot = root;
 
-      if (resp.status === 403) {
-        detectCloudflareChallenge(this.domRoot);
+      if (resp.status === 403 || isCloudflareChallenge(root)) {
+        logger.warn('Tracker page requires Cloudflare bypass', {
+          url,
+          tracker: this.tracker,
+          status: resp.status,
+          cloudflareChallenge: isCloudflareChallenge(root),
+          flaresolverrCookiesAvailable: Boolean(this.cloudflareCookies),
+          flaresolverrUserAgentAvailable: Boolean(this.cloudflareUserAgent),
+        });
+        await this.handleForbiddenResponse(url, cookies, root);
+        return;
       }
+
+      this.domRoot = root;
     } catch (e) {
-      throw new Error(`Error fetching ${url}`, { cause: e });
+      logger.error('Tracker page fetch failed', {
+        url,
+        tracker: this.tracker,
+        error: this.describeError(e),
+      });
+      throw new Error(`Error fetching ${url}: ${this.getErrorMessage(e)}`, {
+        cause: e,
+      });
     }
+  }
+
+  private async handleForbiddenResponse(
+    url: string,
+    cookies: string,
+    root: HTMLElement,
+  ): Promise<void> {
+    try {
+      assertNotCloudflareChallenge(root);
+    } catch (error) {
+      if (!(error instanceof CloudflareChallengeError)) {
+        throw error;
+      }
+    }
+
+    const settings = await new SettingsService().getSettings();
+    logger.warn('Cloudflare challenge detected on tracker page', {
+      url,
+      tracker: this.tracker,
+      flaresolverrEnabled: settings?.flaresolverrEnabled ?? false,
+      flaresolverrUrlConfigured: Boolean(settings?.flaresolverrUrl),
+    });
+
+    if (!settings?.flaresolverrEnabled) {
+      throw new CloudflareChallengeError(
+        'Cloudflare Challenge detected, FlareSolverr is disabled',
+      );
+    }
+
+    if (!settings.flaresolverrUrl) {
+      throw new Error('FlareSolverr URL is not configured');
+    }
+
+    let solution: FlareSolverrSolution;
+    try {
+      solution = await fetchWithFlareSolverr({
+        serverUrl: settings.flaresolverrUrl,
+        targetUrl: url,
+        timeout: this.getFlareSolverrTimeout(
+          settings.flaresolverrTimeoutSeconds,
+        ),
+        cookies: this.mergeCookieHeaders(cookies),
+      });
+    } catch (error) {
+      logger.error('FlareSolverr tracker page request failed', {
+        url,
+        tracker: this.tracker,
+        flaresolverrUrl: settings.flaresolverrUrl,
+        error: this.describeError(error),
+      });
+      throw error;
+    }
+
+    this.cloudflareCookies = buildCookieHeader(solution.cookies);
+    this.cloudflareUserAgent = solution.userAgent;
+    this.domRoot = parse(solution.response);
+    logger.info('FlareSolverr tracker page request succeeded', {
+      url,
+      tracker: this.tracker,
+      status: solution.status,
+      cookiesCount: solution.cookies.length,
+      userAgentAvailable: Boolean(solution.userAgent),
+    });
   }
 
   private async getAuth() {
@@ -140,7 +231,7 @@ export class TrackerDataAdapter {
       const url = this.tConf.magnetUrl(
         newUrl.protocol,
         newUrl.host,
-        this.trackerTorrentId
+        this.trackerTorrentId,
       );
       await this.fetchDom(url.href, cookies);
     }
@@ -168,7 +259,7 @@ export class TrackerDataAdapter {
     }
 
     const magnetMatch = magnetElement.textContent.match(
-      this.tConf.magnetRegExp
+      this.tConf.magnetRegExp,
     );
 
     if (!magnetMatch) {
@@ -192,5 +283,64 @@ export class TrackerDataAdapter {
       epAndSeason: this.epAndSeason,
       magnet: this.magnet,
     };
+  }
+
+  private buildRequestHeaders(cookies: string): HeadersInit {
+    const headers: Record<string, string> = {};
+    const mergedCookies = this.mergeCookieHeaders(cookies);
+
+    if (mergedCookies) {
+      headers.Cookie = mergedCookies;
+    }
+
+    if (this.cloudflareUserAgent) {
+      headers['User-Agent'] = this.cloudflareUserAgent;
+    }
+
+    return headers;
+  }
+
+  private mergeCookieHeaders(cookies: string): string {
+    return [cookies, this.cloudflareCookies].filter(Boolean).join('; ');
+  }
+
+  private getFlareSolverrTimeout(timeoutSeconds: number | null): number {
+    const resolvedSeconds =
+      timeoutSeconds ?? DEFAULT_FLARESOLVERR_TIMEOUT_SECONDS;
+    return Math.max(1, resolvedSeconds) * 1000;
+  }
+
+  private describeError(error: unknown): Record<string, unknown> {
+    if (!(error instanceof Error)) {
+      return { message: String(error) };
+    }
+
+    return {
+      name: error.name,
+      message: error.message,
+      cause: this.describeErrorCause(error.cause),
+      stack: error.stack,
+    };
+  }
+
+  private describeErrorCause(cause: unknown): Record<string, unknown> | null {
+    if (!cause) {
+      return null;
+    }
+
+    if (!(cause instanceof Error)) {
+      return { message: String(cause) };
+    }
+
+    return {
+      name: cause.name,
+      message: cause.message,
+      cause: this.describeErrorCause(cause.cause),
+      stack: cause.stack,
+    };
+  }
+
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
   }
 }

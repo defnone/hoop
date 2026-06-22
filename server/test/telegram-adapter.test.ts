@@ -15,6 +15,9 @@ const baseSettings: DbUserSettings = {
   jackettUrl: null,
   kinozalUsername: null,
   kinozalPassword: null,
+  flaresolverrEnabled: false,
+  flaresolverrUrl: null,
+  flaresolverrTimeoutSeconds: 60,
 };
 
 const okResponsePayload = {
@@ -38,13 +41,13 @@ afterEach(() => {
 describe('TelegramAdapter', () => {
   it('throws when bot token is missing', () => {
     expect(
-      () => new TelegramAdapter({ ...baseSettings, botToken: null })
+      () => new TelegramAdapter({ ...baseSettings, botToken: null }),
     ).toThrow('TELEGRAM_BOT_TOKEN is not set');
   });
 
   it('throws when chat id is missing', () => {
     expect(
-      () => new TelegramAdapter({ ...baseSettings, telegramId: null })
+      () => new TelegramAdapter({ ...baseSettings, telegramId: null }),
     ).toThrow('TELEGRAM_CHAT_ID is not set');
   });
 
@@ -53,7 +56,7 @@ describe('TelegramAdapter', () => {
       new Response(JSON.stringify(okResponsePayload), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
-      })
+      }),
     );
     vi.stubGlobal('fetch', fetchMock);
 
@@ -74,7 +77,7 @@ describe('TelegramAdapter', () => {
     const payload = JSON.parse(init?.body as string);
     expect(payload.chat_id).toBe('123456');
     expect(payload.text).toBe(
-      'Downloaded "Some Show" episodes:\n - S01E01\n - S01E02\n'
+      'Downloaded "Some Show" episodes:\n - S01E01\n - S01E02\n',
     );
 
     expect(result).toEqual(okResponsePayload.result);
@@ -89,7 +92,7 @@ describe('TelegramAdapter', () => {
     const adapter = new TelegramAdapter(baseSettings);
 
     await expect(adapter.sendUpdate('Show', {})).rejects.toThrow(
-      'Telegram API sendMessage failed: 502 gateway fail'
+      'Telegram API sendMessage failed: 502 gateway fail',
     );
   });
 
@@ -102,7 +105,7 @@ describe('TelegramAdapter', () => {
     const adapter = new TelegramAdapter(baseSettings);
 
     await expect(adapter.sendUpdate('Show', {})).rejects.toThrow(
-      'Telegram API sendMessage returned invalid JSON'
+      'Telegram API sendMessage returned invalid JSON',
     );
   });
 
@@ -114,15 +117,15 @@ describe('TelegramAdapter', () => {
           error_code: 400,
           description: 'Bad request',
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      )
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
     );
     vi.stubGlobal('fetch', fetchMock);
 
     const adapter = new TelegramAdapter(baseSettings);
 
     await expect(adapter.sendUpdate('Show', {})).rejects.toThrow(
-      'Telegram API sendMessage error: 400 Bad request'
+      'Telegram API sendMessage error: 400 Bad request',
     );
   });
 });

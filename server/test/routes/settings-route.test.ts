@@ -12,6 +12,9 @@ type SettingsPayload = {
   jackettUrl: string | null;
   kinozalUsername: string | null;
   kinozalPassword: string | null;
+  flaresolverrEnabled: boolean | null;
+  flaresolverrUrl: string | null;
+  flaresolverrTimeoutSeconds: number;
 };
 
 interface SettingsRequestPayload extends SettingsPayload {
@@ -26,9 +29,8 @@ type SettingsResponse<T> = {
 
 const { getSettingsMock, upsertMock } = vi.hoisted(() => {
   const getSettingsMock = vi.fn<() => Promise<SettingsRequestPayload | null>>();
-  const upsertMock = vi.fn<
-    (payload: SettingsPayload) => Promise<SettingsPayload | null>
-  >();
+  const upsertMock =
+    vi.fn<(payload: SettingsPayload) => Promise<SettingsPayload | null>>();
   return { getSettingsMock, upsertMock } as const;
 });
 
@@ -63,6 +65,9 @@ const sampleSettings: SettingsPayload = {
   jackettUrl: null,
   kinozalUsername: null,
   kinozalPassword: null,
+  flaresolverrEnabled: false,
+  flaresolverrUrl: null,
+  flaresolverrTimeoutSeconds: 60,
 };
 
 beforeEach(() => {
@@ -75,7 +80,8 @@ describe('settingsRoute', () => {
     getSettingsMock.mockResolvedValueOnce({ id: 1, ...sampleSettings });
 
     const response = await settingsRoute.request('/');
-    const body = (await response.json()) as SettingsResponse<SettingsRequestPayload | null>;
+    const body =
+      (await response.json()) as SettingsResponse<SettingsRequestPayload | null>;
 
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
@@ -112,6 +118,9 @@ describe('settingsRoute', () => {
       jackettUrl: payload.jackettUrl,
       kinozalUsername: payload.kinozalUsername,
       kinozalPassword: payload.kinozalPassword,
+      flaresolverrEnabled: payload.flaresolverrEnabled,
+      flaresolverrUrl: payload.flaresolverrUrl,
+      flaresolverrTimeoutSeconds: payload.flaresolverrTimeoutSeconds,
     };
 
     upsertMock.mockResolvedValueOnce(expectedPayload);
@@ -124,7 +133,8 @@ describe('settingsRoute', () => {
       },
     });
 
-    const body = (await response.json()) as SettingsResponse<SettingsPayload | null>;
+    const body =
+      (await response.json()) as SettingsResponse<SettingsPayload | null>;
 
     expect(response.status).toBe(200);
     expect(upsertMock).toHaveBeenCalledWith(expectedPayload);

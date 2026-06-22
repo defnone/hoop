@@ -19,7 +19,9 @@ vi.mock('@server/workers/workers.repo', () => ({
 
 // Transmission adapter mock with configurable behavior per test
 const add = vi.fn(async () => undefined);
-const status = vi.fn(async () => ({ isCompleted: false } as { isCompleted: boolean }));
+const status = vi.fn(
+  async () => ({ isCompleted: false }) as { isCompleted: boolean },
+);
 const selectEpisodes = vi.fn(async () => undefined);
 const remove = vi.fn(async () => undefined);
 
@@ -77,7 +79,10 @@ class RepoMock {
     this.completed.push(id);
   }
 
-  async update(id: number, data: Partial<DbTorrentItem>): Promise<DbTorrentItem | undefined> {
+  async update(
+    id: number,
+    data: Partial<DbTorrentItem>,
+  ): Promise<DbTorrentItem | undefined> {
     this.updates.push({ id, data });
     return undefined;
   }
@@ -115,6 +120,9 @@ const settings: DbUserSettings = {
   jackettUrl: null,
   kinozalUsername: null,
   kinozalPassword: null,
+  flaresolverrEnabled: false,
+  flaresolverrUrl: null,
+  flaresolverrTimeoutSeconds: 60,
 };
 
 describe('DownloadWorker errorMessage persistence', () => {
@@ -127,7 +135,10 @@ describe('DownloadWorker errorMessage persistence', () => {
 
   it('persists errorMessage when add() fails on downloadRequested', async () => {
     const { DownloadWorker } = await import('@server/workers/download-worker');
-    const row: DbTorrentItem = { ...baseItem, controlStatus: 'downloadRequested' };
+    const row: DbTorrentItem = {
+      ...baseItem,
+      controlStatus: 'downloadRequested',
+    };
     const repo = new RepoMock([row], settings);
     const worker = new DownloadWorker({ repo: repo as unknown as never });
 
@@ -135,9 +146,13 @@ describe('DownloadWorker errorMessage persistence', () => {
 
     await worker.process();
 
-    const errUpdate = repo.updates.find((u) => typeof u.data.errorMessage === 'string');
+    const errUpdate = repo.updates.find(
+      (u) => typeof u.data.errorMessage === 'string',
+    );
     expect(errUpdate).toBeDefined();
-    expect(String(errUpdate?.data.errorMessage)).toContain('Failed to start downloading');
+    expect(String(errUpdate?.data.errorMessage)).toContain(
+      'Failed to start downloading',
+    );
   });
 
   it('persists errorMessage and marks idle when status() rejects with "Torrent not found"', async () => {
@@ -151,9 +166,13 @@ describe('DownloadWorker errorMessage persistence', () => {
     await worker.process();
 
     expect(repo.idled).toEqual([row.id]);
-    const errUpdate = repo.updates.find((u) => typeof u.data.errorMessage === 'string');
+    const errUpdate = repo.updates.find(
+      (u) => typeof u.data.errorMessage === 'string',
+    );
     expect(errUpdate).toBeDefined();
-    expect(String(errUpdate?.data.errorMessage)).toContain('Failed to check download status');
+    expect(String(errUpdate?.data.errorMessage)).toContain(
+      'Failed to check download status',
+    );
   });
 
   it('persists errorMessage when selectEpisodes() fails during downloading', async () => {
@@ -162,14 +181,20 @@ describe('DownloadWorker errorMessage persistence', () => {
     const repo = new RepoMock([row], settings);
     const worker = new DownloadWorker({ repo: repo as unknown as never });
 
-    status.mockResolvedValueOnce({ isCompleted: false } as { isCompleted: boolean });
+    status.mockResolvedValueOnce({ isCompleted: false } as {
+      isCompleted: boolean;
+    });
     selectEpisodes.mockRejectedValueOnce(new Error('select failed'));
 
     await worker.process();
 
-    const errUpdate = repo.updates.find((u) => typeof u.data.errorMessage === 'string');
+    const errUpdate = repo.updates.find(
+      (u) => typeof u.data.errorMessage === 'string',
+    );
     expect(errUpdate).toBeDefined();
-    expect(String(errUpdate?.data.errorMessage)).toContain('Error selecting episodes');
+    expect(String(errUpdate?.data.errorMessage)).toContain(
+      'Error selecting episodes',
+    );
   });
 
   it('persists errorMessage when checkFiles() encounters unexpected fs error', async () => {
@@ -194,10 +219,14 @@ describe('DownloadWorker errorMessage persistence', () => {
 
     await worker.process();
 
-    const errUpdate = repo.updates.find((u) => typeof u.data.errorMessage === 'string');
+    const errUpdate = repo.updates.find(
+      (u) => typeof u.data.errorMessage === 'string',
+    );
     expect(statSpy).toHaveBeenCalledTimes(1);
     expect(errUpdate).toBeDefined();
-    expect(String(errUpdate?.data.errorMessage)).toContain('Failed to check files');
+    expect(String(errUpdate?.data.errorMessage)).toContain(
+      'Failed to check files',
+    );
 
     if (prev === undefined) delete process.env.HOOP_LAST_SYNC;
     else process.env.HOOP_LAST_SYNC = prev;
@@ -205,14 +234,20 @@ describe('DownloadWorker errorMessage persistence', () => {
 
   it('clears errorMessage when iteration succeeds without errors', async () => {
     const { DownloadWorker } = await import('@server/workers/download-worker');
-    const row: DbTorrentItem = { ...baseItem, controlStatus: 'idle', errorMessage: 'prev' };
+    const row: DbTorrentItem = {
+      ...baseItem,
+      controlStatus: 'idle',
+      errorMessage: 'prev',
+    };
     const repo = new RepoMock([row], settings);
     const worker = new DownloadWorker({ repo: repo as unknown as never });
 
     // Do not set HOOP_LAST_SYNC to skip checkFiles path and keep iteration clean
     await worker.process();
 
-    const clearUpdate = repo.updates.find((u) => Object.prototype.hasOwnProperty.call(u.data, 'errorMessage'));
+    const clearUpdate = repo.updates.find((u) =>
+      Object.prototype.hasOwnProperty.call(u.data, 'errorMessage'),
+    );
     expect(clearUpdate).toBeDefined();
     expect(clearUpdate?.data.errorMessage).toBeNull();
   });

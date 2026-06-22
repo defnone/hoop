@@ -44,7 +44,7 @@ export const torrentItems = sqliteTable(
     }).notNull(),
     errorMessage: text('error_message'),
   },
-  (t) => [index('tracker_index').on(t.tracker)]
+  (t) => [index('tracker_index').on(t.tracker)],
 );
 
 export const userSettings = sqliteTable('user_settings', {
@@ -61,6 +61,13 @@ export const userSettings = sqliteTable('user_settings', {
   jackettUrl: text('jackett_url'),
   kinozalUsername: text('kinozal_username'),
   kinozalPassword: text('kinozal_password'),
+  flaresolverrEnabled: int('flaresolverr_enabled', {
+    mode: 'boolean',
+  }).default(false),
+  flaresolverrUrl: text('flaresolverr_url'),
+  flaresolverrTimeoutSeconds: int('flaresolverr_timeout_seconds')
+    .default(60)
+    .notNull(),
 });
 
 export type DbTorrentItem = typeof torrentItems.$inferSelect;
