@@ -11,12 +11,12 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
-    "@vitest/coverage-v8": "^4.0.16",
+    "@vitest/coverage-v8": "4.1.9",
     "eslint": "^9.33.0",
-    "graphemer": "^1.4.0",
     "globals": "^16.3.0",
+    "graphemer": "^1.4.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.39.0",
-    "vitest": "^4.0.16"
+    "vitest": "4.1.9"
   }
 }
