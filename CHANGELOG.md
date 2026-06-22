@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.7 - 2026-06-22
+
+### Changed
+
+- Server: support episode labels in tracker titles.
+- Server: expand tracker host matching for rutracker domains.
+
+### Build/Infra
+
+- Updated Vitest and V8 coverage tooling to 4.1.9 across test workspaces.
+
 ## 0.5.6 - 2026-06-17
 
 ### Security
