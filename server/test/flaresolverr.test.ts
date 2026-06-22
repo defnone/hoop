@@ -34,7 +34,7 @@ describe('FlareSolverr client', () => {
     );
 
     const solution = await fetchWithFlareSolverr({
-      serverUrl: 'http://localhost:8191/',
+      serverUrl: 'http://localhost:8191/proxy/',
       targetUrl: 'https://example.com/topic',
       timeout: 10_000,
       cookies: 'sid=abc; broken; pref=a=b',
@@ -52,7 +52,7 @@ describe('FlareSolverr client', () => {
 
     expect(solution.userAgent).toBe('Mozilla/5.0');
     expect(vi.mocked(customFetch)).toHaveBeenCalledWith(
-      'http://localhost:8191/v1',
+      'http://localhost:8191/proxy/v1',
       expect.objectContaining({ method: 'POST' }),
       15_000,
       1,

@@ -7,7 +7,10 @@ import { sValidator } from '@hono/standard-validator';
 import { handleStandardValidation } from '@server/lib/validation';
 
 const verifySchema = z.object({
-  flaresolverrUrl: z.url({ message: 'FlareSolverr URL is required' }).trim(),
+  flaresolverrUrl: z
+    .string()
+    .trim()
+    .pipe(z.url({ message: 'FlareSolverr URL is required' })),
   timeoutSeconds: z.number().int().min(1).max(300).default(60),
 });
 

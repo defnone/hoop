@@ -42,7 +42,7 @@ export async function fetchWithFlareSolverr(params: {
   timeout: number;
   cookies: string;
 }): Promise<FlareSolverrSolution> {
-  const endpoint = new URL('/v1', normalizeServerUrl(params.serverUrl));
+  const endpoint = new URL('v1', normalizeServerUrl(params.serverUrl));
   const payload: RequestGetPayload = {
     cmd: 'request.get',
     url: params.targetUrl,
@@ -83,7 +83,7 @@ export async function verifyFlareSolverr(params: {
   serverUrl: string;
   timeout: number;
 }): Promise<void> {
-  const endpoint = new URL('/v1', normalizeServerUrl(params.serverUrl));
+  const endpoint = new URL('v1', normalizeServerUrl(params.serverUrl));
   const payload: SessionsListPayload = {
     cmd: 'sessions.list',
   };
