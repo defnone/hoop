@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0 - 2026-06-22
+
+### Added
+
+- Client: add FlareSolverr settings for Cloudflare bypass enablement, server URL, timeout, and connection checks.
+- Server: add FlareSolverr verification and tracker fallback support for Cloudflare challenge pages.
+
+### Build/Infra
+
+- Added SQLite migrations for persisted FlareSolverr settings.
+
 ## 0.5.7 - 2026-06-22
 
 ### Changed
