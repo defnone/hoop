@@ -1,0 +1,1 @@
+ALTER TABLE `user_settings` ADD `flaresolverr_timeout_seconds` integer DEFAULT 60 NOT NULL;

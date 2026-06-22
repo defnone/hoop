@@ -35,6 +35,9 @@ const baseSettings: DbUserSettings = {
   jackettUrl: null,
   kinozalUsername: null,
   kinozalPassword: null,
+  flaresolverrEnabled: false,
+  flaresolverrUrl: null,
+  flaresolverrTimeoutSeconds: 60,
 };
 
 let nextSettings: DbUserSettings = { ...baseSettings };
@@ -69,7 +72,7 @@ class TransmissionMock {
 
   async addMagnet(
     magnet: string,
-    options: Record<string, unknown>
+    options: Record<string, unknown>,
   ): Promise<{ arguments: Record<string, unknown> }> {
     this.lastAddArgs = { magnet, options };
     return Promise.resolve({
@@ -79,7 +82,7 @@ class TransmissionMock {
 
   async removeTorrent(
     id: string,
-    deleteLocal: boolean
+    deleteLocal: boolean,
   ): Promise<Record<string, unknown>> {
     this.lastRemoveArgs = { id, deleteLocal };
     return Promise.resolve({ id, deleteLocal });
@@ -89,7 +92,9 @@ class TransmissionMock {
     return Promise.resolve({ id, name: 'some-torrent' });
   }
 
-  async listTorrents(): Promise<{ arguments: { torrents: Array<Record<string, unknown>> } }> {
+  async listTorrents(): Promise<{
+    arguments: { torrents: Array<Record<string, unknown>> };
+  }> {
     return Promise.resolve({ arguments: { torrents: [{ hashString: 'x1' }] } });
   }
 }
@@ -139,7 +144,10 @@ describe('TransmissionAdapter', () => {
 
     // Verifies item update
     expect(repo.updateTorrentItem).toHaveBeenCalledTimes(1);
-    const call = repo.updateTorrentItem.mock.calls[0] as [number, Partial<DbTorrentItem>];
+    const call = repo.updateTorrentItem.mock.calls[0] as [
+      number,
+      Partial<DbTorrentItem>,
+    ];
     const [idArg, dataArg] = call;
     expect(idArg).toBe(1);
     expect(dataArg).toMatchObject({
@@ -191,7 +199,10 @@ describe('TransmissionAdapter', () => {
     await adapter.add();
 
     expect(repo.updateTorrentItem).toHaveBeenCalledTimes(1);
-    const call2 = repo.updateTorrentItem.mock.calls[0] as [number, Partial<DbTorrentItem>];
+    const call2 = repo.updateTorrentItem.mock.calls[0] as [
+      number,
+      Partial<DbTorrentItem>,
+    ];
     const [, dataArg] = call2;
     expect(dataArg).toMatchObject({
       transmissionId: 'dup123',
@@ -225,7 +236,10 @@ describe('TransmissionAdapter', () => {
     await adapter.remove();
 
     expect(repo.updateTorrentItem).toHaveBeenCalledTimes(1);
-    const call3 = repo.updateTorrentItem.mock.calls[0] as [number, Partial<DbTorrentItem>];
+    const call3 = repo.updateTorrentItem.mock.calls[0] as [
+      number,
+      Partial<DbTorrentItem>,
+    ];
     const [, dataArg] = call3;
     expect(dataArg).toMatchObject({
       controlStatus: 'idle',
@@ -350,7 +364,7 @@ describe('TransmissionAdapter', () => {
     expect(client.lastAddArgs).toBeTruthy();
     expect(
       'download-dir' in
-        (client.lastAddArgs as NonNullable<typeof client.lastAddArgs>).options
+        (client.lastAddArgs as NonNullable<typeof client.lastAddArgs>).options,
     ).toBe(false);
   });
 
@@ -358,7 +372,7 @@ describe('TransmissionAdapter', () => {
     class TransmissionErrorMock extends TransmissionMock {
       override async addMagnet(
         _magnet: string,
-        _options: Record<string, unknown>
+        _options: Record<string, unknown>,
       ): Promise<{ arguments: Record<string, unknown> }> {
         throw new Error('boom');
       }
@@ -388,7 +402,7 @@ describe('TransmissionAdapter', () => {
     class TransmissionNoHashMock extends TransmissionMock {
       override async addMagnet(
         magnet: string,
-        options: Record<string, unknown>
+        options: Record<string, unknown>,
       ): Promise<{ arguments: Record<string, unknown> }> {
         this.lastAddArgs = { magnet, options };
         return Promise.resolve({ arguments: {} });
@@ -413,7 +427,7 @@ describe('TransmissionAdapter', () => {
     });
 
     await expect(adapter.add()).rejects.toThrow(
-      'Failed to add torrent: Transmission did not return hashString'
+      'Failed to add torrent: Transmission did not return hashString',
     );
   });
 
@@ -588,9 +602,9 @@ describe('TransmissionAdapter', () => {
           id: 1,
           client: client as unknown as Transmission,
           repo: repo as unknown as never,
-        })
+        }),
     ).toThrow(
-      'TRANSMISSION_BASE_URL, TRANSMISSION_USERNAME, TRANSMISSION_PASSWORD must be set in env'
+      'TRANSMISSION_BASE_URL, TRANSMISSION_USERNAME, TRANSMISSION_PASSWORD must be set in env',
     );
 
     // Restore envs for subsequent tests

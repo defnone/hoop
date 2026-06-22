@@ -50,9 +50,7 @@ const repoDb = {
 } as unknown as BunSQLiteDatabase & { $client: Database };
 const repo = new SettingsRepo(repoDb);
 
-function makeSettings(
-  override: Partial<DbUserSettings> = {}
-): DbUserSettings {
+function makeSettings(override: Partial<DbUserSettings> = {}): DbUserSettings {
   return {
     id: 1,
     telegramId: 123,
@@ -65,6 +63,9 @@ function makeSettings(
     jackettUrl: null,
     kinozalUsername: null,
     kinozalPassword: null,
+    flaresolverrEnabled: false,
+    flaresolverrUrl: null,
+    flaresolverrTimeoutSeconds: 60,
     ...override,
   } satisfies DbUserSettings;
 }
@@ -109,6 +110,9 @@ describe('SettingsRepo (mocked database)', () => {
       jackettUrl: 'https://jackett.dev',
       kinozalUsername: 'user',
       kinozalPassword: 'pass',
+      flaresolverrEnabled: true,
+      flaresolverrUrl: 'http://localhost:8191',
+      flaresolverrTimeoutSeconds: 90,
     };
 
     const result = await repo.upsert(payload);
