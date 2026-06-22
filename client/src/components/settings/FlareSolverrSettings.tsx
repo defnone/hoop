@@ -1,13 +1,13 @@
-import customSonner from '@/components/CustomSonner';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { rpc } from '@/lib/rpc';
-import type { DbUserSettings } from '@server/db/app/app-schema';
-import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
+import customSonner from "@/components/CustomSonner";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { rpc } from "@/lib/rpc";
+import type { DbUserSettings } from "@server/db/app/app-schema";
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 
 type FlareSolverrSettingsProps = {
   enabled: boolean;
@@ -26,19 +26,19 @@ export default function FlareSolverrSettings({
 
   const handleTestConnection = async () => {
     if (!enabled) {
-      customSonner({ variant: 'error', text: 'FlareSolverr is disabled' });
+      customSonner({ variant: "error", text: "FlareSolverr is disabled" });
       return;
     }
 
     if (!serverUrl) {
-      customSonner({ variant: 'error', text: 'FlareSolverr URL is required' });
+      customSonner({ variant: "error", text: "FlareSolverr URL is required" });
       return;
     }
 
     if (!isValidUrl(serverUrl)) {
       customSonner({
-        variant: 'error',
-        text: 'Invalid FlareSolverr URL. It should include the protocol.',
+        variant: "error",
+        text: "Invalid FlareSolverr URL. It should include the protocol.",
       });
       return;
     }
@@ -55,19 +55,19 @@ export default function FlareSolverrSettings({
 
       if (!response.ok || !payload?.success) {
         customSonner({
-          variant: 'error',
-          text: payload?.message ?? 'Failed to test FlareSolverr connection',
+          variant: "error",
+          text: payload?.message ?? "Failed to test FlareSolverr connection",
         });
         return;
       }
 
-      customSonner({ text: 'FlareSolverr connection successful' });
+      customSonner({ text: "FlareSolverr connection successful" });
     } catch (error) {
       const description =
         error instanceof Error ? error.message : String(error);
       customSonner({
-        variant: 'error',
-        text: 'Failed to test FlareSolverr connection',
+        variant: "error",
+        text: "Failed to test FlareSolverr connection",
         description,
       });
     } finally {
@@ -132,14 +132,14 @@ export default function FlareSolverrSettings({
               {isTestingConnection ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                'Test Connection'
+                "Test Connection"
               )}
             </Button>
           </div>
         </div>
 
         <div className="flex flex-col gap-4 border-t border-zinc-800 pt-6">
-          <h3 className="text-lg font-extrabold">Timeout</h3>
+          <h3 className="text-lg font-extrabold">Timeout (seconds)</h3>
           <Input
             className="w-40 font-mono text-base"
             type="number"
@@ -153,7 +153,7 @@ export default function FlareSolverrSettings({
                 return {
                   ...data,
                   flaresolverrTimeoutSeconds: parseTimeoutSeconds(
-                    event.target.value,
+                    event.target.value
                   ),
                 };
               })
