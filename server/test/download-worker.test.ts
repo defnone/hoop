@@ -50,15 +50,20 @@ const settings: DbUserSettings = {
   jackettUrl: null,
   kinozalUsername: null,
   kinozalPassword: null,
+  flaresolverrEnabled: false,
+  flaresolverrUrl: null,
+  flaresolverrTimeoutSeconds: 60,
 };
 
 // Mocks for collaborators
 const add = vi.fn(async () => undefined);
 import type { NormalizedTorrent } from '@ctrl/shared-torrent';
 const status = vi.fn(
-  async (): Promise<Pick<NormalizedTorrent, 'isCompleted'> & { dateCompleted?: string }> => ({
+  async (): Promise<
+    Pick<NormalizedTorrent, 'isCompleted'> & { dateCompleted?: string }
+  > => ({
     isCompleted: false,
-  })
+  }),
 );
 const selectEpisodes = vi.fn(async () => undefined);
 const remove = vi.fn(async () => undefined);
@@ -98,7 +103,7 @@ vi.mock('@server/external/adapters/telegram/telegram.adapter', () => ({
 
 const copyTrackedEpisodes = vi.fn(
   async (_ti: DbTorrentItem, _s: DbUserSettings) =>
-    ({} as Record<number, string>)
+    ({}) as Record<number, string>,
 );
 vi.mock('@server/features/file-management/file-management.service', () => ({
   FileManagementService: class {
@@ -114,7 +119,7 @@ vi.mock('@server/features/file-management/file-management.service', () => ({
 class RepoMock {
   public findSettings = vi.fn(async () => settings);
   public findAllNeedToControl = vi.fn(
-    async (): Promise<DbTorrentItem[] | null> => []
+    async (): Promise<DbTorrentItem[] | null> => [],
   );
   public markAsCompleted = vi.fn(async (_id: number) => undefined);
   public markAsProcessing = vi.fn(async (_id: number) => undefined);
@@ -304,10 +309,10 @@ describe('DownloadWorker', () => {
 
     const statSpy = vi.spyOn(fs, 'stat');
     statSpy.mockImplementationOnce(
-      async () => ({ isFile: () => true } as never)
+      async () => ({ isFile: () => true }) as never,
     );
     statSpy.mockImplementationOnce(
-      async () => ({ isFile: () => false } as never)
+      async () => ({ isFile: () => false }) as never,
     );
     statSpy.mockImplementationOnce(async () => {
       const err = new Error('missing') as NodeJS.ErrnoException;

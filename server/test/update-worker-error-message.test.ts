@@ -41,7 +41,12 @@ class MockTorrentItem {
   async markAsDownloadRequested(): Promise<void> {
     return;
   }
-  async getAll(): Promise<{ items: []; total: number; page: number; hasNext: boolean }> {
+  async getAll(): Promise<{
+    items: [];
+    total: number;
+    page: number;
+    hasNext: boolean;
+  }> {
     return { items: [], total: 0, page: 1, hasNext: false };
   }
   async updateTrackedEpisodes(_episodes: number[]): Promise<void> {
@@ -87,7 +92,10 @@ class RepoMock {
     return this.rows;
   }
 
-  async update(id: number, data: Partial<DbTorrentItem>): Promise<DbTorrentItem | undefined> {
+  async update(
+    id: number,
+    data: Partial<DbTorrentItem>,
+  ): Promise<DbTorrentItem | undefined> {
     this.updates.push({ id, data });
     return undefined;
   }
@@ -125,6 +133,9 @@ const settings: DbUserSettings = {
   jackettUrl: null,
   kinozalUsername: null,
   kinozalPassword: null,
+  flaresolverrEnabled: false,
+  flaresolverrUrl: null,
+  flaresolverrTimeoutSeconds: 60,
 };
 
 describe('UpdateWorker errorMessage handling', () => {
@@ -143,9 +154,13 @@ describe('UpdateWorker errorMessage handling', () => {
 
     await worker.process();
 
-    const errUpdate = repo.updates.find((u) => typeof u.data.errorMessage === 'string');
+    const errUpdate = repo.updates.find(
+      (u) => typeof u.data.errorMessage === 'string',
+    );
     expect(errUpdate).toBeDefined();
-    expect(String(errUpdate?.data.errorMessage)).toContain('Error on fetch data');
+    expect(String(errUpdate?.data.errorMessage)).toContain(
+      'Error on fetch data',
+    );
   });
 
   it('persists errorMessage when tracker title is missing', async () => {
@@ -156,9 +171,13 @@ describe('UpdateWorker errorMessage handling', () => {
 
     await worker.process();
 
-    const errUpdate = repo.updates.find((u) => typeof u.data.errorMessage === 'string');
+    const errUpdate = repo.updates.find(
+      (u) => typeof u.data.errorMessage === 'string',
+    );
     expect(errUpdate).toBeDefined();
-    expect(String(errUpdate?.data.errorMessage)).toContain('no tracker title found');
+    expect(String(errUpdate?.data.errorMessage)).toContain(
+      'no tracker title found',
+    );
   });
 
   it('clears UpdateWorker errorMessage on successful iteration', async () => {
@@ -166,13 +185,15 @@ describe('UpdateWorker errorMessage handling', () => {
     mode = 'success';
     const repo = new RepoMock(
       [{ ...baseItem, errorMessage: 'UpdateWorker: prev' }],
-      settings
+      settings,
     );
     const worker = new UpdateWorker({ repo: repo as unknown as never });
 
     await worker.process();
 
-    const clearUpdate = repo.updates.find((u) => Object.prototype.hasOwnProperty.call(u.data, 'errorMessage'));
+    const clearUpdate = repo.updates.find((u) =>
+      Object.prototype.hasOwnProperty.call(u.data, 'errorMessage'),
+    );
     expect(clearUpdate).toBeDefined();
     expect(clearUpdate?.data.errorMessage).toBeNull();
   });
@@ -182,14 +203,14 @@ describe('UpdateWorker errorMessage handling', () => {
     mode = 'success';
     const repo = new RepoMock(
       [{ ...baseItem, errorMessage: 'DownloadWorker: prev' }],
-      settings
+      settings,
     );
     const worker = new UpdateWorker({ repo: repo as unknown as never });
 
     await worker.process();
 
     const clearUpdate = repo.updates.find((u) =>
-      Object.prototype.hasOwnProperty.call(u.data, 'errorMessage')
+      Object.prototype.hasOwnProperty.call(u.data, 'errorMessage'),
     );
     expect(clearUpdate).toBeUndefined();
   });

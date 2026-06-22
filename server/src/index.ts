@@ -19,6 +19,7 @@ import { deleteFileRoute } from './routes/files.$id.delete';
 import { settingsRoute } from './routes/settings';
 import { jackettSearchRoute } from './routes/jackett.search';
 import { jackettVerifyRoute } from './routes/jackett.verify';
+import { flaresolverrVerifyRoute } from './routes/flaresolverr.verify';
 import { systemExitRoute } from './routes/system.exit';
 import { trackersKinozalVerifyRoute } from './routes/trackers.kinozal.verify';
 import { getUserCount } from './lib/utils';
@@ -50,7 +51,7 @@ if (process.env.NODE_ENV !== 'production') {
       exposeHeaders: ['Content-Length'],
       maxAge: 600,
       credentials: true,
-    })
+    }),
   );
 }
 
@@ -78,6 +79,7 @@ export const routes = app
   .route('/system/exit', systemExitRoute)
   .route('/jackett/search', jackettSearchRoute)
   .route('/jackett/verify', jackettVerifyRoute)
+  .route('/flaresolverr/verify', flaresolverrVerifyRoute)
   .route('/trackers/kinozal/verify', trackersKinozalVerifyRoute)
   .route('/settings', settingsRoute)
   .route('/files/:id/delete', deleteFileRoute)

@@ -23,7 +23,7 @@ const updateSetCalls: Array<Partial<DbTorrentItemInsert>> = [];
 type Awaitable<T> = {
   then: (
     onFulfilled?: ((value: T) => unknown) | null,
-    onRejected?: ((reason: unknown) => unknown) | null
+    onRejected?: ((reason: unknown) => unknown) | null,
   ) => Promise<unknown>;
   catch: (onRejected: (reason: unknown) => unknown) => Promise<unknown>;
   finally: (onFinally: () => void) => Promise<unknown>;
@@ -31,13 +31,16 @@ type Awaitable<T> = {
 
 const makeAwaitable = <T>(value: T): Awaitable<T> => ({
   then: (onFulfilled, onRejected) =>
-    Promise.resolve(value).then(onFulfilled ?? undefined, onRejected ?? undefined),
+    Promise.resolve(value).then(
+      onFulfilled ?? undefined,
+      onRejected ?? undefined,
+    ),
   catch: (onRejected) => Promise.resolve(value).catch(onRejected),
   finally: (onFinally) => Promise.resolve(value).finally(onFinally),
 });
 
 const makeAwaitableFrom = (
-  rows: Array<DbTorrentItem | DbUserSettings> | null
+  rows: Array<DbTorrentItem | DbUserSettings> | null,
 ) => {
   const awaitable = makeAwaitable(rows ?? []);
   return Object.assign(awaitable, {
@@ -74,9 +77,7 @@ const repo = new WorkersRepo({
   $client: {} as unknown as Database,
 } as unknown as BunSQLiteDatabase & { $client: Database });
 
-function makeTorrent(
-  override: Partial<DbTorrentItem> = {}
-): DbTorrentItem {
+function makeTorrent(override: Partial<DbTorrentItem> = {}): DbTorrentItem {
   return {
     id: 1,
     trackerId: 'tid-1',
@@ -99,9 +100,7 @@ function makeTorrent(
   } satisfies DbTorrentItem;
 }
 
-function makeSettings(
-  override: Partial<DbUserSettings> = {}
-): DbUserSettings {
+function makeSettings(override: Partial<DbUserSettings> = {}): DbUserSettings {
   return {
     id: 1,
     telegramId: 123,
@@ -114,6 +113,9 @@ function makeSettings(
     jackettUrl: null,
     kinozalUsername: null,
     kinozalPassword: null,
+    flaresolverrEnabled: false,
+    flaresolverrUrl: null,
+    flaresolverrTimeoutSeconds: 60,
     ...override,
   } satisfies DbUserSettings;
 }
@@ -162,10 +164,7 @@ describe('WorkersRepo (mocked database)', () => {
   });
 
   it('warns when more than one settings row exists', async () => {
-    selectFromQueue.push([
-      makeSettings({ id: 1 }),
-      makeSettings({ id: 2 }),
-    ]);
+    selectFromQueue.push([makeSettings({ id: 1 }), makeSettings({ id: 2 })]);
 
     const settings = await repo.findSettings();
 
@@ -178,7 +177,9 @@ describe('WorkersRepo (mocked database)', () => {
 
     await repo.markAsCompleted(5);
 
-    expect(updateSetCalls.at(-1)).toMatchObject({ controlStatus: 'downloadCompleted' });
+    expect(updateSetCalls.at(-1)).toMatchObject({
+      controlStatus: 'downloadCompleted',
+    });
   });
 
   it('marks record as processing', async () => {
@@ -186,7 +187,9 @@ describe('WorkersRepo (mocked database)', () => {
 
     await repo.markAsProcessing(3);
 
-    expect(updateSetCalls.at(-1)).toMatchObject({ controlStatus: 'processing' });
+    expect(updateSetCalls.at(-1)).toMatchObject({
+      controlStatus: 'processing',
+    });
   });
 
   it('resets record to idle and clears transmissionId', async () => {

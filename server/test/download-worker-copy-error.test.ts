@@ -21,10 +21,18 @@ vi.mock('@server/external/adapters/transmission', () => ({
   TransmissionAdapter: class {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     constructor(_: any) {}
-    async add() { /* no-op */ }
-    async status() { return { isCompleted: false, raw: { files: [] }, name: 'Test' }; }
-    async selectEpisodes() { /* no-op */ }
-    async remove() { /* no-op */ }
+    async add() {
+      /* no-op */
+    }
+    async status() {
+      return { isCompleted: false, raw: { files: [] }, name: 'Test' };
+    }
+    async selectEpisodes() {
+      /* no-op */
+    }
+    async remove() {
+      /* no-op */
+    }
   },
 }));
 
@@ -32,13 +40,15 @@ vi.mock('@server/external/adapters/telegram/telegram.adapter', () => ({
   TelegramAdapter: class {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     constructor(_: any) {}
-    sendUpdate(_title: string, _payload: Record<number, string>) { /* no-op */ }
+    sendUpdate(_title: string, _payload: Record<number, string>) {
+      /* no-op */
+    }
   },
 }));
 
 const copyTrackedEpisodes = vi.fn(
   async (_ti: DbTorrentItem, _s: DbUserSettings) =>
-    ({} as Record<number, string>)
+    ({}) as Record<number, string>,
 );
 vi.mock('@server/features/file-management/file-management.service', () => ({
   FileManagementService: class {
@@ -82,7 +92,10 @@ class RepoMock {
     // not needed
   }
 
-  async update(id: number, data: Partial<DbTorrentItem>): Promise<DbTorrentItem | undefined> {
+  async update(
+    id: number,
+    data: Partial<DbTorrentItem>,
+  ): Promise<DbTorrentItem | undefined> {
     this.updates.push({ id, data });
     return undefined;
   }
@@ -121,6 +134,9 @@ describe('DownloadWorker copy failure persists errorMessage', () => {
     jackettUrl: null,
     kinozalUsername: null,
     kinozalPassword: null,
+    flaresolverrEnabled: false,
+    flaresolverrUrl: null,
+    flaresolverrTimeoutSeconds: 60,
   } as const;
 
   beforeEach(() => {
@@ -145,8 +161,12 @@ describe('DownloadWorker copy failure persists errorMessage', () => {
     expect(repo.idled).toEqual([row.id]);
 
     // Assert that errorMessage was persisted
-    const updateWithError = repo.updates.find((u) => typeof u.data.errorMessage === 'string');
+    const updateWithError = repo.updates.find(
+      (u) => typeof u.data.errorMessage === 'string',
+    );
     expect(updateWithError).toBeDefined();
-    expect(String(updateWithError?.data.errorMessage)).toContain('Error processing completed download');
+    expect(String(updateWithError?.data.errorMessage)).toContain(
+      'Error processing completed download',
+    );
   });
 });
