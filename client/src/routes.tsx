@@ -7,11 +7,12 @@ import { lazy } from 'react';
 const Dashboard = lazy(() => import('./routes/dashboard'));
 const Discover = lazy(() => import('./routes/dashboard/discover'));
 const Search = lazy(() => import('./routes/dashboard/search'));
+const SettingsEventJournal = lazy(() => import('./routes/dashboard/journal'));
 const Settings = lazy(() => import('./routes/dashboard/settings'));
 const SignUp = lazy(() => import('./routes/sign-up'));
 const Login = lazy(() => import('./routes/login'));
 const CredentialsSettings = lazy(
-  () => import('./routes/dashboard/settings.credentials')
+  () => import('./routes/dashboard/settings.credentials'),
 );
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -37,6 +38,10 @@ export const routes = [
     meta: { title: 'Settings', description: '' },
   },
   {
+    path: '/settings/event-journal',
+    meta: { title: 'Events Journal', description: '' },
+  },
+  {
     path: '/sign-up',
     meta: { title: 'Sign Up', description: '' },
   },
@@ -55,6 +60,10 @@ export default function Router() {
           <Route path='/discover' element={<Discover />} />
           <Route path='/search' element={<Search />} />
           <Route path='/settings' element={<Settings />} />
+          <Route
+            path='/settings/event-journal'
+            element={<SettingsEventJournal />}
+          />
           <Route
             path='/settings/credentials'
             element={<CredentialsSettings />}
