@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import type { DbTorrentItem, DbUserSettings } from '@server/db/app/app-schema';
 import type { TorrentDataResult } from '@server/external/adapters/tracker-data';
 import type { TorrentItemPort } from '@server/features/torrent-item/torrent-item.port';
+import type { EventJournalPort } from '@server/features/event-journal/event-journal.port';
 import type {
   PagedResult,
   TorrentItemDto,
@@ -28,6 +29,46 @@ vi.mock('@server/workers/workers.repo', () => {
     },
   };
 });
+
+vi.mock('@server/features/event-journal/event-journal.service', () => ({
+  EventJournalService: class {
+    async recordTorrentTitleChanged(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentMagnetChanged(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentSyncFailed(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentDownloadStarted(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentDownloadCompleted(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentDownloadFailed(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentFileCopyStarted(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentFileCopyCompleted(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentFileCopyFailed(): Promise<void> {
+      return Promise.resolve();
+    }
+  },
+}));
 
 // Test doubles and fixtures
 const baseItem: DbTorrentItem = {
@@ -76,6 +117,7 @@ let lastTI:
   | null = null;
 let nextTrackerData: TorrentDataResult | null = null;
 let nextDatabaseData: DbTorrentItem | null = null;
+let nextFetchError: Error | null = null;
 
 // Mock implementation of TorrentItem service
 vi.mock('@server/features/torrent-item/torrent-item.service', () => {
@@ -85,12 +127,15 @@ vi.mock('@server/features/torrent-item/torrent-item.service', () => {
     public addOrUpdateMock = vi.fn();
     public markAsDownloadRequestedMock = vi.fn();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    constructor(_: any) {
-      lastTI = this as unknown as typeof lastTI extends infer T ? T : never;
+    constructor(_: { id: number; url: string; trackerId: string }) {
+      captureTorrentItem(this);
     }
 
     async fetchData(): Promise<void> {
+      if (nextFetchError) {
+        throw nextFetchError;
+      }
+
       // Use values arranged by the test
       this.trackerData = nextTrackerData;
       return Promise.resolve();
@@ -165,6 +210,15 @@ vi.mock('@server/features/torrent-item/torrent-item.service', () => {
   return { TorrentItem: MockTI };
 });
 
+function captureTorrentItem(
+  item: TorrentItemPort & {
+    addOrUpdateMock: ReturnType<typeof vi.fn>;
+    markAsDownloadRequestedMock: ReturnType<typeof vi.fn>;
+  },
+): void {
+  lastTI = item;
+}
+
 // Lightweight repo mock
 class RepoMock {
   public findSettings = vi.fn(async () => settings);
@@ -174,10 +228,23 @@ class RepoMock {
   public update = vi.fn(async (_id: number, _data: unknown) => undefined);
 }
 
+class EventJournalMock implements EventJournalPort {
+  public recordTorrentTitleChanged = vi.fn(async () => undefined);
+  public recordTorrentMagnetChanged = vi.fn(async () => undefined);
+  public recordTorrentSyncFailed = vi.fn(async () => undefined);
+  public recordTorrentDownloadStarted = vi.fn(async () => undefined);
+  public recordTorrentDownloadCompleted = vi.fn(async () => undefined);
+  public recordTorrentDownloadFailed = vi.fn(async () => undefined);
+  public recordTorrentFileCopyStarted = vi.fn(async () => undefined);
+  public recordTorrentFileCopyCompleted = vi.fn(async () => undefined);
+  public recordTorrentFileCopyFailed = vi.fn(async () => undefined);
+}
+
 describe('UpdateWorker.process', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     lastTI = null;
+    nextFetchError = null;
   });
 
   afterEach(() => {
@@ -187,7 +254,11 @@ describe('UpdateWorker.process', () => {
   it('updates item and requests download when new data and tracked episodes are available', async () => {
     const { UpdateWorker } = await import('@server/workers/update-worker');
     const repo = new RepoMock();
-    const worker = new UpdateWorker({ repo: repo as unknown as never });
+    const eventJournal = new EventJournalMock();
+    const worker = new UpdateWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
 
     // Arrange: tracker returned a new rawTitle, DB has haveEpisodes intersecting with trackedEpisodes
     nextTrackerData = {
@@ -229,7 +300,6 @@ describe('UpdateWorker.process', () => {
     nextDatabaseData = {
       ...baseItem,
       rawTitle: 'Same Raw',
-      // Магнит совпадает с трекером, чтобы обновление не требовалось
       magnet: 'MAG',
       trackedEpisodes: [1],
       haveEpisodes: [1],
@@ -244,7 +314,11 @@ describe('UpdateWorker.process', () => {
   it('updates item without requesting download when no tracked episodes match', async () => {
     const { UpdateWorker } = await import('@server/workers/update-worker');
     const repo = new RepoMock();
-    const worker = new UpdateWorker({ repo: repo as unknown as never });
+    const eventJournal = new EventJournalMock();
+    const worker = new UpdateWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
 
     // New data from tracker but trackedEpisodes do not intersect with haveEpisodes
     nextTrackerData = {
@@ -265,12 +339,24 @@ describe('UpdateWorker.process', () => {
 
     expect(lastTI?.addOrUpdateMock).toHaveBeenCalledTimes(1);
     expect(lastTI?.markAsDownloadRequestedMock).not.toHaveBeenCalled();
+    expect(eventJournal.recordTorrentTitleChanged).toHaveBeenCalledTimes(1);
+    expect(eventJournal.recordTorrentTitleChanged).toHaveBeenCalledWith({
+      torrentItem: expect.objectContaining({ id: 1, title: 'Some Show' }),
+      oldValue: 'Old Raw',
+      newValue: 'Brand New',
+    });
+    expect(eventJournal.recordTorrentMagnetChanged).not.toHaveBeenCalled();
+    expect(eventJournal.recordTorrentSyncFailed).not.toHaveBeenCalled();
   });
 
   it('updates item when only magnet changed', async () => {
     const { UpdateWorker } = await import('@server/workers/update-worker');
     const repo = new RepoMock();
-    const worker = new UpdateWorker({ repo: repo as unknown as never });
+    const eventJournal = new EventJournalMock();
+    const worker = new UpdateWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
 
     nextTrackerData = {
       torrentId: 't-1',
@@ -289,12 +375,44 @@ describe('UpdateWorker.process', () => {
 
     expect(lastTI?.addOrUpdateMock).toHaveBeenCalledTimes(1);
     expect(lastTI?.markAsDownloadRequestedMock).not.toHaveBeenCalled();
+    expect(eventJournal.recordTorrentMagnetChanged).toHaveBeenCalledTimes(1);
+    expect(eventJournal.recordTorrentMagnetChanged).toHaveBeenCalledWith({
+      torrentItem: expect.objectContaining({ id: 1, title: 'Some Show' }),
+      oldValue: 'MAG-OLD',
+      newValue: 'MAG-NEW',
+    });
+    expect(eventJournal.recordTorrentTitleChanged).not.toHaveBeenCalled();
+    expect(eventJournal.recordTorrentSyncFailed).not.toHaveBeenCalled();
+  });
+
+  it('records sync failed event when fetch data fails', async () => {
+    const { UpdateWorker } = await import('@server/workers/update-worker');
+    const repo = new RepoMock();
+    const eventJournal = new EventJournalMock();
+    const worker = new UpdateWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
+
+    nextDatabaseData = { ...baseItem } satisfies DbTorrentItem;
+    nextFetchError = new Error('tracker timeout');
+
+    await worker.process();
+
+    expect(eventJournal.recordTorrentSyncFailed).toHaveBeenCalledWith({
+      torrentItem: expect.objectContaining({ id: 1, title: 'Some Show' }),
+      errorMessage: 'UpdateWorker: Error on fetch data, tracker timeout',
+    });
   });
 
   it('skips item when tracker rawTitle is missing', async () => {
     const { UpdateWorker } = await import('@server/workers/update-worker');
     const repo = new RepoMock();
-    const worker = new UpdateWorker({ repo: repo as unknown as never });
+    const eventJournal = new EventJournalMock();
+    const worker = new UpdateWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
 
     nextTrackerData = null; // simulate missing tracker data
     nextDatabaseData = { ...baseItem } as DbTorrentItem;
@@ -303,6 +421,7 @@ describe('UpdateWorker.process', () => {
 
     expect(lastTI?.addOrUpdateMock).not.toHaveBeenCalled();
     expect(lastTI?.markAsDownloadRequestedMock).not.toHaveBeenCalled();
+    expect(eventJournal.recordTorrentSyncFailed).toHaveBeenCalledTimes(1);
   });
 });
 
