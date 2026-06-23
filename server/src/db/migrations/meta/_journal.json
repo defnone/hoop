@@ -22,6 +22,20 @@
       "when": 1782107364269,
       "tag": "0002_add_flaresolverr_timeout",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1782110400000,
+      "tag": "0003_add_event_journal",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1782190200000,
+      "tag": "0004_add_event_journal_state",
+      "breakpoints": true
     }
   ]
 }

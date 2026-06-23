@@ -17,6 +17,46 @@ vi.mock('@server/workers/workers.repo', () => ({
   WorkersRepo: class {},
 }));
 
+vi.mock('@server/features/event-journal/event-journal.service', () => ({
+  EventJournalService: class {
+    async recordTorrentTitleChanged(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentMagnetChanged(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentSyncFailed(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentDownloadStarted(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentDownloadCompleted(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentDownloadFailed(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentFileCopyStarted(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentFileCopyCompleted(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentFileCopyFailed(): Promise<void> {
+      return Promise.resolve();
+    }
+  },
+}));
+
 // Test fixtures
 const item: DbTorrentItem = {
   id: 1,
@@ -127,6 +167,18 @@ class RepoMock {
   public update = vi.fn(async (_id: number, _data: unknown) => undefined);
 }
 
+class EventJournalMock {
+  public recordTorrentTitleChanged = vi.fn(async () => undefined);
+  public recordTorrentMagnetChanged = vi.fn(async () => undefined);
+  public recordTorrentSyncFailed = vi.fn(async () => undefined);
+  public recordTorrentDownloadStarted = vi.fn(async () => undefined);
+  public recordTorrentDownloadCompleted = vi.fn(async () => undefined);
+  public recordTorrentDownloadFailed = vi.fn(async () => undefined);
+  public recordTorrentFileCopyStarted = vi.fn(async () => undefined);
+  public recordTorrentFileCopyCompleted = vi.fn(async () => undefined);
+  public recordTorrentFileCopyFailed = vi.fn(async () => undefined);
+}
+
 describe('DownloadWorker', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -138,14 +190,26 @@ describe('DownloadWorker', () => {
   it('startDownload: calls add() and logs; handles errors gracefully', async () => {
     const { DownloadWorker } = await import('@server/workers/download-worker');
     const repo = new RepoMock();
-    const worker = new DownloadWorker({ repo: repo as unknown as never });
+    const eventJournal = new EventJournalMock();
+    const worker = new DownloadWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
 
     await worker.startDownload({ ...item });
     expect(add).toHaveBeenCalledTimes(1);
+    expect(eventJournal.recordTorrentDownloadStarted).toHaveBeenCalledWith({
+      torrentItem: expect.objectContaining({ id: item.id }),
+      message: 'Download started',
+    });
 
     add.mockRejectedValueOnce(new Error('boom'));
     await worker.startDownload({ ...item });
     expect(add).toHaveBeenCalledTimes(2);
+    expect(eventJournal.recordTorrentDownloadFailed).toHaveBeenCalledWith({
+      torrentItem: expect.objectContaining({ id: item.id }),
+      errorMessage: 'DownloadWorker: Failed to start downloading, boom',
+    });
   });
 
   it('processDownloading: marks completed when status is done', async () => {
@@ -153,7 +217,11 @@ describe('DownloadWorker', () => {
       '@server/workers/download-worker'
     );
     const repo = new RepoMock();
-    const worker = new DownloadWorker({ repo: repo as unknown as never });
+    const eventJournal = new EventJournalMock();
+    const worker = new DownloadWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
 
     status.mockResolvedValueOnce({
       isCompleted: true,
@@ -162,6 +230,10 @@ describe('DownloadWorker', () => {
     await worker.processDownloading({ ...item });
 
     expect(repo.markAsCompleted).toHaveBeenCalledWith(item.id);
+    expect(eventJournal.recordTorrentDownloadCompleted).toHaveBeenCalledWith({
+      torrentItem: expect.objectContaining({ id: item.id }),
+      message: 'Download completed',
+    });
     expect(statusStorage.get(item.id)).toBeUndefined();
   });
 
@@ -212,7 +284,11 @@ describe('DownloadWorker', () => {
   it('processCompletedDownload: copies files and removes from Transmission', async () => {
     const { DownloadWorker } = await import('@server/workers/download-worker');
     const repo = new RepoMock();
-    const worker = new DownloadWorker({ repo: repo as unknown as never });
+    const eventJournal = new EventJournalMock();
+    const worker = new DownloadWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
 
     // Ensure settings is loaded by invoking process() prelude
     repo.findAllNeedToControl.mockResolvedValueOnce([]);
@@ -223,16 +299,33 @@ describe('DownloadWorker', () => {
     });
     await worker.process();
 
+    copyTrackedEpisodes.mockResolvedValueOnce({
+      1: '/media/show/S01E01.mkv',
+      2: '/media/show/S01E02.mkv',
+    });
     await worker.processCompletedDownload({ ...item });
     expect(repo.markAsProcessing).toHaveBeenCalledWith(item.id);
+    expect(eventJournal.recordTorrentFileCopyStarted).toHaveBeenCalledWith({
+      torrentItem: expect.objectContaining({ id: item.id }),
+      message: 'File copy started',
+    });
     expect(copyTrackedEpisodes).toHaveBeenCalledTimes(1);
+    expect(eventJournal.recordTorrentFileCopyCompleted).toHaveBeenCalledWith({
+      torrentItem: expect.objectContaining({ id: item.id }),
+      message:
+        'Copied 2 file(s)\n/media/show/S01E01.mkv\n/media/show/S01E02.mkv',
+    });
     expect(remove).toHaveBeenCalledTimes(1);
   });
 
   it('processCompletedDownload: exits early when settings are missing', async () => {
     const { DownloadWorker } = await import('@server/workers/download-worker');
     const repo = new RepoMock();
-    const worker = new DownloadWorker({ repo: repo as unknown as never });
+    const eventJournal = new EventJournalMock();
+    const worker = new DownloadWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
 
     // Do not call process() so settings remain undefined
     await worker.processCompletedDownload({ ...item });
@@ -244,7 +337,11 @@ describe('DownloadWorker', () => {
   it('processCompletedDownload: exits early on copy error', async () => {
     const { DownloadWorker } = await import('@server/workers/download-worker');
     const repo = new RepoMock();
-    const worker = new DownloadWorker({ repo: repo as unknown as never });
+    const eventJournal = new EventJournalMock();
+    const worker = new DownloadWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
 
     // Prepare settings
     repo.findAllNeedToControl.mockResolvedValueOnce([]);
@@ -254,6 +351,11 @@ describe('DownloadWorker', () => {
     await worker.processCompletedDownload({ ...item });
 
     expect(remove).not.toHaveBeenCalled();
+    expect(eventJournal.recordTorrentFileCopyFailed).toHaveBeenCalledWith({
+      torrentItem: expect.objectContaining({ id: item.id }),
+      errorMessage:
+        'DownloadWorker: Error processing completed download, copy failed',
+    });
   });
 
   it('process: dispatches by controlStatus for each row', async () => {

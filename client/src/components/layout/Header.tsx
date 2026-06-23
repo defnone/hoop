@@ -48,7 +48,8 @@ export default function Header() {
             onClick={() => {
               setStartFetch(Date.now());
               navigate('/');
-            }}>
+            }}
+          >
             <Logo width={50} />
           </span>
           {lastSync && (
@@ -64,8 +65,9 @@ export default function Header() {
             variant='outline'
             className={cn(
               pathname === '/discover' &&
-                'bg-secondary text-secondary-foreground'
-            )}>
+                'bg-secondary text-secondary-foreground',
+            )}
+          >
             <Binoculars strokeWidth={2} size={16} />
           </Button>
 
@@ -77,8 +79,10 @@ export default function Header() {
             variant='outline'
             onClick={() => navigate('/search')}
             className={cn(
-              pathname === '/search' && 'bg-secondary text-secondary-foreground'
-            )}>
+              pathname === '/search' &&
+                'bg-secondary text-secondary-foreground',
+            )}
+          >
             <Search strokeWidth={3} size={16} />
           </Button>
 
@@ -88,8 +92,9 @@ export default function Header() {
             onClick={() => navigate('/settings')}
             className={cn(
               pathname === '/settings' &&
-                'bg-secondary text-secondary-foreground'
-            )}>
+                'bg-secondary text-secondary-foreground',
+            )}
+          >
             <Cog strokeWidth={2} size={16} />
           </Button>
 
