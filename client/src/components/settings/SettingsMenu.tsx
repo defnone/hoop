@@ -10,7 +10,8 @@ export default function SettingsMenu() {
         <Button
           onClick={() => navigate('/settings')}
           variant={pathname === '/settings' ? 'secondary' : 'outline'}
-          className='font-bold'>
+          className='font-bold'
+        >
           General
         </Button>
 
@@ -19,8 +20,19 @@ export default function SettingsMenu() {
           variant={
             pathname === '/settings/credentials' ? 'secondary' : 'outline'
           }
-          className='font-bold'>
+          className='font-bold'
+        >
           Trackers Credentials
+        </Button>
+
+        <Button
+          onClick={() => navigate('/settings/event-journal')}
+          variant={
+            pathname === '/settings/event-journal' ? 'secondary' : 'outline'
+          }
+          className='font-bold'
+        >
+          Events Journal
         </Button>
       </div>
     </div>

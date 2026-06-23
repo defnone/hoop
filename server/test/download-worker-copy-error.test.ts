@@ -16,6 +16,46 @@ vi.mock('@server/workers/workers.repo', () => ({
   WorkersRepo: class {},
 }));
 
+vi.mock('@server/features/event-journal/event-journal.service', () => ({
+  EventJournalService: class {
+    async recordTorrentTitleChanged(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentMagnetChanged(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentSyncFailed(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentDownloadStarted(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentDownloadCompleted(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentDownloadFailed(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentFileCopyStarted(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentFileCopyCompleted(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    async recordTorrentFileCopyFailed(): Promise<void> {
+      return Promise.resolve();
+    }
+  },
+}));
+
 // Mock adapters and services
 vi.mock('@server/external/adapters/transmission', () => ({
   TransmissionAdapter: class {

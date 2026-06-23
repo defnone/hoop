@@ -24,6 +24,9 @@ import { systemExitRoute } from './routes/system.exit';
 import { trackersKinozalVerifyRoute } from './routes/trackers.kinozal.verify';
 import { getUserCount } from './lib/utils';
 import { torrentsPauseToggleRoute } from './routes/torrents.pause-toggle';
+import { eventJournalRoute } from './routes/event-journal';
+import { eventJournalReadRoute } from './routes/event-journal.$id.read';
+import { eventJournalReadAllRoute } from './routes/event-journal.read-all';
 
 export const app = new Hono<{
   Variables: {
@@ -47,7 +50,7 @@ if (process.env.NODE_ENV !== 'production') {
     cors({
       origin: process.env.ORIGIN || 'http://localhost:5173',
       allowHeaders: ['Content-Type', 'Authorization'],
-      allowMethods: ['POST', 'GET', 'OPTIONS', 'DELETE'],
+      allowMethods: ['POST', 'GET', 'OPTIONS', 'DELETE', 'PUT'],
       exposeHeaders: ['Content-Length'],
       maxAge: 600,
       credentials: true,
@@ -81,6 +84,9 @@ export const routes = app
   .route('/jackett/verify', jackettVerifyRoute)
   .route('/flaresolverr/verify', flaresolverrVerifyRoute)
   .route('/trackers/kinozal/verify', trackersKinozalVerifyRoute)
+  .route('/event-journal', eventJournalRoute)
+  .route('/event-journal/read-all', eventJournalReadAllRoute)
+  .route('/event-journal/:id/read', eventJournalReadRoute)
   .route('/settings', settingsRoute)
   .route('/files/:id/delete', deleteFileRoute)
   .route('/torrents', torrentsRoute)

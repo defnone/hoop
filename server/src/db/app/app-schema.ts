@@ -11,6 +11,20 @@ export const controlStatuses = [
   'paused',
 ] as const;
 
+export const eventJournalTypes = [
+  'torrentTitleChanged',
+  'torrentMagnetChanged',
+  'torrentSyncFailed',
+  'torrentDownloadStarted',
+  'torrentDownloadCompleted',
+  'torrentDownloadFailed',
+  'torrentFileCopyStarted',
+  'torrentFileCopyCompleted',
+  'torrentFileCopyFailed',
+] as const;
+
+export const eventJournalStates = ['info', 'error'] as const;
+
 export const torrentItems = sqliteTable(
   'torrent_items',
   {
@@ -69,6 +83,37 @@ export const userSettings = sqliteTable('user_settings', {
     .default(60)
     .notNull(),
 });
+
+export const eventJournal = sqliteTable(
+  'event_journal',
+  {
+    id: int('id').primaryKey({ autoIncrement: true }),
+    type: text('type', { enum: eventJournalTypes }).notNull(),
+    state: text('state', { enum: eventJournalStates })
+      .default('info')
+      .notNull(),
+    torrentItemId: int('torrent_item_id').references(() => torrentItems.id, {
+      onDelete: 'set null',
+    }),
+    torrentTitle: text('torrent_title').notNull(),
+    oldValue: text('old_value'),
+    newValue: text('new_value'),
+    isNotification: int('is_notification', { mode: 'boolean' })
+      .default(true)
+      .notNull(),
+    readAt: int('read_at'),
+    createdAt: int('created_at')
+      .default(sql`(strftime('%s', 'now') * 1000)`)
+      .notNull(),
+  },
+  (t) => [
+    index('event_journal_created_at_index').on(t.createdAt),
+    index('event_journal_read_at_index').on(t.readAt),
+  ],
+);
+
+export type DbEventJournal = typeof eventJournal.$inferSelect;
+export type DbEventJournalInsert = typeof eventJournal.$inferInsert;
 
 export type DbTorrentItem = typeof torrentItems.$inferSelect;
 export type DbTorrentItemInsert = typeof torrentItems.$inferInsert;

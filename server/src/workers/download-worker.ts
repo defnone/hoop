@@ -7,6 +7,8 @@ import { promises as fs } from 'fs';
 import { FileManagementService } from '@server/features/file-management/file-management.service';
 import { TelegramAdapter } from '@server/external/adapters/telegram/telegram.adapter';
 import { formatErrorMessage } from '@server/lib/error-message';
+import { EventJournalService } from '@server/features/event-journal/event-journal.service';
+import type { EventJournalPort } from '@server/features/event-journal/event-journal.port';
 
 // In-memory cache for the last known Transmission status per torrent item
 export const statusStorage = new Map<number, NormalizedTorrent | undefined>();
@@ -14,6 +16,7 @@ export const statusStorage = new Map<number, NormalizedTorrent | undefined>();
 export class DownloadWorker {
   // Database repository for reading items and updating statuses
   private readonly repo: WorkersRepo;
+  private readonly eventJournal: EventJournalPort;
   // Internal scheduler tick (ms)
   private timerMs: number;
   // Cached user settings used during processing
@@ -23,10 +26,17 @@ export class DownloadWorker {
   private error: string | null = null;
   private isProcessing = false;
 
-  constructor({ repo }: { repo?: WorkersRepo }) {
+  constructor({
+    repo,
+    eventJournal,
+  }: {
+    repo?: WorkersRepo;
+    eventJournal?: EventJournalPort;
+  }) {
     // Default polling cadence for download processing
     this.timerMs = 5000;
     this.repo = repo || new WorkersRepo();
+    this.eventJournal = eventJournal || new EventJournalService();
   }
 
   // Load and cache current user settings
@@ -46,12 +56,19 @@ export class DownloadWorker {
     });
     try {
       await client.add();
+      await this.eventJournal.recordTorrentDownloadStarted({
+        torrentItem: row,
+        message: 'Download started',
+      });
     } catch (e) {
       logger.error(`[DownloadWorker] Failed to start downloading ${row.title}`);
       logger.error(e);
       this.error =
-        'DownloadWorker: Failed to start downloading, ' +
-        formatErrorMessage(e);
+        'DownloadWorker: Failed to start downloading, ' + formatErrorMessage(e);
+      await this.eventJournal.recordTorrentDownloadFailed({
+        torrentItem: row,
+        errorMessage: this.error,
+      });
     }
   }
 
@@ -67,11 +84,11 @@ export class DownloadWorker {
       if (status) statusStorage.set(row.id, status);
     } catch (e) {
       logger.error(
-        `[DownloadWorker] Failed to check download status ${row.title}: ${e}`
+        `[DownloadWorker] Failed to check download status ${row.title}: ${e}`,
       );
       if (e instanceof Error && e.message.includes('Torrent not found')) {
         logger.error(
-          `[DownloadWorker] Torrent ${row.title} not found, looks like it was removed from Transmission. Mark as idle.`
+          `[DownloadWorker] Torrent ${row.title} not found, looks like it was removed from Transmission. Mark as idle.`,
         );
         await this.repo.markAsIdle(row.id);
         statusStorage.delete(row.id);
@@ -79,15 +96,23 @@ export class DownloadWorker {
       this.error =
         'DownloadWorker: Failed to check download status, ' +
         formatErrorMessage(e);
+      await this.eventJournal.recordTorrentDownloadFailed({
+        torrentItem: row,
+        errorMessage: this.error,
+      });
     }
     const isDone = Boolean(
       status?.isCompleted &&
         status.dateCompleted &&
-        new Date(status.dateCompleted).getTime() > 0
+        new Date(status.dateCompleted).getTime() > 0,
     );
     if (isDone) {
       // Mark as completed to move processing to the next stage
       await this.repo.markAsCompleted(row.id);
+      await this.eventJournal.recordTorrentDownloadCompleted({
+        torrentItem: row,
+        message: 'Download completed',
+      });
       statusStorage.delete(row.id);
     } else {
       try {
@@ -96,12 +121,15 @@ export class DownloadWorker {
         statusStorage.set(row.id, status);
       } catch (e) {
         logger.error(
-          `[DownloadWorker] Error selecting episodes for ${row.title}: ${e}`
+          `[DownloadWorker] Error selecting episodes for ${row.title}: ${e}`,
         );
         if (status) logger.error(JSON.stringify(status, null, 2));
         this.error =
-          'DownloadWorker: Error selecting episodes, ' +
-          formatErrorMessage(e);
+          'DownloadWorker: Error selecting episodes, ' + formatErrorMessage(e);
+        await this.eventJournal.recordTorrentDownloadFailed({
+          torrentItem: row,
+          errorMessage: this.error,
+        });
       }
     }
   }
@@ -113,7 +141,7 @@ export class DownloadWorker {
       torrentItem: row,
     });
     logger.info(
-      `[DownloadWorker] Processing completed download for ${row.title}`
+      `[DownloadWorker] Processing completed download for ${row.title}`,
     );
     await this.repo.markAsProcessing(row.id);
     try {
@@ -121,9 +149,13 @@ export class DownloadWorker {
         logger.error(`[DownloadWorker] Settings not found`);
         return;
       }
+      await this.eventJournal.recordTorrentFileCopyStarted({
+        torrentItem: row,
+        message: 'File copy started',
+      });
       const copyResult = await new FileManagementService().copyTrackedEpisodes(
         row,
-        this.settings
+        this.settings,
       );
       const episodes = Object.keys(copyResult);
       const files = Object.values(copyResult);
@@ -135,9 +167,13 @@ export class DownloadWorker {
         files: [...newFiles, ...existingFiles],
         trackedEpisodes: [
           ...(row?.trackedEpisodes as number[]).filter(
-            (x) => !episodes.includes(x.toString())
+            (x) => !episodes.includes(x.toString()),
           ),
         ],
+      });
+      await this.eventJournal.recordTorrentFileCopyCompleted({
+        torrentItem: row,
+        message: formatCopiedFilesMessage(newFiles),
       });
       if (this.settings?.telegramId && this.settings?.botToken)
         new TelegramAdapter(this.settings).sendUpdate(row.title, copyResult);
@@ -147,6 +183,10 @@ export class DownloadWorker {
       this.error =
         'DownloadWorker: Error processing completed download, ' +
         formatErrorMessage(e);
+      await this.eventJournal.recordTorrentFileCopyFailed({
+        torrentItem: row,
+        errorMessage: this.error,
+      });
       return;
     }
     if (this.settings?.deleteAfterDownload) {
@@ -179,8 +219,8 @@ export class DownloadWorker {
         } else {
           logger.error(
             `[DownloadWorker] Unexpected error while statting ${file}: ${String(
-              e
-            )}`
+              e,
+            )}`,
           );
           existingFiles.push(file);
         }
@@ -193,7 +233,7 @@ export class DownloadWorker {
     if (missingFiles.length) {
       await this.repo.update(row.id, { files: existingFiles });
       logger.warn(
-        `[DownloadWorker] Removed ${missingFiles.length} missing file(s) from DB for item ${row.title}`
+        `[DownloadWorker] Removed ${missingFiles.length} missing file(s) from DB for item ${row.title}`,
       );
     }
   }
@@ -232,7 +272,7 @@ export class DownloadWorker {
         }
         if (this.error) {
           logger.error(
-            `[DownloadWorker] Error on process ${row.id}: ${this.error}`
+            `[DownloadWorker] Error on process ${row.id}: ${this.error}`,
           );
           await this.repo.update(row.id, { errorMessage: this.error });
           this.error = null;
@@ -264,4 +304,10 @@ export class DownloadWorker {
       }
     }, this.timerMs);
   }
+}
+
+function formatCopiedFilesMessage(files: string[]): string {
+  const title = `Copied ${files.length} file(s)`;
+  if (!files.length) return title;
+  return [title, ...files].join('\n');
 }
