@@ -5,7 +5,6 @@ CREATE TABLE `event_journal` (
 	`torrent_title` text NOT NULL,
 	`old_value` text,
 	`new_value` text,
-	`is_notification` integer DEFAULT true NOT NULL,
 	`read_at` integer,
 	`created_at` integer DEFAULT (strftime('%s', 'now') * 1000) NOT NULL,
 	FOREIGN KEY (`torrent_item_id`) REFERENCES `torrent_items`(`id`) ON UPDATE no action ON DELETE set null
