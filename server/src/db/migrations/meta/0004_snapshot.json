@@ -654,14 +654,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "is_notification": {
-          "name": "is_notification",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": true
-        },
         "read_at": {
           "name": "read_at",
           "type": "integer",

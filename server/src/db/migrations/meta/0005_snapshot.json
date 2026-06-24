@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "fb0862d6-3095-4e3c-ae69-ae1800f7ddf4",
-  "prevId": "713f4bb9-fe9f-491f-8103-85891f03e848",
+  "id": "b750a3cc-ef30-40d8-99bb-8698787dc00e",
+  "prevId": "7a6010a2-7a1a-4d03-b10a-a736ff395e7f",
   "tables": {
     "torrent_items": {
       "name": "torrent_items",
@@ -618,6 +618,14 @@
           "notNull": true,
           "autoincrement": false
         },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'info'"
+        },
         "torrent_item_id": {
           "name": "torrent_item_id",
           "type": "integer",
@@ -645,6 +653,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "is_notification": {
+          "name": "is_notification",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
         },
         "read_at": {
           "name": "read_at",
