@@ -9,6 +9,7 @@ import { Toaster } from 'sonner';
 
 export default function App() {
   const location = useLocation();
+  const pathname = location.pathname;
   const { data: auth, isPending, error } = useSession();
   const navigate = useNavigate();
   const hadSessionRef = useRef(false);
@@ -16,8 +17,7 @@ export default function App() {
   useEffect(() => {
     if (isPending) return;
 
-    const onAuthPage =
-      location.pathname === '/login' || location.pathname === '/sign-up';
+    const onAuthPage = pathname === '/login' || pathname === '/sign-up';
 
     const unauthorized =
       (error as { code?: string })?.code === 'UNAUTHORIZED' ||
@@ -41,22 +41,20 @@ export default function App() {
 
     // Mark that session has existed to detect future loss
     hadSessionRef.current = true;
-  }, [auth?.session, isPending, location.pathname, error, navigate]);
+  }, [auth?.session, isPending, pathname, error, navigate]);
 
   useEffect(() => {
-    const currentRoute = routes.find(
-      (route) => route.path === location.pathname
-    );
+    const currentRoute = routes.find((route) => route.path === pathname);
     if (currentRoute && currentRoute.meta) {
       document.title = currentRoute.meta.title || 'Default Title';
       document
         .querySelector('meta[name="description"]')
         ?.setAttribute(
           'content',
-          currentRoute.meta.description || 'Default Description'
+          currentRoute.meta.description || 'Default Description',
         );
     }
-  }, [location.pathname]);
+  }, [pathname]);
 
   return (
     <div className='font-sans min-h-screen text-white antialiased'>

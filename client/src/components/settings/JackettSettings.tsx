@@ -21,14 +21,6 @@ export default function JackettSettings({
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isTestingApiKey, setIsTestingApiKey] = useState(false);
 
-  const validateUrl = (value: string) => {
-    try {
-      return Boolean(new URL(value));
-    } catch {
-      return false;
-    }
-  };
-
   const testConnection = async () => {
     if (!jackettUrl) {
       customSonner({ variant: 'error', text: 'Jackett URL is required' });
@@ -55,12 +47,11 @@ export default function JackettSettings({
           variant: 'error',
           text: payload?.message ?? 'Failed to test Jackett connection',
         });
-        return;
+      } else {
+        customSonner({
+          text: 'Jackett connection successful',
+        });
       }
-
-      customSonner({
-        text: 'Jackett connection successful',
-      });
     } catch (error) {
       const description =
         error instanceof Error ? error.message : String(error);
@@ -69,9 +60,8 @@ export default function JackettSettings({
         text: 'Failed to test Jackett connection',
         description,
       });
-    } finally {
-      setIsTestingConnection(false);
     }
+    setIsTestingConnection(false);
   };
 
   const testApiKey = async () => {
@@ -103,10 +93,9 @@ export default function JackettSettings({
           variant: 'error',
           text: payload?.message ?? 'Failed to validate Jackett API key',
         });
-        return;
+      } else {
+        customSonner({ text: 'Jackett API key is valid' });
       }
-
-      customSonner({ text: 'Jackett API key is valid' });
     } catch (error) {
       const description =
         error instanceof Error ? error.message : String(error);
@@ -115,9 +104,8 @@ export default function JackettSettings({
         text: 'Failed to validate Jackett API key',
         description,
       });
-    } finally {
-      setIsTestingApiKey(false);
     }
+    setIsTestingApiKey(false);
   };
 
   return (
@@ -150,7 +138,8 @@ export default function JackettSettings({
               variant='secondary'
               className='font-bold'
               onClick={testConnection}
-              disabled={isTestingConnection}>
+              disabled={isTestingConnection}
+            >
               {isTestingConnection ? (
                 <Loader2 className='w-4 h-4 animate-spin' />
               ) : (
@@ -183,7 +172,8 @@ export default function JackettSettings({
               variant='secondary'
               className='font-bold'
               onClick={testApiKey}
-              disabled={isTestingApiKey}>
+              disabled={isTestingApiKey}
+            >
               {isTestingApiKey ? (
                 <Loader2 className='w-4 h-4 animate-spin' />
               ) : (
@@ -195,4 +185,12 @@ export default function JackettSettings({
       </div>
     </div>
   );
+}
+
+function validateUrl(value: string) {
+  try {
+    return Boolean(new URL(value));
+  } catch {
+    return false;
+  }
 }

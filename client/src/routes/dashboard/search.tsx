@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import CategoryPicker from '@/components/search/CategoryPicker';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, SearchIcon } from 'lucide-react';
 import SearchTable from '@/components/search/SearchTable';
 import customSonner from '@/components/CustomSonner';
@@ -49,7 +49,7 @@ export default function SearchPage() {
     return defaultTrackers;
   }, [settingsData?.kinozalPassword, settingsData?.kinozalUsername]);
 
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     if (tvName.length === 0) return;
     try {
       setIsLoading(true);
@@ -57,7 +57,7 @@ export default function SearchPage() {
         tvName,
         parseInt(season as string),
         category,
-        tracker
+        tracker,
       );
       const sortedData = data?.sort((a, b) => b.Seeders - a.Seeders);
       setItems(sortedData || []);
@@ -70,7 +70,7 @@ export default function SearchPage() {
       });
       setIsLoading(false);
     }
-  };
+  }, [category, season, tracker, tvName]);
 
   useEffect(() => {
     if (isFirstRenderRef.current) {
@@ -86,6 +86,8 @@ export default function SearchPage() {
     queueMicrotask(() => {
       void handleSearch();
     });
+    // Search should rerun only when filters change, not on every input edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category, tracker]);
 
   const searchFilteredData = useMemo(() => {
@@ -112,7 +114,7 @@ export default function SearchPage() {
         acc[item.TrackerId] = (acc[item.TrackerId] || 0) + 1;
         return acc;
       },
-      {} as Record<string, number>
+      {} as Record<string, number>,
     );
 
     return {
@@ -170,7 +172,7 @@ export default function SearchPage() {
 
         return next.toString() === before ? prev : next;
       },
-      { replace: true }
+      { replace: true },
     );
   }, [tvName, season, setSearchParams]);
 
@@ -215,7 +217,8 @@ export default function SearchPage() {
               disabled={isLoading}
               size={'icon-lg'}
               className='w-14'
-              variant={'secondary'}>
+              variant={'secondary'}
+            >
               <SearchIcon strokeWidth={4} className='w-4 h-4' />
             </Button>
           </ButtonGroup>

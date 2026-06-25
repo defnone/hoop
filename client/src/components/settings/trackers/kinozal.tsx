@@ -46,10 +46,9 @@ export default function KinozalSettings({
           variant: 'error',
           text: payload?.message ?? 'Failed to validate Kinozal credentials',
         });
-        return;
+      } else {
+        customSonner({ text: 'Kinozal credentials are valid' });
       }
-
-      customSonner({ text: 'Kinozal credentials are valid' });
     } catch (error) {
       const description =
         error instanceof Error ? error.message : String(error);
@@ -58,9 +57,8 @@ export default function KinozalSettings({
         text: 'Failed to validate Kinozal credentials',
         description,
       });
-    } finally {
-      setIsTesting(false);
     }
+    setIsTesting(false);
   };
 
   return (
@@ -109,7 +107,8 @@ export default function KinozalSettings({
             <Button
               variant='secondary'
               className='font-bold'
-              onClick={testKinozalConnection}>
+              onClick={testKinozalConnection}
+            >
               {isTesting ? (
                 <Loader2 className='w-4 h-4 animate-spin' />
               ) : (

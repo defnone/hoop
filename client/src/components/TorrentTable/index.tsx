@@ -43,7 +43,7 @@ export default function TorrentTable() {
     if (dataResponse?.data?.lastSync) {
       setLastSync(dataResponse?.data?.lastSync);
     }
-  }, [dataResponse]);
+  }, [dataResponse, setItems, setLastSync, setStatus]);
 
   // Search filter
   useEffect(() => {
@@ -53,10 +53,10 @@ export default function TorrentTable() {
     }
     setFilteredData(
       items.filter((item) =>
-        item.title.toLowerCase().includes(search.toLowerCase())
-      )
+        item.title.toLowerCase().includes(search.toLowerCase()),
+      ),
     );
-  }, [search, items]);
+  }, [items, search, setFilteredData]);
 
   // Manual refetch on external trigger without changing the key
   useEffect(() => {

@@ -57,8 +57,10 @@ export function SearchDataTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((item, index) => (
-            <TableRow key={index}>
+          {data.map((item) => (
+            <TableRow
+              key={`${item.TrackerId}-${item.Details}-${item.PublishDate}`}
+            >
               <TableCell className='font-medium leading-relaxed tracking-normal w-10'>
                 <TrackerLogo tracker={item.Tracker} />
               </TableCell>
@@ -95,7 +97,8 @@ export function SearchDataTable({
                 <Button
                   variant='outline'
                   size='icon'
-                  onClick={() => handleAddClick(item.Details)}>
+                  onClick={() => handleAddClick(item.Details)}
+                >
                   <Plus className='w-4 h-4' />
                 </Button>
               </TableCell>
@@ -108,7 +111,8 @@ export function SearchDataTable({
             <TableRow>
               <TableCell
                 colSpan={7}
-                className='text-center py-10 text-base text-zinc-300'>
+                className='text-center py-10 text-base text-zinc-300'
+              >
                 No results found now. Type something to search.
               </TableCell>
             </TableRow>

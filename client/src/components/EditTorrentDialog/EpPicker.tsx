@@ -21,11 +21,15 @@ export default function EpPicker({
   itemId: number;
 }) {
   const id = useId();
-  const [selectedEpisodes, setSelectedEpisodes] = useState<number[]>(() =>
-    episodes
-      .filter((episode) => episode.trackedEpisodes)
-      .map((episode) => episode.id)
-  );
+  const [selectedEpisodes, setSelectedEpisodes] = useState<number[]>(() => {
+    return episodes.reduce<number[]>((selected, episode) => {
+      if (episode.trackedEpisodes) {
+        selected.push(episode.id);
+      }
+
+      return selected;
+    }, []);
+  });
   const { setStartFetch } = useTorrentStore();
 
   const handleCheckedChange = (checked: boolean, episodeId: number) => {
@@ -42,11 +46,9 @@ export default function EpPicker({
   };
 
   const handleSelectAll = () => {
-    setSelectedEpisodes(episodes.map((episode) => episode.id));
-    handleSave(
-      itemId,
-      episodes.map((episode) => episode.id)
-    );
+    const allEpisodeIds = episodes.map((episode) => episode.id);
+    setSelectedEpisodes(allEpisodeIds);
+    handleSave(itemId, allEpisodeIds);
     setStartFetch(Date.now());
   };
 
@@ -62,7 +64,8 @@ export default function EpPicker({
         {episodes.map((item) => (
           <div
             key={`${id}-${item.id}`}
-            className='relative flex cursor-pointer flex-col gap-4 rounded-lg border-2 border-input p-4 shadow-sm shadow-black/5 has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:border-2 transform-gpu'>
+            className='relative flex cursor-pointer flex-col gap-4 rounded-lg border-2 border-input p-4 shadow-sm shadow-black/5 has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:border-2 transform-gpu'
+          >
             <div className='flex justify-between gap-2'>
               <Checkbox
                 id={`${id}-${item.id}`}
@@ -91,14 +94,16 @@ export default function EpPicker({
             size='sm'
             variant='secondary'
             className='font-bold w-[50%] flex'
-            onClick={handleSelectAll}>
+            onClick={handleSelectAll}
+          >
             Select All
           </Button>
           <Button
             size='sm'
             variant='secondary'
             className='font-bold w-[49%] flex'
-            onClick={handleUnselectAll}>
+            onClick={handleUnselectAll}
+          >
             Unselect All
           </Button>
         </div>
