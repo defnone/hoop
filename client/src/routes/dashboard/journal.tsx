@@ -290,7 +290,7 @@ function JournalEventDetails({ event }: { event: EventJournalDto }) {
   }
 
   return (
-    <p className='wrap-break-word whitespace-pre-wrap font-mono text-[0.95rem] text-zinc-400'>
+    <p className='wrap-break-word whitespace-pre-wrap font-mono text-[0.90rem] text-zinc-400'>
       {formatEventDetails(event)}
     </p>
   );
@@ -306,7 +306,7 @@ function DiffDetails({
   const diff = buildDiffParts(oldValue, newValue);
 
   return (
-    <div className='flex min-w-0 flex-col gap-1 text-[0.95rem] font-mono leading-6'>
+    <div className='flex min-w-0 flex-col gap-1 text-[0.90rem] font-mono leading-6'>
       <p className='wrap-break-word text-zinc-400'>
         {diff.oldParts.map((part, index) => (
           <DiffPart
