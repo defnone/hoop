@@ -1,5 +1,5 @@
 import LoginForm from '@/components/Login/LoginForm';
-import { authClient } from '@/lib/auth-client';
+import { signIn, useSession } from '@/lib/auth-client';
 import customSonner from '@/components/CustomSonner';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -9,7 +9,6 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const { signIn, useSession } = authClient;
   const { data: auth, isPending } = useSession();
   const navigate = useNavigate();
 
@@ -32,7 +31,7 @@ export default function Login() {
     if (auth?.session) {
       navigate('/');
     }
-  }, [isPending]);
+  }, [auth?.session, isPending, navigate]);
 
   useEffect(() => {
     getHealth().then((data) => {
@@ -40,7 +39,7 @@ export default function Login() {
         navigate('/sign-up');
       }
     });
-  }, []);
+  }, [navigate]);
 
   return (
     <div className='flex flex-col items-center justify-center min-h-screen'>

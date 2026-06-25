@@ -21,7 +21,7 @@ export default function SignUpForm({
 }) {
   return (
     <div className='flex flex-col gap-3 w-80 items-center'>
-      <img src='/hoop.png' className='w-20 mb-5' />
+      <img src='/hoop.png' alt='Hoop logo' className='w-20 mb-5' />
       <Input
         value={email}
         onChange={(e) => setEmail(e.target.value)}
@@ -51,13 +51,14 @@ export default function SignUpForm({
             password &&
             confirmPassword &&
             'border-red-500',
-          'h-11 border-2'
+          'h-11 border-2',
         )}
       />
       <Button
         className='cursor-pointer w-full font-bold mt-5'
         onClick={handleSignUp}
-        disabled={!email || !password || !confirmPassword}>
+        disabled={!email || !password || !confirmPassword}
+      >
         SignUp
       </Button>
     </div>

@@ -56,7 +56,8 @@ export function TorrentTableData() {
             <TableRow>
               <TableCell
                 colSpan={7}
-                className='text-center py-10 text-base text-zinc-300'>
+                className='text-center py-10 text-base text-zinc-300'
+              >
                 No torrents found. Add a new torrent to get started.
               </TableCell>
             </TableRow>
@@ -82,15 +83,6 @@ function DataTableRow({
   setOpenId: (id: number) => void;
   status: NormalizedTorrent | undefined;
 }) {
-  const filterMediaFiles = (files: string[]) => {
-    if (!files) return [];
-    const mediaFilesArr = ['mp4', 'mkv', 'avi', 'mov', 'webm', 'm4v'];
-
-    return files.filter((file) =>
-      mediaFilesArr.some((ext) => file.endsWith(ext))
-    );
-  };
-
   const downloading = status?.state === 'downloading';
   const downloadPaused = status?.state === 'paused';
   const isTrackingPaused = item.controlStatus === 'paused';
@@ -99,6 +91,15 @@ function DataTableRow({
     status?.state === 'downloading' &&
     !isTrackingPaused &&
     Number(status?.eta) > 0;
+
+  const filterMediaFiles = (files: string[]) => {
+    if (!files) return [];
+    const mediaFilesArr = ['mp4', 'mkv', 'avi', 'mov', 'webm', 'm4v'];
+
+    return files.filter((file) =>
+      mediaFilesArr.some((ext) => file.endsWith(ext)),
+    );
+  };
 
   const downloadedFiles = filterMediaFiles(item.files as string[]).length;
   return (
@@ -114,23 +115,26 @@ function DataTableRow({
         downloading &&
           'bg-green-500/10 animate-pulse animate-infinite animate-slow',
         downloadPaused &&
-          'bg-zinc-300/10 animate-pulse animate-infinite animate-slow'
-      )}>
+          'bg-zinc-300/10 animate-pulse animate-infinite animate-slow',
+      )}
+    >
       <TableCell className='w-12'>
         <TrackerLogo tracker={item.tracker || ''} />
       </TableCell>
       <TableCell
         className={cn(
           'font-bold',
-          isTrackingPaused && 'text-muted-foreground/40'
-        )}>
+          isTrackingPaused && 'text-muted-foreground/40',
+        )}
+      >
         {item.title}
       </TableCell>
       <TableCell
         className={cn(
           'font-mono text-zinc-300',
-          isTrackingPaused && 'text-muted-foreground/40'
-        )}>
+          isTrackingPaused && 'text-muted-foreground/40',
+        )}
+      >
         <span className='p-1 bg-muted rounded-md text-xs font-bold min-w-7 flex w-fit items-center justify-center'>
           {item.season}
         </span>
@@ -138,8 +142,9 @@ function DataTableRow({
       <TableCell
         className={cn(
           'font-mono text-zinc-300',
-          isTrackingPaused && 'text-muted-foreground/40'
-        )}>
+          isTrackingPaused && 'text-muted-foreground/40',
+        )}
+      >
         {(item.haveEpisodes as number[]).length} of {item.totalEpisodes}
       </TableCell>
       <TableCell
@@ -147,15 +152,17 @@ function DataTableRow({
           'font-mono text-muted-foreground/40',
           (item.trackedEpisodes as number[]).length > 0 &&
             !isTrackingPaused &&
-            'text-zinc-300'
-        )}>
+            'text-zinc-300',
+        )}
+      >
         {(item.trackedEpisodes as number[]).length} of {item.totalEpisodes}
       </TableCell>
       <TableCell
         className={cn(
           'font-mono',
-          downloadedFiles > 0 ? 'text-green-500' : 'text-muted-foreground/40'
-        )}>
+          downloadedFiles > 0 ? 'text-green-500' : 'text-muted-foreground/40',
+        )}
+      >
         {downloadedFiles}
       </TableCell>
       <TableCell
@@ -163,8 +170,9 @@ function DataTableRow({
           'font-mono text-nowrap',
           new Date(item.updatedAt).toDateString() ===
             new Date().toDateString() && 'text-green-500',
-          isTrackingPaused && 'text-muted-foreground/40'
-        )}>
+          isTrackingPaused && 'text-muted-foreground/40',
+        )}
+      >
         {item.updatedAt
           ? new Date(item.updatedAt).toLocaleDateString('en-GB', {
               month: 'numeric',

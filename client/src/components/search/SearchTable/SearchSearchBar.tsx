@@ -8,6 +8,14 @@ import {
 import { ArrowLeft, Eraser, ListFilter } from 'lucide-react';
 import { Dispatch, SetStateAction, useEffect } from 'react';
 
+function handleQualityChange(prev: string, q: string) {
+  if (prev.match(/\s?\d{3,4}p\s?/i)) {
+    return prev.trim().replace(/\d{3,4}p/i, `${q}`);
+  }
+
+  return prev.trim() + ` ${q}`;
+}
+
 interface SearchSearchBarProps {
   search: string;
   setSearch: Dispatch<SetStateAction<string>>;
@@ -21,22 +29,15 @@ export function SearchTopBar({
   isLoading,
   currentSeason,
 }: SearchSearchBarProps) {
-  const handleQualityChange = (prev: string, q: string) => {
-    if (prev.match(/\s?\d{3,4}p\s?/i)) {
-      return prev.trim().replace(/\d{3,4}p/i, `${q}`);
-    } else {
-      return prev.trim() + ` ${q}`;
-    }
-  };
-
   const inputQualityMatch = (q: number) => {
     return search.match(new RegExp(`\\s?${q}p\\s?`, 'i')) ? true : false;
   };
 
   useEffect(() => {
-    if (search.match(/S\d+/i) && currentSeason)
-      setSearch((prev) => prev.replace(/S\d+/i, `S${currentSeason}`));
-  }, [currentSeason]);
+    if (!currentSeason || !search.match(/S\d+/i)) return;
+
+    setSearch((prev) => prev.replace(/S\d+/i, `S${currentSeason}`));
+  }, [currentSeason, search, setSearch]);
 
   return (
     <div className='flex items-center pt-7 w-full'>
@@ -56,7 +57,8 @@ export function SearchTopBar({
           <Button
             size={'icon-lg'}
             variant={'outline'}
-            onClick={() => setSearch('')}>
+            onClick={() => setSearch('')}
+          >
             <Eraser strokeWidth={3} className='w-4 h-4 text-zinc-400' />
           </Button>
         </ButtonGroup>
@@ -71,7 +73,8 @@ export function SearchTopBar({
               onClick={() =>
                 setSearch((prev) => `S${currentSeason} ${prev.trim()}`)
               }
-              disabled={(search.match(/S\d+/i) ? true : false) || isLoading}>
+              disabled={(search.match(/S\d+/i) ? true : false) || isLoading}
+            >
               S{currentSeason}
             </Button>
           )}
@@ -81,7 +84,8 @@ export function SearchTopBar({
             onClick={() =>
               setSearch((prev) => handleQualityChange(prev, '720p'))
             }
-            disabled={inputQualityMatch(720) || isLoading}>
+            disabled={inputQualityMatch(720) || isLoading}
+          >
             720p
           </Button>
           <Button
@@ -90,7 +94,8 @@ export function SearchTopBar({
             onClick={() =>
               setSearch((prev) => handleQualityChange(prev, '1080p'))
             }
-            disabled={inputQualityMatch(1080) || isLoading}>
+            disabled={inputQualityMatch(1080) || isLoading}
+          >
             1080p
           </Button>
           <Button
@@ -99,7 +104,8 @@ export function SearchTopBar({
             onClick={() =>
               setSearch((prev) => handleQualityChange(prev, '2160p'))
             }
-            disabled={inputQualityMatch(2160) || isLoading}>
+            disabled={inputQualityMatch(2160) || isLoading}
+          >
             2160p
           </Button>
         </ButtonGroup>

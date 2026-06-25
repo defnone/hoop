@@ -3,7 +3,7 @@ import { Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { rpc } from '@/lib/rpc';
 import customSonner from '@/components/CustomSonner';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTorrentStore } from '@/stores/torrentStore';
 
 export default function FileList({
@@ -13,12 +13,8 @@ export default function FileList({
   files: string[];
   torrentId: number;
 }) {
-  const [localFiles, setLocalFiles] = useState(files);
+  const [deletedFiles, setDeletedFiles] = useState<string[]>([]);
   const { setStartFetch } = useTorrentStore();
-
-  useEffect(() => {
-    setLocalFiles(files);
-  }, [files]);
 
   const handleDelete = async (filePath: string, id: number) => {
     try {
@@ -27,10 +23,18 @@ export default function FileList({
         param: { id: String(id) },
       });
       const json = await resp.json();
-      if (!json.success) throw new Error(json.message);
-      setLocalFiles((prev) => prev.filter((f) => f !== filePath));
+      if (!json.success) {
+        customSonner({
+          variant: 'error',
+          text: json.message || 'Failed to delete file',
+        });
+        return;
+      }
+      setDeletedFiles((prev) =>
+        prev.includes(filePath) ? prev : [...prev, filePath],
+      );
       customSonner({ text: 'File deleted' });
-      setStartFetch(Date.now());
+      setStartFetch(getCurrentTimestamp());
     } catch (error) {
       customSonner({
         variant: 'error',
@@ -39,7 +43,8 @@ export default function FileList({
     }
   };
 
-  const sortedFiles = [...localFiles].sort((a, b) => {
+  const visibleFiles = files.filter((file) => !deletedFiles.includes(file));
+  const sortedFiles = [...visibleFiles].sort((a: string, b: string) => {
     const aName =
       a
         .split('/')
@@ -64,8 +69,9 @@ export default function FileList({
           key={file}
           className={cn(
             'w-full flex flex-row items-center  border-b border-border py-4 gap-2 font-mono hover:text-white',
-            index === localFiles.length - 1 && 'border-b-0'
-          )}>
+            index === visibleFiles.length - 1 && 'border-b-0',
+          )}
+        >
           <div title={file} className='truncate pr-4'>
             {file.split('/').pop()}
           </div>
@@ -73,11 +79,16 @@ export default function FileList({
             variant='ghost'
             size='icon'
             className='flex ml-auto'
-            onClick={() => handleDelete(file, torrentId)}>
+            onClick={() => handleDelete(file, torrentId)}
+          >
             <Trash2 className='w-4 h-4 text-red-400' />
           </Button>
         </div>
       ))}
     </div>
   );
+}
+
+function getCurrentTimestamp() {
+  return Date.now();
 }

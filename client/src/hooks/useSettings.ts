@@ -2,7 +2,6 @@ import customSonner from '@/components/CustomSonner';
 import { rpc } from '@/lib/rpc';
 import type { DbUserSettings } from '@server/db/app/app-schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
 
 type SettingsData = DbUserSettings | null;
 
@@ -60,19 +59,12 @@ export default function useSettings() {
       },
     });
 
-  const saveSettings = useCallback(
-    async (payload: DbUserSettings) => {
-      return await persistSettings(payload);
-    },
-    [persistSettings]
-  );
-
   return {
     settingsData,
     isLoadingSettings,
     refetchSettings,
     errorSettings,
-    saveSettings,
+    saveSettings: persistSettings,
     isSavingSettings,
   };
 }

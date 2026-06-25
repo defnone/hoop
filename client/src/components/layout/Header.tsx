@@ -10,6 +10,18 @@ import { useTorrentStore } from '@/stores/torrentStore';
 import useSettings from '@/hooks/useSettings';
 import { useEffect } from 'react';
 
+async function handleSignOut() {
+  await signOut({
+    fetchOptions: {
+      onSuccess: () => {
+        customSonner({
+          text: 'Signed out successfully',
+        });
+      },
+    },
+  });
+}
+
 export default function Header() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -17,17 +29,9 @@ export default function Header() {
   const setStartFetch = useTorrentStore((state) => state.setStartFetch);
   const { settingsData, errorSettings } = useSettings();
 
-  const handleSignOut = async () => {
-    await signOut({
-      fetchOptions: {
-        onSuccess: () => {
-          customSonner({
-            text: 'Signed out successfully',
-          });
-        },
-      },
-    });
-  };
+  const lastSyncLabel = lastSync
+    ? new Date(Number(lastSync)).toLocaleString()
+    : null;
 
   useEffect(() => {
     if (errorSettings) {
@@ -43,18 +47,19 @@ export default function Header() {
     <div className='mb-10 w-full flex h-[70px] items-center border-b border-border '>
       <div className='w-full mx-auto container flex flex-row justify-between px-[1%]'>
         <div className='flex items-center gap-2'>
-          <span
-            className='text-base font-extrabold tracking-tight cursor-pointer'
+          <button
+            type='button'
+            className='text-base font-extrabold tracking-tight cursor-pointer bg-transparent p-0'
             onClick={() => {
-              setStartFetch(Date.now());
+              setStartFetch(getCurrentTimestamp());
               navigate('/');
             }}
           >
             <Logo width={50} />
-          </span>
-          {lastSync && (
+          </button>
+          {lastSyncLabel && (
             <p className='text-sm text-muted-foreground ml-4 font-mono'>
-              Last sync: {new Date(Number(lastSync)).toLocaleString()}
+              Last sync: {lastSyncLabel}
             </p>
           )}
         </div>
@@ -105,4 +110,8 @@ export default function Header() {
       </div>
     </div>
   );
+}
+
+function getCurrentTimestamp() {
+  return Date.now();
 }

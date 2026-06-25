@@ -32,23 +32,32 @@ export default function AddTorrentDialog({
   setStartFetch,
   url,
 }: AddTorrentDialogProps) {
-  const [torrentUrl, setTorrentUrl] = useState(() => url ?? '');
-  const [prevUrl, setPrevUrl] = useState(url);
+  const [torrentUrlState, setTorrentUrlState] = useState<{
+    propUrl: string | undefined;
+    value: string;
+  }>(() => ({
+    propUrl: url,
+    value: url ?? '',
+  }));
   const [isLoading, setIsLoading] = useState(false);
   const [markAll, setMarkAll] = useState(false);
-  const [prevMarkAll, setPrevMarkAll] = useState(markAll);
   const [startDownloadImmediately, setStartDownloadImmediately] =
     useState(false);
+  const torrentUrl = torrentUrlState.value;
 
-  if (url !== prevUrl) {
-    setPrevUrl(url);
-    setTorrentUrl(url ?? '');
+  if (url !== torrentUrlState.propUrl) {
+    setTorrentUrlState({
+      propUrl: url,
+      value: url ?? '',
+    });
   }
 
-  if (markAll !== prevMarkAll) {
-    setPrevMarkAll(markAll);
-    setStartDownloadImmediately(false);
-  }
+  const setTorrentUrl = (value: string) => {
+    setTorrentUrlState((current) => ({
+      ...current,
+      value,
+    }));
+  };
 
   const handleAddTorrent = async () => {
     setIsLoading(true);
@@ -95,7 +104,8 @@ export default function AddTorrentDialog({
             style={{
               scrollbarWidth: 'thin',
               scrollbarColor: 'hsl(var(--primary)) transparent',
-            }}>
+            }}
+          >
             <DialogDescription asChild>
               <div className='px-6 py-4'>
                 <Input
@@ -123,13 +133,15 @@ export default function AddTorrentDialog({
                     htmlFor='mark-all-episodes'
                     className={cn(
                       'flex items-center gap-2 text-base border rounded-md px-3 py-2 cursor-pointer',
-                      markAll && 'bg-accent'
-                    )}>
+                      markAll && 'bg-accent',
+                    )}
+                  >
                     <Checkbox
                       id='mark-all-episodes'
                       checked={markAll}
                       onCheckedChange={() => {
-                        setMarkAll(!markAll);
+                        setMarkAll((current) => !current);
+                        setStartDownloadImmediately(false);
                       }}
                     />
                     Mark all episodes as tracked
@@ -140,8 +152,9 @@ export default function AddTorrentDialog({
                     className={cn(
                       'flex items-center gap-2 text-base border rounded-md px-3 py-2 cursor-pointer',
                       !markAll && 'opacity-50',
-                      startDownloadImmediately && 'bg-accent'
-                    )}>
+                      startDownloadImmediately && 'bg-accent',
+                    )}
+                  >
                     <Checkbox
                       id='start-download-immediately'
                       checked={startDownloadImmediately}
@@ -170,7 +183,8 @@ export default function AddTorrentDialog({
             onClick={() => {
               handleAddTorrent();
             }}
-            className='font-bold rounded-md justify-center items-center'>
+            className='font-bold rounded-md justify-center items-center'
+          >
             {isLoading ? (
               <Loader2 className='w-4 h-4 animate-spin' />
             ) : (

@@ -39,15 +39,17 @@ function BottomButtons({
       {isHovering && (
         <div
           className={cn(
-            'flex flex-row gap-3 pb-2 pt-10 w-full transition-all duration-500 ease-in-out justify-end z-50'
-          )}>
+            'flex flex-row gap-3 pb-2 pt-10 w-full transition-all duration-500 ease-in-out justify-end z-50',
+          )}
+        >
           <div className='flex flex-row items-center gap-3 mr-auto '>
             {isJackettPrepared && (
               <Button
                 onClick={() => na(`/search?query=${item.show.title}`)}
                 variant='ghost'
                 size='default'
-                className='w-fit border-0 bg-zinc-700/60 backdrop-blur-sm hover:bg-background/70 transition-all duration-300 flex h-9'>
+                className='w-fit border-0 bg-zinc-700/60 backdrop-blur-sm hover:bg-background/70 transition-all duration-300 flex h-9'
+              >
                 <Search size={20} strokeWidth={3} />
               </Button>
             )}
@@ -67,7 +69,8 @@ function BottomButtons({
 
           <a
             href={`https://trakt.tv/shows/${item.show.ids.trakt}`}
-            target='_blank'>
+            target='_blank'
+          >
             <div className='flex items-center justify-center gap-2'>
               <SiTrakt size={35} color='#ff1a1a' />
             </div>
@@ -75,7 +78,8 @@ function BottomButtons({
           {item.show.ids.imdb && (
             <a
               href={`https://www.imdb.com/title/${item.show.ids.imdb}`}
-              target='_blank'>
+              target='_blank'
+            >
               <div className='flex items-center justify-center gap-2'>
                 <FaImdb size={35} color='#eaff2e' />
               </div>
@@ -86,8 +90,9 @@ function BottomButtons({
       <h1
         className={cn(
           'text-2xl font-black shadow-black/50 z-50',
-          isBig ? 'text-3xl' : 'text-2xl'
-        )}>
+          isBig ? 'text-3xl' : 'text-2xl',
+        )}
+      >
         {item.show.title}
       </h1>
       <div
@@ -95,8 +100,9 @@ function BottomButtons({
           'bg-gradient-to-b from-transparent to-black/50 backdrop-blur-sm p-5 z-0 flex flex-col justify-center absolute top-0 left-0 w-full h-full transition-all duration-500',
           isHovering
             ? '[mask-image:linear-gradient(to_top,red_50%,transparent)]'
-            : '[mask-image:linear-gradient(to_top,red_60%,transparent)]'
-        )}></div>
+            : '[mask-image:linear-gradient(to_top,red_60%,transparent)]',
+        )}
+      ></div>
     </div>
   );
 }
@@ -120,29 +126,35 @@ export default function OneItem({
         'flex flex-col gap-2 relative rounded-md overflow-hidden ',
         isBig ? 'row-span-2 h-[400px]' : 'h-[300px]',
         isLoading && 'animate-pulse bg-zinc-900 duration-1000',
-        isJackettPrepared && 'cursor-pointer'
+        isJackettPrepared && 'cursor-pointer',
       )}
       onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}>
-      <img
-        src={'https://' + item.show.images.fanart[0]}
-        alt={item.show.title}
-        onClick={() =>
-          isJackettPrepared && na(`/search?query=${item.show.title}`)
-        }
-        onLoad={() => setIsLoading(false)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
+      <button
+        type='button'
+        disabled={!isJackettPrepared}
+        aria-label={`Search ${item.show.title}`}
         className={cn(
-          'absolute top-0 left-0 w-full h-full object-cover z-0 transition-all duration-500',
+          'absolute top-0 left-0 w-full h-full z-0 overflow-hidden transition-all duration-500 disabled:cursor-default',
           isHovering
             ? 'scale-110'
-            : 'scale-100 border border-zinc-900 rounded-lg'
+            : 'scale-100 border border-zinc-900 rounded-lg',
         )}
-        sizes={
-          isBig
-            ? '(max-width: 768px) 100vw, (max-width: 1200px) 100vw'
-            : '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
-        }
-      />
+        onClick={() => na(`/search?query=${item.show.title}`)}
+      >
+        <img
+          src={'https://' + item.show.images.fanart[0]}
+          alt={item.show.title}
+          onLoad={() => setIsLoading(false)}
+          className='h-full w-full object-cover'
+          sizes={
+            isBig
+              ? '(max-width: 768px) 100vw, (max-width: 1200px) 100vw'
+              : '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
+          }
+        />
+      </button>
 
       <TopButtons item={item} />
       <BottomButtons

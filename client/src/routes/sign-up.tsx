@@ -1,4 +1,4 @@
-import { authClient } from '@/lib/auth-client';
+import { signUp, useSession } from '@/lib/auth-client';
 import customSonner from '@/components/CustomSonner';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -9,7 +9,6 @@ export default function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const { signUp, useSession } = authClient;
   const { data: auth, isPending } = useSession();
   const navigate = useNavigate();
 
@@ -39,7 +38,7 @@ export default function SignUp() {
     if (auth?.session) {
       navigate('/');
     }
-  }, [isPending]);
+  }, [auth?.session, isPending, navigate]);
 
   return (
     <div className='flex flex-col items-center justify-center min-h-screen'>
