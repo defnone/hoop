@@ -18,6 +18,7 @@ import { TorrentItemDto } from '@server/features/torrent-item/torrent-item.types
 import { useTorrentStore } from '@/stores/torrentStore';
 import { rpc } from '@/lib/rpc';
 import customSonner from '@/components/CustomSonner';
+import { useNavigate } from 'react-router';
 
 type EpisodesObj = {
   id: number;
@@ -39,6 +40,7 @@ export default function EditTorrentDialog({
 }) {
   const [isAddingToClient, setIsAddingToClient] = useState(false);
   const [isRemovingFromClient, setIsRemovingFromClient] = useState(false);
+  const navigate = useNavigate();
 
   const setOpenId = useTorrentStore((state) => state.setOpenId);
   const setStartFetch = useTorrentStore((state) => state.setStartFetch);
@@ -173,6 +175,17 @@ export default function EditTorrentDialog({
     setStartFetch(Date.now());
   };
 
+  const handleTitleSearch = (torrent: TorrentItemDto) => {
+    const searchParams = new URLSearchParams({ query: torrent.title });
+
+    if (torrent.season !== null) {
+      searchParams.set('season', String(torrent.season));
+    }
+
+    setDialogOpen(false);
+    navigate(`/search?${searchParams.toString()}`);
+  };
+
   return (
     <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
       <DialogContent
@@ -187,6 +200,7 @@ export default function EditTorrentDialog({
               data={data}
               episodesObj={episodesObj}
               handleSave={saveTrackedEpisodes}
+              handleTitleSearch={handleTitleSearch}
             />
             <DialogFooterContent
               data={data}
@@ -207,7 +221,7 @@ export default function EditTorrentDialog({
 function buildEpisodes(data: TorrentItemDto): EpisodesObj {
   const episodesArray = Array.from(
     { length: data.totalEpisodes ?? 0 },
-    (_, i) => i + 1,
+    (_, i) => i + 1
   );
 
   return episodesArray.map((episode) => ({
@@ -216,7 +230,7 @@ function buildEpisodes(data: TorrentItemDto): EpisodesObj {
     trackedEpisodes: (data.trackedEpisodes as number[]).includes(episode),
     available: (data.haveEpisodes as number[]).includes(episode),
     files: (data.files as string[]).filter((file) =>
-      file.includes('E' + episode.toString().padStart(2, '0')),
+      file.includes('E' + episode.toString().padStart(2, '0'))
     ),
   }));
 }
@@ -240,6 +254,7 @@ function DialogHeaderContent({
   data,
   episodesObj,
   handleSave,
+  handleTitleSearch,
 }: {
   data: TorrentItemDto;
   episodesObj: {
@@ -250,6 +265,7 @@ function DialogHeaderContent({
     files: string[];
   }[];
   handleSave: (id: number, episodes: number[]) => Promise<void>;
+  handleTitleSearch: (torrent: TorrentItemDto) => void;
 }) {
   return (
     <DialogHeader className='flex space-y-0 text-left overflow-hidden'>
@@ -267,7 +283,15 @@ function DialogHeaderContent({
           }}
         >
           <div className='px-6 py-4 flex flex-col gap-2'>
-            <h1 className='text-2xl font-extrabold text-white'>{data.title}</h1>
+            <h1 className='text-2xl font-extrabold text-white'>
+              <button
+                type='button'
+                onClick={() => handleTitleSearch(data)}
+                className='text-left hover:text-blue-200 hover:underline hover:underline-offset-4 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-sm'
+              >
+                {data.title}
+              </button>
+            </h1>
             <p className='text-base text-zinc-500 font-bold'>
               Season {data.season}
             </p>
