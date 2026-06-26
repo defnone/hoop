@@ -8,11 +8,10 @@ import type { EventJournalPort } from '@server/features/event-journal/event-jour
 import type { DbTorrentItem } from '@server/db/app/app-schema';
 
 export class UpdateWorker {
-  // Torrent item service instance used during current iteration
-  private ti: TorrentItemPort | undefined;
   // Repository used to read settings and torrent items from DB
   private readonly repo: WorkersRepo;
   private readonly eventJournal: EventJournalPort;
+  private readonly batchSize: number;
   // Tick for internal setInterval, ms
   private timerMs: number;
   // How often to run sync logic, ms (defaults to 60 min). Overridden by user settings.
@@ -34,6 +33,7 @@ export class UpdateWorker {
     this.timerMs = 10000;
     this.repo = repo || new WorkersRepo();
     this.eventJournal = eventJournal || new EventJournalService();
+    this.batchSize = getUpdateBatchSize();
     // Allow overriding last sync time from env (useful for tests and ops)
     this.lastSync = process.env.HOOP_LAST_SYNC
       ? parseInt(process.env.HOOP_LAST_SYNC)
@@ -54,111 +54,16 @@ export class UpdateWorker {
     await this.getSetting();
     const allRows = await this.repo.findAllIdle();
 
-    for (const row of allRows) {
-      logger.info(`[UpdateWorker] Starting sync ${row.title}`);
-      // Build service instance for the DB row and refresh state
-      this.ti = new TorrentItem({
-        id: row.id,
-        url: row.url,
-        trackerId: row.trackerId,
-      });
-      // Pull latest data from tracker and the DB snapshot
-      try {
-        await Promise.all([this.ti.getById(), this.ti.fetchData()]);
-      } catch (e) {
-        const errorMessage =
-          'UpdateWorker: Error on fetch data, ' + formatErrorMessage(e);
-        logger.error(
-          '[UpdateWorker] Error on fetch data, ' + formatErrorMessage(e),
-        );
-        await this.eventJournal.recordTorrentSyncFailed({
-          torrentItem: row,
-          errorMessage,
-        });
-        await this.repo.update(row.id, { errorMessage });
-        continue;
-      }
-
-      const trackerData = this.ti.trackerData;
-      const databaseData = this.ti.databaseData;
-
-      if (!trackerData?.rawTitle) {
-        const errorMessage =
-          'UpdateWorker: Error on fetch data, no tracker title found';
-        logger.error(
-          `[UpdateWorker] No tracker title found for ${databaseData?.title}.`,
-        );
-        await this.eventJournal.recordTorrentSyncFailed({
-          torrentItem: databaseData ?? row,
-          errorMessage,
-        });
-        await this.repo.update(row.id, { errorMessage });
-        continue;
-      }
-
-      if (!databaseData) {
-        const errorMessage =
-          'UpdateWorker: Error on fetch data, no database data found';
-        await this.eventJournal.recordTorrentSyncFailed({
-          torrentItem: row,
-          errorMessage,
-        });
-        await this.repo.update(row.id, { errorMessage });
-        continue;
-      }
-
-      // If raw title differs — tracker has a new/updated payload
-      if (trackerData.rawTitle !== databaseData.rawTitle) {
-        logger.debug(
-          `[UpdateWorker] Comparing: \n ${trackerData.rawTitle} \n ${databaseData.rawTitle}`,
-        );
-        await this.eventJournal.recordTorrentTitleChanged({
-          torrentItem: databaseData,
-          oldValue: databaseData.rawTitle,
-          newValue: trackerData.rawTitle,
-        });
-        // Persist new tracker data
-        await this.ti?.addOrUpdate();
-
-        // If any tracked episode is present in the new torrent — request download
-        const updatedDatabaseData = this.ti.databaseData ?? databaseData;
-        const trackedEpisodes = toNumberArray(
-          updatedDatabaseData.trackedEpisodes,
-        );
-        const haveEpisodes = toNumberArray(updatedDatabaseData.haveEpisodes);
-
-        if (trackedEpisodes && trackedEpisodes.length > 0) {
-          for (const num of trackedEpisodes) {
-            if (haveEpisodes && haveEpisodes.includes(num)) {
-              await this.ti?.markAsDownloadRequested();
-              logger.info(
-                `[UpdateWorker] Mark as download requested: ${updatedDatabaseData.title}`,
-              );
-              break;
-            }
-          }
-        }
-      } else if (trackerData.magnet !== databaseData.magnet) {
-        logger.info(
-          `[UpdateWorker] Magnet changed for ${databaseData.title}. Updating.`,
-        );
-        await this.eventJournal.recordTorrentMagnetChanged({
-          torrentItem: databaseData,
-          oldValue: databaseData.magnet,
-          newValue: trackerData.magnet,
-        });
-        await this.ti?.addOrUpdate();
-      } else {
-        logger.info(
-          `[UpdateWorker] No new data found for ${databaseData.title}`,
-        );
-      }
-      if (row.errorMessage) {
-        const msg = String(row.errorMessage);
-        const isUpdateWorkerError = msg.startsWith('UpdateWorker:');
-        if (isUpdateWorkerError) {
-          await this.repo.update(row.id, { errorMessage: null });
-        }
+    for (const batch of chunkRows(allRows, this.batchSize)) {
+      const results = await Promise.allSettled(
+        batch.map((row) => this.processRow(row)),
+      );
+      const rejectedResult = results.find(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected',
+      );
+      if (rejectedResult) {
+        throw rejectedResult.reason;
       }
     }
     // Record this sync and log the next planned moment for observability
@@ -194,6 +99,134 @@ export class UpdateWorker {
       }
     }, this.timerMs);
   }
+
+  private async processRow(row: DbTorrentItem): Promise<void> {
+    logger.info(`[UpdateWorker] Starting sync ${row.title}`);
+    // Build service instance for the DB row and refresh state
+    const ti: TorrentItemPort = new TorrentItem({
+      id: row.id,
+      url: row.url,
+      trackerId: row.trackerId,
+    });
+    // Pull latest data from tracker and the DB snapshot
+    try {
+      await Promise.all([ti.getById(), ti.fetchData()]);
+    } catch (e) {
+      const errorMessage =
+        'UpdateWorker: Error on fetch data, ' + formatErrorMessage(e);
+      logger.error(
+        '[UpdateWorker] Error on fetch data, ' + formatErrorMessage(e),
+      );
+      await this.eventJournal.recordTorrentSyncFailed({
+        torrentItem: row,
+        errorMessage,
+      });
+      await this.repo.update(row.id, { errorMessage });
+      return;
+    }
+
+    const trackerData = ti.trackerData;
+    const databaseData = ti.databaseData;
+
+    if (!trackerData?.rawTitle) {
+      const errorMessage =
+        'UpdateWorker: Error on fetch data, no tracker title found';
+      logger.error(
+        `[UpdateWorker] No tracker title found for ${databaseData?.title}.`,
+      );
+      await this.eventJournal.recordTorrentSyncFailed({
+        torrentItem: databaseData ?? row,
+        errorMessage,
+      });
+      await this.repo.update(row.id, { errorMessage });
+      return;
+    }
+
+    if (!databaseData) {
+      const errorMessage =
+        'UpdateWorker: Error on fetch data, no database data found';
+      await this.eventJournal.recordTorrentSyncFailed({
+        torrentItem: row,
+        errorMessage,
+      });
+      await this.repo.update(row.id, { errorMessage });
+      return;
+    }
+
+    // If raw title differs — tracker has a new/updated payload
+    if (trackerData.rawTitle !== databaseData.rawTitle) {
+      logger.debug(
+        `[UpdateWorker] Comparing: \n ${trackerData.rawTitle} \n ${databaseData.rawTitle}`,
+      );
+      await this.eventJournal.recordTorrentTitleChanged({
+        torrentItem: databaseData,
+        oldValue: databaseData.rawTitle,
+        newValue: trackerData.rawTitle,
+      });
+      // Persist new tracker data
+      await ti.addOrUpdate();
+
+      // If any tracked episode is present in the new torrent — request download
+      const updatedDatabaseData = ti.databaseData ?? databaseData;
+      const trackedEpisodes = toNumberArray(
+        updatedDatabaseData.trackedEpisodes,
+      );
+      const haveEpisodes = toNumberArray(updatedDatabaseData.haveEpisodes);
+
+      if (trackedEpisodes.length > 0) {
+        for (const num of trackedEpisodes) {
+          if (haveEpisodes.includes(num)) {
+            await ti.markAsDownloadRequested();
+            logger.info(
+              `[UpdateWorker] Mark as download requested: ${updatedDatabaseData.title}`,
+            );
+            break;
+          }
+        }
+      }
+    } else if (trackerData.magnet !== databaseData.magnet) {
+      logger.info(
+        `[UpdateWorker] Magnet changed for ${databaseData.title}. Updating.`,
+      );
+      await this.eventJournal.recordTorrentMagnetChanged({
+        torrentItem: databaseData,
+        oldValue: databaseData.magnet,
+        newValue: trackerData.magnet,
+      });
+      await ti.addOrUpdate();
+    } else {
+      logger.info(`[UpdateWorker] No new data found for ${databaseData.title}`);
+    }
+    if (row.errorMessage) {
+      const msg = String(row.errorMessage);
+      const isUpdateWorkerError = msg.startsWith('UpdateWorker:');
+      if (isUpdateWorkerError) {
+        await this.repo.update(row.id, { errorMessage: null });
+      }
+    }
+  }
+}
+
+const DEFAULT_UPDATE_BATCH_SIZE = 5;
+
+function getUpdateBatchSize(): number {
+  const rawValue = process.env.HOOP_UPDATE_WORKER_BATCH_SIZE;
+  if (!rawValue) return DEFAULT_UPDATE_BATCH_SIZE;
+
+  const parsedValue = Number.parseInt(rawValue, 10);
+  if (!Number.isInteger(parsedValue) || parsedValue < 1) {
+    return DEFAULT_UPDATE_BATCH_SIZE;
+  }
+
+  return parsedValue;
+}
+
+function chunkRows(rows: DbTorrentItem[], size: number): DbTorrentItem[][] {
+  const chunks: DbTorrentItem[][] = [];
+  for (let index = 0; index < rows.length; index += size) {
+    chunks.push(rows.slice(index, index + size));
+  }
+  return chunks;
 }
 
 function toNumberArray(
