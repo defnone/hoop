@@ -52,7 +52,7 @@ export default function Header() {
       }
     },
     onSuccess: () => {
-      customSonner({ text: 'Torrent sync started' });
+      customSonner({ text: 'Sync started' });
       setIsSyncRunning(true);
       setStartFetch(getCurrentTimestamp());
       void queryClient.invalidateQueries({ queryKey: ['torrent-sync-status'] });
@@ -60,7 +60,7 @@ export default function Header() {
     onError: (error) => {
       customSonner({
         variant: 'error',
-        text: error.message || 'Failed to start torrent sync',
+        text: error.message || 'Failed to start sync',
       });
     },
   });
@@ -114,6 +114,7 @@ export default function Header() {
             size='icon-sm'
             variant='secondary'
             aria-label='Start torrent sync'
+            className='ml-3'
             title={
               isSyncRunning ? 'Torrent sync is running' : 'Start torrent sync'
             }
@@ -133,7 +134,7 @@ export default function Header() {
             variant='outline'
             className={cn(
               pathname === '/discover' &&
-                'bg-secondary text-secondary-foreground',
+                'bg-secondary text-secondary-foreground'
             )}
           >
             <Binoculars strokeWidth={2} size={16} />
@@ -147,8 +148,7 @@ export default function Header() {
             variant='outline'
             onClick={() => navigate('/search')}
             className={cn(
-              pathname === '/search' &&
-                'bg-secondary text-secondary-foreground',
+              pathname === '/search' && 'bg-secondary text-secondary-foreground'
             )}
           >
             <Search strokeWidth={3} size={16} />
@@ -160,7 +160,7 @@ export default function Header() {
             onClick={() => navigate('/settings')}
             className={cn(
               pathname === '/settings' &&
-                'bg-secondary text-secondary-foreground',
+                'bg-secondary text-secondary-foreground'
             )}
           >
             <Cog strokeWidth={2} size={16} />
