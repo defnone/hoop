@@ -7,6 +7,12 @@ coverage
 *.log
 .env
 .env.*
+*.pem
+*.key
+*.p12
+*.sqlite
+*.db
+*.bak
 Dockerfile
 docker-compose.yml
 server/static
