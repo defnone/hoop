@@ -8,7 +8,11 @@ import { onAfterUserCreate, onBeforeUserCreate } from './auth-hooks';
 import { createAuthMiddleware, APIError } from 'better-auth/api';
 import { usersCountStorage } from './users-count-storage';
 
+const authBaseUrl = process.env.ORIGIN || 'http://localhost:5173';
+
 export const auth = betterAuth({
+  baseURL: authBaseUrl,
+
   database: drizzleAdapter(db, {
     provider: 'sqlite',
     schema,
@@ -31,7 +35,7 @@ export const auth = betterAuth({
     },
   },
 
-  trustedOrigins: [process.env.ORIGIN || 'http://localhost:5173'],
+  trustedOrigins: [authBaseUrl],
 
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
