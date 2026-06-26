@@ -6,9 +6,10 @@ import healthRoute from './routes/health';
 import { onErrorHandler } from './shared/middlewares';
 import logger from './lib/logger';
 import { DownloadWorker } from './workers/download-worker';
-import { UpdateWorker } from './workers/update-worker';
+import { updateWorker } from './workers/update-worker.instance';
 import { torrentsStatusRoute } from './routes/torrents.status';
 import { torrentsAddRoute } from './routes/torrents.add';
+import { torrentsSyncRoute } from './routes/torrents.sync';
 import { torrentsDeleteRoute } from './routes/torrents.$id.delete';
 import { torrentsRoute } from './routes/torrents';
 import { torrentsSaveTrackedEpRoute } from './routes/torrents.save-tracked-ep';
@@ -91,6 +92,7 @@ export const routes = app
   .route('/files/:id/delete', deleteFileRoute)
   .route('/torrents', torrentsRoute)
   .route('/torrents/status', torrentsStatusRoute)
+  .route('/torrents/sync', torrentsSyncRoute)
   .route('/torrents/add', torrentsAddRoute)
   .route('/torrents/:id/delete', torrentsDeleteRoute)
   .route('/torrents/:id/save-tracked-ep', torrentsSaveTrackedEpRoute)
@@ -115,7 +117,7 @@ root.get('*', async (c, next) => {
 const port = parseInt(process.env.PORT || '3000');
 
 if (process.env.HONO_WORKERS !== '0') {
-  new UpdateWorker({}).run();
+  updateWorker.run();
   new DownloadWorker({}).run();
 }
 

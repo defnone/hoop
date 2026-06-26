@@ -4,11 +4,12 @@ import healthRoute from '@server/routes/health';
 
 const { handlerMock, getSessionMock, usersCountStorage } = vi.hoisted(() => {
   const handlerMock: (req: Request) => Promise<Response> = vi.fn(
-    async (_req: Request): Promise<Response> => new Response(null, { status: 200 })
+    async (_req: Request): Promise<Response> =>
+      new Response(null, { status: 200 }),
   );
   type GetSessionOpts = { headers: Headers };
   const getSessionMock: (opts: GetSessionOpts) => Promise<null> = vi.fn(
-    async (_opts: GetSessionOpts): Promise<null> => null
+    async (_opts: GetSessionOpts): Promise<null> => null,
   );
   const usersCountStorage = new Map<string, number>();
   usersCountStorage.set('count', 0);
@@ -85,6 +86,14 @@ vi.mock('@server/routes/torrents.status', async () => {
   return { torrentsStatusRoute: route, default: route };
 });
 
+vi.mock('@server/routes/torrents.sync', async () => {
+  const { Hono } = await import('hono/tiny');
+  const route = new Hono()
+    .get('/', (c) => c.json({ ok: true }))
+    .post('/', (c) => c.json({ ok: true }));
+  return { torrentsSyncRoute: route, default: route };
+});
+
 vi.mock('@server/routes/torrents.add', async () => {
   const { Hono } = await import('hono/tiny');
   const route = new Hono().post('/', (c) => c.json({ ok: true }));
@@ -146,6 +155,7 @@ describe('auth middleware integration', () => {
       { deleteFileRoute },
       { torrentsRoute },
       { torrentsStatusRoute },
+      { torrentsSyncRoute },
       { torrentsAddRoute },
       { torrentsDeleteRoute },
       { torrentsPauseToggleRoute },
@@ -161,6 +171,7 @@ describe('auth middleware integration', () => {
       import('@server/routes/files.$id.delete'),
       import('@server/routes/torrents'),
       import('@server/routes/torrents.status'),
+      import('@server/routes/torrents.sync'),
       import('@server/routes/torrents.add'),
       import('@server/routes/torrents.$id.delete'),
       import('@server/routes/torrents.pause-toggle'),
@@ -178,12 +189,19 @@ describe('auth middleware integration', () => {
         return c.json({ error: 'Unauthorized' }, 401);
       }
 
-      c.set('user' as never, (session as never as { user: null }).user as never);
-      c.set('session' as never, (session as never as { session: null }).session as never);
+      c.set(
+        'user' as never,
+        (session as never as { user: null }).user as never,
+      );
+      c.set(
+        'session' as never,
+        (session as never as { session: null }).session as never,
+      );
       return next();
     });
 
-    app.route('/system/exit', systemExitRoute)
+    app
+      .route('/system/exit', systemExitRoute)
       .route('/jackett/search', jackettSearchRoute)
       .route('/jackett/verify', jackettVerifyRoute)
       .route('/trackers/kinozal/verify', trackersKinozalVerifyRoute)
@@ -191,6 +209,7 @@ describe('auth middleware integration', () => {
       .route('/files/:id/delete', deleteFileRoute)
       .route('/torrents', torrentsRoute)
       .route('/torrents/status', torrentsStatusRoute)
+      .route('/torrents/sync', torrentsSyncRoute)
       .route('/torrents/add', torrentsAddRoute)
       .route('/torrents/:id/delete', torrentsDeleteRoute)
       .route('/torrents/:id/pause-toggle', torrentsPauseToggleRoute)
@@ -250,6 +269,8 @@ describe('auth middleware integration', () => {
     },
     { method: 'GET', path: '/api/torrents/?page=1&limit=10' },
     { method: 'GET', path: '/api/torrents/status' },
+    { method: 'GET', path: '/api/torrents/sync' },
+    { method: 'POST', path: '/api/torrents/sync' },
     {
       method: 'POST',
       path: '/api/torrents/add',
@@ -286,6 +307,6 @@ describe('auth middleware integration', () => {
       expect(response.status).toBe(401);
       const json = await response.json();
       expect(json).toEqual({ error: 'Unauthorized' });
-    }
+    },
   );
 });

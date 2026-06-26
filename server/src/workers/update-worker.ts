@@ -88,16 +88,44 @@ export class UpdateWorker {
         !this.isProcessing &&
         Date.now() > this.lastSync + this.syncInterval
       ) {
-        this.isProcessing = true;
         try {
-          await this.process();
+          await this.processWithLock();
         } catch (e) {
           logger.error(`[UpdateWorker] Error on process: ${e}`);
-        } finally {
-          this.isProcessing = false;
         }
       }
     }, this.timerMs);
+  }
+
+  startNow(): boolean {
+    if (this.isProcessing) return false;
+
+    this.isProcessing = true;
+    void this.process()
+      .catch((e) => {
+        logger.error(`[UpdateWorker] Error on manual process: ${e}`);
+      })
+      .finally(() => {
+        this.isProcessing = false;
+      });
+
+    return true;
+  }
+
+  isRunning(): boolean {
+    return this.isProcessing;
+  }
+
+  private async processWithLock(): Promise<boolean> {
+    if (this.isProcessing) return false;
+
+    this.isProcessing = true;
+    try {
+      await this.process();
+      return true;
+    } finally {
+      this.isProcessing = false;
+    }
   }
 
   private async processRow(row: DbTorrentItem): Promise<void> {

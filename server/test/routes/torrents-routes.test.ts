@@ -28,10 +28,11 @@ const {
   getByIdMock,
   markAsPausedMock,
   markAsIdleMock,
+  isUpdateWorkerRunningMock,
 } = vi.hoisted(() => {
   type GetAllFn = (
     page: number,
-    limit: number
+    limit: number,
   ) => Promise<PagedResult<TorrentItemDto>>;
   const getAllMock = vi.fn<GetAllFn>();
   type AddOrUpdateFn = () => Promise<TorrentItemDto | null>;
@@ -46,8 +47,9 @@ const {
   const getByIdMock = vi.fn<VoidAsyncFn>(async () => undefined);
   const markAsPausedMock = vi.fn<VoidAsyncFn>(async () => undefined);
   const markAsIdleMock = vi.fn<VoidAsyncFn>(async () => undefined);
+  const isUpdateWorkerRunningMock = vi.fn((): boolean => false);
   const torrentItemCtorSpy = vi.fn(function torrentItemCtor(
-    params: TorrentItemParams
+    params: TorrentItemParams,
   ) {
     return {
       getAll: getAllMock,
@@ -76,6 +78,7 @@ const {
     getByIdMock,
     markAsPausedMock,
     markAsIdleMock,
+    isUpdateWorkerRunningMock,
   } as const;
 });
 
@@ -85,6 +88,12 @@ const { statusStorage: statusStorageMock } = vi.hoisted(() => ({
 
 vi.mock('@server/workers/download-worker', () => ({
   statusStorage: statusStorageMock,
+}));
+
+vi.mock('@server/workers/update-worker.instance', () => ({
+  updateWorker: {
+    isRunning: isUpdateWorkerRunningMock,
+  },
 }));
 
 vi.mock('@server/features/torrent-item/torrent-item.service', () => ({
@@ -98,7 +107,7 @@ type ApiResponse<T> = {
 };
 
 function createTorrentDto(
-  override: Partial<TorrentItemDto> = {}
+  override: Partial<TorrentItemDto> = {},
 ): TorrentItemDto {
   return {
     id: 1,
@@ -174,7 +183,7 @@ describe('torrentsRoute', () => {
           total: 1,
           page,
           hasNext: false,
-        }) satisfies PagedResult<TorrentItemDto>
+        }) satisfies PagedResult<TorrentItemDto>,
     );
     statusStorage.set(1, createStatus());
 
@@ -183,6 +192,7 @@ describe('torrentsRoute', () => {
       PagedResult<TorrentItemDto> & {
         status: Record<string, { data: NormalizedTorrent | undefined }>;
         lastSync: string | null;
+        syncStatus: { isRunning: boolean };
       }
     >;
 
@@ -192,6 +202,25 @@ describe('torrentsRoute', () => {
     expect(body.data?.items[0]?.id).toBe(dto.id);
     expect(body.data?.status['1']?.data?.id).toBe('hash');
     expect(body.data?.lastSync).toBe('2024-01-01T00:00:00.000Z');
+    expect(body.data?.syncStatus.isRunning).toBe(false);
+  });
+
+  it('returns update worker running status', async () => {
+    isUpdateWorkerRunningMock.mockReturnValueOnce(true);
+    getAllMock.mockResolvedValueOnce({
+      items: [],
+      total: 0,
+      page: 1,
+      hasNext: false,
+    } satisfies PagedResult<TorrentItemDto>);
+
+    const response = await torrentsRoute.request('/?page=1&limit=10');
+    const body = (await response.json()) as ApiResponse<{
+      syncStatus: { isRunning: boolean };
+    }>;
+
+    expect(response.status).toBe(200);
+    expect(body.data?.syncStatus.isRunning).toBe(true);
   });
 
   it('returns error when service fails', async () => {
@@ -318,7 +347,7 @@ describe('torrentsPauseToggleRoute', () => {
 
     const app = mountRoute(
       '/torrents/:id/pause-toggle',
-      torrentsPauseToggleRoute
+      torrentsPauseToggleRoute,
     );
     const response = await app.request('/torrents/7/pause-toggle', {
       method: 'PUT',
@@ -342,7 +371,7 @@ describe('torrentsPauseToggleRoute', () => {
 
     const app = mountRoute(
       '/torrents/:id/pause-toggle',
-      torrentsPauseToggleRoute
+      torrentsPauseToggleRoute,
     );
     const response = await app.request('/torrents/9/pause-toggle', {
       method: 'PUT',
@@ -368,7 +397,7 @@ describe('torrentsPauseToggleRoute', () => {
 
     const app = mountRoute(
       '/torrents/:id/pause-toggle',
-      torrentsPauseToggleRoute
+      torrentsPauseToggleRoute,
     );
     const response = await app.request('/torrents/11/pause-toggle', {
       method: 'PUT',
@@ -380,7 +409,7 @@ describe('torrentsPauseToggleRoute', () => {
     expect(markAsPausedMock).not.toHaveBeenCalled();
     expect(markAsIdleMock).not.toHaveBeenCalled();
     expect(body.message).toBe(
-      'Torrent is not idle or paused, cannot toggle pause status'
+      'Torrent is not idle or paused, cannot toggle pause status',
     );
   });
 
@@ -391,7 +420,7 @@ describe('torrentsPauseToggleRoute', () => {
 
     const app = mountRoute(
       '/torrents/:id/pause-toggle',
-      torrentsPauseToggleRoute
+      torrentsPauseToggleRoute,
     );
     const response = await app.request('/torrents/13/pause-toggle', {
       method: 'PUT',
@@ -459,7 +488,7 @@ describe('torrentsSaveTrackedEpRoute', () => {
     updateTrackedEpisodesMock.mockResolvedValueOnce(undefined);
     const app = mountRoute(
       '/torrents/:id/save-tracked-ep',
-      torrentsSaveTrackedEpRoute
+      torrentsSaveTrackedEpRoute,
     );
 
     const response = await app.request('/torrents/2/save-tracked-ep', {
@@ -481,7 +510,7 @@ describe('torrentsSaveTrackedEpRoute', () => {
     updateTrackedEpisodesMock.mockRejectedValueOnce(new Error('save failed'));
     const app = mountRoute(
       '/torrents/:id/save-tracked-ep',
-      torrentsSaveTrackedEpRoute
+      torrentsSaveTrackedEpRoute,
     );
 
     const response = await app.request('/torrents/2/save-tracked-ep', {
