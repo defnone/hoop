@@ -1,6 +1,6 @@
 import { signOut } from '@/lib/auth-client';
 import { Button } from '../ui/button';
-import { Binoculars, Cog, LogOutIcon, Search } from 'lucide-react';
+import { Binoculars, Cog, LogOutIcon, RefreshCw, Search } from 'lucide-react';
 import customSonner from '@/components/CustomSonner';
 import { Separator } from '../ui/separator';
 import { cn } from '@/lib/utils';
@@ -9,6 +9,8 @@ import { Logo } from './Logo';
 import { useTorrentStore } from '@/stores/torrentStore';
 import useSettings from '@/hooks/useSettings';
 import { useEffect } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { rpc } from '@/lib/rpc';
 
 async function handleSignOut() {
   await signOut({
@@ -26,12 +28,57 @@ export default function Header() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const lastSync = useTorrentStore((state) => state.lastSync);
+  const setLastSync = useTorrentStore((state) => state.setLastSync);
   const setStartFetch = useTorrentStore((state) => state.setStartFetch);
+  const isSyncRunning = useTorrentStore((state) => state.isSyncRunning);
+  const setIsSyncRunning = useTorrentStore((state) => state.setIsSyncRunning);
   const { settingsData, errorSettings } = useSettings();
+  const queryClient = useQueryClient();
+  const { data: syncStatusResponse } = useQuery({
+    queryKey: ['torrent-sync-status'],
+    refetchInterval: 3000,
+    refetchIntervalInBackground: false,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    queryFn: async () => (await rpc.api.torrents.sync.$get()).json(),
+  });
+  const syncMutation = useMutation({
+    mutationFn: async (): Promise<void> => {
+      const response = await rpc.api.torrents.sync.$post();
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message ?? 'Failed to start torrent sync');
+      }
+    },
+    onSuccess: () => {
+      customSonner({ text: 'Torrent sync started' });
+      setIsSyncRunning(true);
+      setStartFetch(getCurrentTimestamp());
+      void queryClient.invalidateQueries({ queryKey: ['torrent-sync-status'] });
+    },
+    onError: (error) => {
+      customSonner({
+        variant: 'error',
+        text: error.message || 'Failed to start torrent sync',
+      });
+    },
+  });
+  const isSyncButtonDisabled = syncMutation.isPending || isSyncRunning;
 
   const lastSyncLabel = lastSync
     ? new Date(Number(lastSync)).toLocaleString()
     : null;
+
+  useEffect(() => {
+    const syncStatus = syncStatusResponse?.data;
+    if (!syncStatus) return;
+
+    if (syncStatus.lastSync) {
+      setLastSync(syncStatus.lastSync);
+    }
+    setIsSyncRunning(syncStatus.isRunning);
+  }, [setIsSyncRunning, setLastSync, syncStatusResponse]);
 
   useEffect(() => {
     if (errorSettings) {
@@ -62,6 +109,22 @@ export default function Header() {
               Last sync: {lastSyncLabel}
             </p>
           )}
+          <Button
+            type='button'
+            size='icon-sm'
+            variant='secondary'
+            aria-label='Start torrent sync'
+            title={
+              isSyncRunning ? 'Torrent sync is running' : 'Start torrent sync'
+            }
+            disabled={isSyncButtonDisabled}
+            onClick={() => syncMutation.mutate()}
+          >
+            <RefreshCw
+              strokeWidth={3}
+              className={cn(isSyncButtonDisabled && 'animate-spin')}
+            />
+          </Button>
         </div>
         <div className='flex items-center gap-2'>
           <Button
