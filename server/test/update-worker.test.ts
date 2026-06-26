@@ -118,6 +118,10 @@ let lastTI:
 let nextTrackerData: TorrentDataResult | null = null;
 let nextDatabaseData: DbTorrentItem | null = null;
 let nextFetchError: Error | null = null;
+let fetchDataDelayMs = 0;
+let activeFetches = 0;
+let maxActiveFetches = 0;
+const originalUpdateBatchSize = process.env.HOOP_UPDATE_WORKER_BATCH_SIZE;
 
 // Mock implementation of TorrentItem service
 vi.mock('@server/features/torrent-item/torrent-item.service', () => {
@@ -126,19 +130,31 @@ vi.mock('@server/features/torrent-item/torrent-item.service', () => {
     public databaseData: DbTorrentItem | null = null;
     public addOrUpdateMock = vi.fn();
     public markAsDownloadRequestedMock = vi.fn();
+    private readonly id: number;
 
-    constructor(_: { id: number; url: string; trackerId: string }) {
+    constructor({ id }: { id: number; url: string; trackerId: string }) {
+      this.id = id;
       captureTorrentItem(this);
     }
 
     async fetchData(): Promise<void> {
-      if (nextFetchError) {
-        throw nextFetchError;
-      }
+      activeFetches += 1;
+      maxActiveFetches = Math.max(maxActiveFetches, activeFetches);
 
-      // Use values arranged by the test
-      this.trackerData = nextTrackerData;
-      return Promise.resolve();
+      try {
+        if (fetchDataDelayMs > 0) {
+          await sleep(fetchDataDelayMs);
+        }
+
+        if (nextFetchError) {
+          throw nextFetchError;
+        }
+
+        // Use values arranged by the test
+        this.trackerData = nextTrackerData;
+      } finally {
+        activeFetches -= 1;
+      }
     }
     async getAll(
       page: number,
@@ -153,7 +169,12 @@ vi.mock('@server/features/torrent-item/torrent-item.service', () => {
       });
     }
     async getById(): Promise<TorrentItemDto> {
-      this.databaseData = nextDatabaseData;
+      this.databaseData = nextDatabaseData
+        ? {
+            ...nextDatabaseData,
+            id: this.id,
+          }
+        : null;
       const dbItem = this.databaseData;
       return Promise.resolve({
         id: dbItem?.id ?? 0,
@@ -219,6 +240,10 @@ function captureTorrentItem(
   lastTI = item;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // Lightweight repo mock
 class RepoMock {
   public findSettings = vi.fn(async () => settings);
@@ -245,10 +270,19 @@ describe('UpdateWorker.process', () => {
     vi.clearAllMocks();
     lastTI = null;
     nextFetchError = null;
+    fetchDataDelayMs = 0;
+    activeFetches = 0;
+    maxActiveFetches = 0;
+    delete process.env.HOOP_UPDATE_WORKER_BATCH_SIZE;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    if (originalUpdateBatchSize) {
+      process.env.HOOP_UPDATE_WORKER_BATCH_SIZE = originalUpdateBatchSize;
+    } else {
+      delete process.env.HOOP_UPDATE_WORKER_BATCH_SIZE;
+    }
   });
 
   it('updates item and requests download when new data and tracked episodes are available', async () => {
@@ -422,6 +456,39 @@ describe('UpdateWorker.process', () => {
     expect(lastTI?.addOrUpdateMock).not.toHaveBeenCalled();
     expect(lastTI?.markAsDownloadRequestedMock).not.toHaveBeenCalled();
     expect(eventJournal.recordTorrentSyncFailed).toHaveBeenCalledTimes(1);
+  });
+
+  it('processes idle items in env-sized batches', async () => {
+    process.env.HOOP_UPDATE_WORKER_BATCH_SIZE = '3';
+
+    const { UpdateWorker } = await import('@server/workers/update-worker');
+    const repo = new RepoMock();
+    const rows: DbTorrentItem[] = Array.from({ length: 8 }, (_, index) => ({
+      ...baseItem,
+      id: index + 1,
+      title: `Some Show ${index + 1}`,
+    }));
+    repo.findAllIdle.mockResolvedValue(rows);
+
+    nextTrackerData = {
+      torrentId: 't-1',
+      rawTitle: 'Same Raw',
+      showTitle: 'Some Show',
+      epAndSeason: null,
+      magnet: 'MAG',
+    } satisfies TorrentDataResult;
+    nextDatabaseData = {
+      ...baseItem,
+      rawTitle: 'Same Raw',
+      magnet: 'MAG',
+    } satisfies DbTorrentItem;
+    fetchDataDelayMs = 10;
+
+    const worker = new UpdateWorker({ repo: repo as unknown as never });
+
+    await worker.process();
+
+    expect(maxActiveFetches).toBe(3);
   });
 });
 
