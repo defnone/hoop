@@ -15,6 +15,7 @@ export default function TorrentTable() {
   const setStatus = useTorrentStore((state) => state.setStatus);
   const items = useTorrentStore((state) => state.items);
   const setLastSync = useTorrentStore((state) => state.setLastSync);
+  const setIsSyncRunning = useTorrentStore((state) => state.setIsSyncRunning);
 
   const {
     data: dataResponse,
@@ -43,7 +44,10 @@ export default function TorrentTable() {
     if (dataResponse?.data?.lastSync) {
       setLastSync(dataResponse?.data?.lastSync);
     }
-  }, [dataResponse, setItems, setLastSync, setStatus]);
+    if (dataResponse?.data?.syncStatus) {
+      setIsSyncRunning(dataResponse.data.syncStatus.isRunning);
+    }
+  }, [dataResponse, setIsSyncRunning, setItems, setLastSync, setStatus]);
 
   // Search filter
   useEffect(() => {

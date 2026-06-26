@@ -17,7 +17,7 @@ type torrentStore = {
       {
         data: NormalizedTorrent | undefined;
       }
-    >
+    >,
   ) => void;
   startFetch: number;
   setStartFetch: (startFetch: number) => void;
@@ -29,6 +29,8 @@ type torrentStore = {
   setFilteredData: (filteredData: TorrentItemDto[]) => void;
   lastSync: string | null;
   setLastSync: (lastSync: string) => void;
+  isSyncRunning: boolean;
+  setIsSyncRunning: (isSyncRunning: boolean) => void;
 };
 
 export const useTorrentStore = create<torrentStore>((set) => ({
@@ -46,4 +48,6 @@ export const useTorrentStore = create<torrentStore>((set) => ({
   setFilteredData: (filteredData) => set({ filteredData }),
   lastSync: null,
   setLastSync: (lastSync) => set({ lastSync }),
+  isSyncRunning: false,
+  setIsSyncRunning: (isSyncRunning) => set({ isSyncRunning }),
 }));
