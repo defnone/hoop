@@ -6,6 +6,7 @@ import logger from '@server/lib/logger';
 import z from 'zod';
 import { sValidator } from '@hono/standard-validator';
 import { handleStandardValidation } from '@server/lib/validation';
+import { updateWorker } from '@server/workers/update-worker.instance';
 
 const schema = z.object({
   page: z.coerce.number({ message: 'page is required' }).min(1),
@@ -21,13 +22,16 @@ export const torrentsRoute = new Hono().get(
     try {
       const ti = new TorrentItem({ url: '' });
       const status = Object.fromEntries(
-        [...statusStorage].map(([id, data]) => [id, { data }])
+        [...statusStorage].map(([id, data]) => [id, { data }]),
       );
       const data = await ti.getAll(page, limit);
       const responseData = {
         status,
         ...data,
         lastSync: process.env.HOOP_LAST_SYNC ?? null,
+        syncStatus: {
+          isRunning: updateWorker.isRunning(),
+        },
       };
 
       const response: ApiResponse<typeof responseData> = {
@@ -44,5 +48,5 @@ export const torrentsRoute = new Hono().get(
       };
       return c.json(response, 400);
     }
-  }
+  },
 );

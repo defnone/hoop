@@ -490,6 +490,31 @@ describe('UpdateWorker.process', () => {
 
     expect(maxActiveFetches).toBe(3);
   });
+
+  it('does not start a manual sync while another sync is running', async () => {
+    const { UpdateWorker } = await import('@server/workers/update-worker');
+    const repo = new RepoMock();
+    nextTrackerData = {
+      torrentId: 't-1',
+      rawTitle: 'Same Raw',
+      showTitle: 'Some Show',
+      epAndSeason: null,
+      magnet: 'MAG',
+    } satisfies TorrentDataResult;
+    nextDatabaseData = {
+      ...baseItem,
+      rawTitle: 'Same Raw',
+      magnet: 'MAG',
+    } satisfies DbTorrentItem;
+    fetchDataDelayMs = 10;
+
+    const worker = new UpdateWorker({ repo: repo as unknown as never });
+
+    expect(worker.startNow()).toBe(true);
+    expect(worker.startNow()).toBe(false);
+
+    await sleep(20);
+  });
 });
 
 describe('UpdateWorker.run', () => {
