@@ -47,8 +47,10 @@ export type TorrentClientItemDto = {
   downloadSpeed: number;
   eta: number;
   queuePosition: number;
-  connectedSeeds: number;
-  connectedPeers: number;
+  /** Peers currently sending data to this client. */
+  peersSendingToUs: number;
+  /** Peers currently receiving data from this client. */
+  peersGettingFromUs: number;
   totalSeeds: number;
   totalPeers: number;
   totalSelected: number;

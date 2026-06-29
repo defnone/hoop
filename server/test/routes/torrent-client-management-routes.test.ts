@@ -16,6 +16,8 @@ type ApiResponse<T> = {
   message?: string;
 };
 
+const torrentHash = '0123456789abcdef0123456789abcdef01234567';
+
 const {
   getAllNormalizedMock,
   controlClientTorrentMock,
@@ -100,14 +102,17 @@ describe('torrent client management routes', () => {
       torrentClientActionRoute,
     );
 
-    const response = await app.request('/torrent-client/hash/action', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ action: 'pause' }),
-    });
+    const response = await app.request(
+      `/torrent-client/${torrentHash}/action`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'pause' }),
+      },
+    );
 
     expect(response.status).toBe(200);
-    expect(controlClientTorrentMock).toHaveBeenCalledWith('hash', 'pause');
+    expect(controlClientTorrentMock).toHaveBeenCalledWith(torrentHash, 'pause');
   });
 
   it('rejects an unsupported Transmission action', async () => {
@@ -116,11 +121,33 @@ describe('torrent client management routes', () => {
       torrentClientActionRoute,
     );
 
-    const response = await app.request('/torrent-client/hash/action', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ action: 'unsupported' }),
-    });
+    const response = await app.request(
+      `/torrent-client/${torrentHash}/action`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'unsupported' }),
+      },
+    );
+
+    expect(response.status).toBe(400);
+    expect(controlClientTorrentMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects Transmission selector aliases for client actions', async () => {
+    const app = mountRoute(
+      '/torrent-client/:id/action',
+      torrentClientActionRoute,
+    );
+
+    const response = await app.request(
+      '/torrent-client/recently-active/action',
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'pause' }),
+      },
+    );
 
     expect(response.status).toBe(400);
     expect(controlClientTorrentMock).not.toHaveBeenCalled();
@@ -135,12 +162,12 @@ describe('torrent client management routes', () => {
     );
 
     const response = await app.request(
-      '/torrent-client/hash/remove?deleteData=false',
+      `/torrent-client/${torrentHash}/remove?deleteData=false`,
       { method: 'DELETE' },
     );
 
     expect(response.status).toBe(200);
-    expect(removeClientTorrentMock).toHaveBeenCalledWith('hash', false);
+    expect(removeClientTorrentMock).toHaveBeenCalledWith(torrentHash, false);
     expect(statusStorage.has(17)).toBe(false);
   });
 
@@ -152,14 +179,29 @@ describe('torrent client management routes', () => {
     );
 
     const response = await app.request(
-      '/torrent-client/hash/remove?deleteData=true',
+      `/torrent-client/${torrentHash}/remove?deleteData=true`,
       { method: 'DELETE' },
     );
 
     const body = (await response.json()) as ApiResponse<null>;
     expect(response.status).toBe(200);
-    expect(removeClientTorrentMock).toHaveBeenCalledWith('hash', true);
+    expect(removeClientTorrentMock).toHaveBeenCalledWith(torrentHash, true);
     expect(body.message).toBe('Torrent and data removed from Transmission');
+  });
+
+  it('rejects Transmission selector aliases for torrent removal', async () => {
+    const app = mountRoute(
+      '/torrent-client/:id/remove',
+      torrentClientRemoveRoute,
+    );
+
+    const response = await app.request(
+      '/torrent-client/recently-active/remove?deleteData=true',
+      { method: 'DELETE' },
+    );
+
+    expect(response.status).toBe(400);
+    expect(removeClientTorrentMock).not.toHaveBeenCalled();
   });
 });
 
@@ -171,7 +213,7 @@ function mountRoute(path: string, route: Hono): Hono {
 
 function createTorrent(): TorrentClientItemDto {
   return {
-    id: 'hash',
+    id: torrentHash,
     name: 'Ubuntu.iso',
     progress: 0.5,
     isCompleted: false,
@@ -187,8 +229,8 @@ function createTorrent(): TorrentClientItemDto {
     downloadSpeed: 200,
     eta: 60,
     queuePosition: 0,
-    connectedSeeds: 1,
-    connectedPeers: 2,
+    peersSendingToUs: 2,
+    peersGettingFromUs: 1,
     totalSeeds: 3,
     totalPeers: 4,
     totalSelected: 1000,
@@ -199,8 +241,11 @@ function createTorrent(): TorrentClientItemDto {
 }
 
 function createNormalizedTorrent(): NormalizedTorrent {
+  const { peersSendingToUs, peersGettingFromUs, ...torrent } = createTorrent();
   return {
-    ...createTorrent(),
+    ...torrent,
+    connectedPeers: peersSendingToUs,
+    connectedSeeds: peersGettingFromUs,
     dateCompleted: '',
     label: '',
     raw: { files: [] },

@@ -8,10 +8,7 @@ import logger from '@server/lib/logger';
 import { z } from 'zod';
 import { sValidator } from '@hono/standard-validator';
 import { handleStandardValidation } from '@server/lib/validation';
-
-const paramSchema = z.object({
-  id: z.string().min(1),
-});
+import { torrentClientIdParamSchema } from '@server/routes/torrent-client.schemas';
 
 const actionSchema = z.object({
   action: z.enum(torrentClientActions),
@@ -19,7 +16,7 @@ const actionSchema = z.object({
 
 export const torrentClientActionRoute = new Hono().put(
   '/',
-  sValidator('param', paramSchema, handleStandardValidation),
+  sValidator('param', torrentClientIdParamSchema, handleStandardValidation),
   sValidator('json', actionSchema, handleStandardValidation),
   async (c) => {
     const { id } = c.req.valid('param');

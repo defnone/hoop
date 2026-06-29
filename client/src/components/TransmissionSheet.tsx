@@ -80,7 +80,7 @@ type TorrentActionRequest = {
   action: TorrentClientAction;
 };
 
-type TorrentRemovalRequest = {
+export type TorrentRemovalRequest = {
   torrent: TorrentClientItemDto;
   deleteData: boolean;
 };
@@ -432,13 +432,13 @@ function TorrentRow({
                     className='shrink-0 ml-3'
                     title='Peers sending data to this client'
                   >
-                    From {formatPeerCount(torrent.connectedPeers)}
+                    From {formatPeerCount(torrent.peersSendingToUs)}
                   </span>
                   <span
                     className='shrink-0'
                     title='Peers receiving data from this client'
                   >
-                    To {formatPeerCount(torrent.connectedSeeds)}
+                    To {formatPeerCount(torrent.peersGettingFromUs)}
                   </span>
                 </>
               ) : null}
@@ -611,7 +611,7 @@ function TorrentListSkeleton() {
   );
 }
 
-function RemoveTorrentDialog({
+export function RemoveTorrentDialog({
   request,
   isPending,
   onOpenChange,
@@ -622,17 +622,25 @@ function RemoveTorrentDialog({
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
 }) {
+  const [lastRequest, setLastRequest] = useState<TorrentRemovalRequest | null>(
+    request,
+  );
+  if (request !== null && request !== lastRequest) {
+    setLastRequest(request);
+  }
+  const activeRequest = request ?? lastRequest;
+
   return (
     <Dialog open={request !== null} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {request?.deleteData
+            {activeRequest?.deleteData
               ? 'Remove Torrent and Data?'
               : 'Remove Torrent?'}
           </DialogTitle>
           <DialogDescription>
-            {request?.deleteData
+            {activeRequest?.deleteData
               ? 'This removes the transfer and permanently deletes its downloaded data.'
               : 'This removes the transfer from Transmission and keeps downloaded data on disk.'}
           </DialogDescription>
@@ -653,7 +661,7 @@ function RemoveTorrentDialog({
             onClick={onConfirm}
           >
             {isPending ? <RefreshCw className='animate-spin' /> : <Trash2 />}
-            {request?.deleteData ? 'Remove and Delete Data' : 'Remove'}
+            {activeRequest?.deleteData ? 'Remove and Delete Data' : 'Remove'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -6,10 +6,7 @@ import { z } from 'zod';
 import { sValidator } from '@hono/standard-validator';
 import { handleStandardValidation } from '@server/lib/validation';
 import { statusStorage } from '@server/workers/download-worker';
-
-const paramSchema = z.object({
-  id: z.string().min(1),
-});
+import { torrentClientIdParamSchema } from '@server/routes/torrent-client.schemas';
 
 const querySchema = z.object({
   deleteData: z.enum(['true', 'false']).default('false'),
@@ -17,7 +14,7 @@ const querySchema = z.object({
 
 export const torrentClientRemoveRoute = new Hono().delete(
   '/',
-  sValidator('param', paramSchema, handleStandardValidation),
+  sValidator('param', torrentClientIdParamSchema, handleStandardValidation),
   sValidator('query', querySchema, handleStandardValidation),
   async (c) => {
     const { id } = c.req.valid('param');

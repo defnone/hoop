@@ -4,7 +4,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TorrentState } from '@ctrl/shared-torrent';
 import type { TorrentClientItemDto } from '@server/external/adapters/transmission';
-import TransmissionSheet from './TransmissionSheet';
+import TransmissionSheet, {
+  RemoveTorrentDialog,
+  type TorrentRemovalRequest,
+} from './TransmissionSheet';
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean;
@@ -156,6 +159,39 @@ describe('TransmissionSheet', () => {
   });
 });
 
+describe('RemoveTorrentDialog', () => {
+  it('keeps destructive copy while the dialog closes', async () => {
+    const request: TorrentRemovalRequest = {
+      torrent: createTorrent(),
+      deleteData: true,
+    };
+
+    await act(async () => {
+      root.render(
+        <RemoveTorrentDialog
+          request={request}
+          isPending={false}
+          onOpenChange={vi.fn()}
+          onConfirm={vi.fn()}
+        />,
+      );
+    });
+    expect(document.body.textContent).toContain('Remove Torrent and Data?');
+
+    await act(async () => {
+      root.render(
+        <RemoveTorrentDialog
+          request={null}
+          isPending={false}
+          onOpenChange={vi.fn()}
+          onConfirm={vi.fn()}
+        />,
+      );
+    });
+    expect(document.body.textContent).not.toContain('Remove Torrent?');
+  });
+});
+
 function createTorrent(
   override: Partial<TorrentClientItemDto> = {},
 ): TorrentClientItemDto {
@@ -176,8 +212,8 @@ function createTorrent(
     downloadSpeed: 1024,
     eta: 120,
     queuePosition: 0,
-    connectedSeeds: 1,
-    connectedPeers: 2,
+    peersSendingToUs: 2,
+    peersGettingFromUs: 1,
     totalSeeds: 3,
     totalPeers: 4,
     totalSelected: 1024,

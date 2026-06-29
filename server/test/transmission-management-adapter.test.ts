@@ -66,6 +66,8 @@ describe('TransmissionAdapter management methods', () => {
         dateCompleted: null,
         label: null,
         tags: [],
+        peersSendingToUs: 2,
+        peersGettingFromUs: 1,
       }),
     ]);
     expect(torrents[0]).not.toHaveProperty('raw');
