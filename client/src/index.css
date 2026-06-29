@@ -39,6 +39,15 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-transfer-row: var(--transfer-row);
+  --color-transfer-row-alternate: var(--transfer-row-alternate);
+  --color-transfer-downloading: var(--transfer-downloading);
+  --color-transfer-seeding: var(--transfer-seeding);
+  --color-transfer-paused: var(--transfer-paused);
+  --color-transfer-checking: var(--transfer-checking);
+  --color-transfer-queued: var(--transfer-queued);
+  --color-transfer-error: var(--transfer-error);
+  --color-transfer-warning: var(--transfer-warning);
   --font-sans: 'Mulish Variable', sans-serif;
 }
 
@@ -47,7 +56,7 @@
   --foreground: hsl(0 0% 98%);
   --card: hsl(0 0% 7%);
   --card-foreground: hsl(0 0% 98%);
-  --popover: hsl(240, 9%, 11%);
+  --popover: hsl(0, 0%, 11%);
   --popover-foreground: hsl(0 0% 98%);
   --primary: hsl(0, 0%, 85%);
   --primary-foreground: hsl(240 5.9% 10%);
@@ -57,7 +66,7 @@
   --muted-foreground: hsl(240 5% 64.9%);
   --accent: hsl(240 3.7% 15.9%);
   --accent-foreground: hsl(0 0% 98%);
-  --destructive: hsl(0 62.8% 30.6%);
+  --destructive: hsl(0, 76%, 36%);
   --destructive-foreground: hsl(0 0% 98%);
   --border: hsl(240 3.7% 15.9%);
   --input: hsl(240 3.7% 15.9%);
@@ -67,6 +76,15 @@
   --chart-3: hsl(30 80% 55%);
   --chart-4: hsl(280 65% 60%);
   --chart-5: hsl(340 75% 55%);
+  --transfer-row: hsl(0 0% 9%);
+  --transfer-row-alternate: hsl(0 0% 15%);
+  --transfer-downloading: hsl(210 100% 62%);
+  --transfer-seeding: hsl(132 55% 52%);
+  --transfer-paused: hsl(0 0% 62%);
+  --transfer-checking: hsl(191 85% 58%);
+  --transfer-queued: hsl(40 92% 58%);
+  --transfer-error: hsl(3 82% 62%);
+  --transfer-warning: hsl(40 92% 58%);
   --radius: 10px;
 }
 
