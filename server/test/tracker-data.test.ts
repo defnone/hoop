@@ -275,6 +275,60 @@ describe('TrackerData.collect', () => {
     expect(result.magnet).toBe('magnet:?xt=urn:btih:ABCDEF1234567890');
   });
 
+  it('retries tracker timeout with an alternative domain', async () => {
+    const topicHtml = `
+      <html>
+        <body>
+          <div class="maintitle">
+            Alternative domain show / extra (\u0421\u0435\u0437\u043e\u043d: 1 / \u0421\u0435\u0440\u0438\u0438: 2 \u0438\u0437 2)
+          </div>
+          <div class="attach_link"><a href="magnet:?xt=urn:btih:ABCDEF1234567890">magnet</a></div>
+        </body>
+      </html>`;
+    const timeoutError = new Error(
+      'Failed to fetch https://rutracker.org/forum/viewtopic.php?t=123 after 3 attempts: Timeout error',
+    );
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockRejectedValueOnce(timeoutError)
+      .mockResolvedValueOnce(toResponse(topicHtml));
+
+    const url = 'https://rutracker.org/forum/viewtopic.php?t=123';
+    const td = new TrackerDataAdapter({ url, tracker: 'rutracker' });
+    const result = await td.collect();
+
+    expect(result.torrentId).toBe('123');
+    expect(mockedFetch).toHaveBeenNthCalledWith(
+      2,
+      'https://rutracker.net/forum/viewtopic.php?t=123',
+      { headers: {} },
+      10_000,
+    );
+  });
+
+  it('tries every alternative domain before throwing a tracker timeout', async () => {
+    const timeoutError = new Error(
+      'Failed to fetch tracker page after 3 attempts: Timeout error',
+    );
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch.mockRejectedValue(timeoutError);
+
+    const url = 'https://rutracker.org/forum/viewtopic.php?t=123';
+    const td = new TrackerDataAdapter({ url, tracker: 'rutracker' });
+
+    await expect(td.collect()).rejects.toThrow(
+      'Failed to fetch tracker page after 3 attempts: Timeout error',
+    );
+    expect(mockedFetch).toHaveBeenCalledTimes(3);
+    expect(
+      mockedFetch.mock.calls.map(([requestedUrl]) => requestedUrl),
+    ).toEqual([
+      'https://rutracker.org/forum/viewtopic.php?t=123',
+      'https://rutracker.net/forum/viewtopic.php?t=123',
+      'https://rutracker.me/forum/viewtopic.php?t=123',
+    ]);
+  });
+
   it('rutracker: parses episodes label without season colon', async () => {
     const topicHtml = `
       <html>
