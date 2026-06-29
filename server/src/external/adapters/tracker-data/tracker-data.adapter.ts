@@ -48,7 +48,11 @@ export class TrackerDataAdapter {
     this.tracker = tracker;
   }
 
-  private async fetchDom(url: string = this.rawUrl, cookies: string = '') {
+  private async fetchDom(
+    url: string = this.rawUrl,
+    cookies: string = '',
+    tryAlternativeDomains = true,
+  ): Promise<void> {
     try {
       const headers = this.buildRequestHeaders(cookies);
       const resp = await customFetch(url, { headers }, this.timeout);
@@ -77,6 +81,30 @@ export class TrackerDataAdapter {
 
       this.domRoot = root;
     } catch (e) {
+      if (tryAlternativeDomains && isFetchTimeout(e)) {
+        for (const alternativeUrl of getAlternativeTrackerUrls(
+          url,
+          this.tConf.urls,
+        )) {
+          logger.warn('Retrying tracker page with alternative domain', {
+            url,
+            alternativeUrl,
+            tracker: this.tracker,
+          });
+
+          try {
+            await this.fetchDom(alternativeUrl, cookies, false);
+            return;
+          } catch (alternativeError) {
+            logger.warn('Alternative tracker domain request failed', {
+              url: alternativeUrl,
+              tracker: this.tracker,
+              error: this.describeError(alternativeError),
+            });
+          }
+        }
+      }
+
       logger.error('Tracker page fetch failed', {
         url,
         tracker: this.tracker,
@@ -335,4 +363,24 @@ export class TrackerDataAdapter {
   private getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
   }
+}
+
+function isFetchTimeout(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.endsWith('after 3 attempts: Timeout error')
+  );
+}
+
+function getAlternativeTrackerUrls(url: string, domains: string[]): string[] {
+  const sourceUrl = new URL(url);
+  const sourceHostname = sourceUrl.hostname.replace(/^www\./, '');
+
+  return domains
+    .filter((domain) => domain !== sourceHostname)
+    .map((domain) => {
+      const alternativeUrl = new URL(sourceUrl);
+      alternativeUrl.hostname = domain;
+      return alternativeUrl.href;
+    });
 }
