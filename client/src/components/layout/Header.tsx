@@ -11,6 +11,7 @@ import useSettings from '@/hooks/useSettings';
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { rpc } from '@/lib/rpc';
+import TransmissionSheet from '@/components/TransmissionSheet';
 
 async function handleSignOut() {
   await signOut({
@@ -128,13 +129,17 @@ export default function Header() {
           </Button>
         </div>
         <div className='flex items-center gap-2'>
+          <TransmissionSheet />
+
+          <Separator orientation='vertical' className='h-4 mx-1' />
+
           <Button
             onClick={() => navigate('/discover?period=weekly')}
             size='icon'
             variant='outline'
             className={cn(
               pathname === '/discover' &&
-                'bg-secondary text-secondary-foreground'
+                'bg-secondary text-secondary-foreground',
             )}
           >
             <Binoculars strokeWidth={2} size={16} />
@@ -148,7 +153,8 @@ export default function Header() {
             variant='outline'
             onClick={() => navigate('/search')}
             className={cn(
-              pathname === '/search' && 'bg-secondary text-secondary-foreground'
+              pathname === '/search' &&
+                'bg-secondary text-secondary-foreground',
             )}
           >
             <Search strokeWidth={3} size={16} />
@@ -160,7 +166,7 @@ export default function Header() {
             onClick={() => navigate('/settings')}
             className={cn(
               pathname === '/settings' &&
-                'bg-secondary text-secondary-foreground'
+                'bg-secondary text-secondary-foreground',
             )}
           >
             <Cog strokeWidth={2} size={16} />

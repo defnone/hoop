@@ -6,6 +6,11 @@ import type {
 import { TransmissionClientRepo } from './transmission.repo';
 import type { DbTorrentItem, DbUserSettings } from '@server/db/app/app-schema';
 import { SettingsService } from '@server/features/settings/settings.service';
+import type {
+  TorrentClientAction,
+  TorrentClientItemDto,
+} from './transmission.types';
+import { toTorrentClientItemDto } from './transmission.utils';
 
 export class TransmissionAdapter {
   private client: Transmission;
@@ -31,7 +36,7 @@ export class TransmissionAdapter {
       !process.env.TRANSMISSION_PASSWORD
     )
       throw new Error(
-        'TRANSMISSION_BASE_URL, TRANSMISSION_USERNAME, TRANSMISSION_PASSWORD must be set in env'
+        'TRANSMISSION_BASE_URL, TRANSMISSION_USERNAME, TRANSMISSION_PASSWORD must be set in env',
       );
   }
 
@@ -51,7 +56,7 @@ export class TransmissionAdapter {
     try {
       const result: AddMagnetResult = await this.client.addMagnet(
         this.tiData.magnet,
-        options
+        options,
       );
       const added =
         result.arguments['torrent-added'] ??
@@ -115,5 +120,59 @@ export class TransmissionAdapter {
   async getAll() {
     const status = await this.client.listTorrents();
     return status.arguments.torrents;
+  }
+
+  async getAllNormalized(): Promise<TorrentClientItemDto[]> {
+    const data = await this.client.getAllData();
+    return data.torrents.map(toTorrentClientItemDto);
+  }
+
+  async controlClientTorrent(
+    clientId: string,
+    action: TorrentClientAction,
+  ): Promise<void> {
+    switch (action) {
+      case 'pause':
+        await this.client.pauseTorrent(clientId);
+        return;
+      case 'resume':
+        await this.client.resumeTorrent(clientId);
+        return;
+      case 'verify':
+        await this.client.verifyTorrent(clientId);
+        return;
+      case 'reannounce':
+        await this.client.reannounceTorrent(clientId);
+        return;
+      case 'queue-top':
+        await this.client.queueTop(clientId);
+        return;
+      case 'queue-up':
+        await this.client.queueUp(clientId);
+        return;
+      case 'queue-down':
+        await this.client.queueDown(clientId);
+        return;
+      case 'queue-bottom':
+        await this.client.queueBottom(clientId);
+        return;
+    }
+  }
+
+  async removeClientTorrent(
+    clientId: string,
+    deleteData: boolean,
+  ): Promise<number | null> {
+    await this.client.removeTorrent(clientId, deleteData);
+    const torrentItem =
+      await this.repo.findTorrentItemByTransmissionId(clientId);
+
+    if (!torrentItem) return null;
+
+    await this.repo.updateTorrentItem(torrentItem.id, {
+      controlStatus: 'idle',
+      transmissionId: null,
+    });
+    return torrentItem.id;
   }
 }

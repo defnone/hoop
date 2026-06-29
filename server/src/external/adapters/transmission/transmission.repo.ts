@@ -21,9 +21,17 @@ export class TransmissionClientRepo {
     return row ?? null;
   }
 
+  async findTorrentItemByTransmissionId(transmissionId: string) {
+    const [row] = await this.database
+      .select()
+      .from(torrentItems)
+      .where(eq(torrentItems.transmissionId, transmissionId));
+    return row ?? null;
+  }
+
   async updateTorrentItem(
     id: number,
-    data: Partial<DbTorrentItemInsert>
+    data: Partial<DbTorrentItemInsert>,
   ): Promise<DbTorrentItem | null> {
     const [row] = await this.database
       .update(torrentItems)
