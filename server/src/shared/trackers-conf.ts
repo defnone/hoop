@@ -2,7 +2,7 @@ import type { TrackerConf } from './types';
 
 export const trackersConf: Record<string, TrackerConf> = {
   kinozal: {
-    urls: ['kinozal.tv', 'kinozal.me'],
+    urls: ['kinozal.tv', 'kinozal.me', 'kinozal.guru'],
     titleSelector: 'h1',
     showTitle: (title: string) => title.split('/')[1],
     isDifferentMagnetUrl: true,
