@@ -41,5 +41,5 @@ export const torrentsDeleteRoute = new Hono().delete(
       };
       return c.json(response, 400);
     }
-  }
+  },
 );

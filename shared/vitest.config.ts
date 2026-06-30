@@ -12,9 +12,6 @@ export default defineConfig({
         'src/**/types.ts',
       ],
     },
-    include: [
-      'src/**/*.{test,spec}.ts',
-      'test/**/*.{test,spec}.ts',
-    ],
+    include: ['src/**/*.{test,spec}.ts', 'test/**/*.{test,spec}.ts'],
   },
 });

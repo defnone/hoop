@@ -5,7 +5,7 @@ export async function getJackett(
   query: string,
   season: number,
   category = 5000,
-  tracker = 'rutracker'
+  tracker = 'rutracker',
 ): Promise<JackettSearchResult[] | null> {
   const res = await rpc.api.jackett.search.$get({
     query: {

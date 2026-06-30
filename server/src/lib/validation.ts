@@ -16,7 +16,7 @@ type StandardValidationHook = StandardHook<
 
 const respondWithValidationIssues = <E extends Env, P extends string>(
   issues: ReadonlyArray<{ message: string }>,
-  c: Context<E, P>
+  c: Context<E, P>,
 ) => {
   return c.json<ApiResponse<null>, 400>(
     {
@@ -24,7 +24,7 @@ const respondWithValidationIssues = <E extends Env, P extends string>(
       message: issues.map((issue) => issue.message).join(', '),
       code: 400,
     },
-    400
+    400,
   );
 };
 

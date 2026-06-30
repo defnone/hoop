@@ -97,23 +97,23 @@ describe('jackettSearchRoute', () => {
         new Response(JSON.stringify(rutrackerPayload), {
           status: 200,
           statusText: 'OK',
-        })
+        }),
       )
       .mockResolvedValueOnce(
         new Response(JSON.stringify(emptyPayload), {
           status: 200,
           statusText: 'OK',
-        })
+        }),
       )
       .mockResolvedValueOnce(
         new Response(JSON.stringify(emptyPayload), {
           status: 200,
           statusText: 'OK',
-        })
+        }),
       );
 
     const response = await jackettSearchRoute.request(
-      '/?query=show&tracker=all&season=1&category=5000'
+      '/?query=show&tracker=all&season=1&category=5000',
     );
     const body = (await response.json()) as ApiResponse<
       Array<{ Tracker: string }>
@@ -138,7 +138,7 @@ describe('jackettSearchRoute', () => {
       new Response('error', {
         status: 502,
         statusText: 'Bad Gateway',
-      })
+      }),
     );
 
     const response = await jackettSearchRoute.request('/?query=fail');
@@ -152,7 +152,7 @@ describe('jackettSearchRoute', () => {
 describe('jackettVerifyRoute /connection', () => {
   it('returns success when Jackett is reachable', async () => {
     fetchMock.mockResolvedValueOnce(
-      new Response('ok', { status: 200, statusText: 'OK' })
+      new Response('ok', { status: 200, statusText: 'OK' }),
     );
 
     const response = await jackettVerifyRoute.request('/connection', {
@@ -172,7 +172,7 @@ describe('jackettVerifyRoute /connection', () => {
 
   it('returns 502 when Jackett responds with 5xx', async () => {
     fetchMock.mockResolvedValueOnce(
-      new Response('err', { status: 503, statusText: 'Service Unavailable' })
+      new Response('err', { status: 503, statusText: 'Service Unavailable' }),
     );
 
     const response = await jackettVerifyRoute.request('/connection', {
@@ -204,7 +204,7 @@ describe('jackettVerifyRoute /connection', () => {
 
     expect(response.status).toBe(500);
     expect(body.message).toBe(
-      'Failed to fetch http://jackett.test/ after 3 attempts: Error: network'
+      'Failed to fetch http://jackett.test/ after 3 attempts: Error: network',
     );
   });
 });
@@ -217,7 +217,7 @@ describe('jackettVerifyRoute /api-key', () => {
 
   it('validates a valid key', async () => {
     fetchMock.mockResolvedValueOnce(
-      new Response('ok', { status: 200, statusText: 'OK' })
+      new Response('ok', { status: 200, statusText: 'OK' }),
     );
 
     const response = await jackettVerifyRoute.request('/api-key', {
@@ -236,7 +236,7 @@ describe('jackettVerifyRoute /api-key', () => {
 
   it('returns 401 for invalid key', async () => {
     fetchMock.mockResolvedValueOnce(
-      new Response('unauthorized', { status: 401, statusText: 'Unauthorized' })
+      new Response('unauthorized', { status: 401, statusText: 'Unauthorized' }),
     );
 
     const response = await jackettVerifyRoute.request('/api-key', {
@@ -255,7 +255,7 @@ describe('jackettVerifyRoute /api-key', () => {
 
   it('returns 502 for unexpected status', async () => {
     fetchMock.mockResolvedValueOnce(
-      new Response('bad', { status: 418, statusText: "I'm a teapot" })
+      new Response('bad', { status: 418, statusText: "I'm a teapot" }),
     );
 
     const response = await jackettVerifyRoute.request('/api-key', {
@@ -287,7 +287,7 @@ describe('jackettVerifyRoute /api-key', () => {
 
     expect(response.status).toBe(500);
     expect(body.message).toBe(
-      'Failed to validate Jackett API Key: Failed to fetch http://jackett.test/api/v2.0/indexers/all/results/?apikey=key&Query=ping&Category=5000 after 3 attempts: Error: network'
+      'Failed to validate Jackett API Key: Failed to fetch http://jackett.test/api/v2.0/indexers/all/results/?apikey=key&Query=ping&Category=5000 after 3 attempts: Error: network',
     );
   });
 });

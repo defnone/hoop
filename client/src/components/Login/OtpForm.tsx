@@ -20,32 +20,15 @@ export default function OtpForm({
         onChange={(e) => setOtp(e)}
         maxLength={6}
         autoFocus
-        pattern={REGEXP_ONLY_DIGITS}>
+        pattern={REGEXP_ONLY_DIGITS}
+      >
         <InputOTPGroup>
-          <InputOTPSlot
-            className='w-12 h-12 text-xl'
-            index={0}
-          />
-          <InputOTPSlot
-            className='w-12 h-12 text-2xl'
-            index={1}
-          />
-          <InputOTPSlot
-            className='w-12 h-12 text-2xl'
-            index={2}
-          />
-          <InputOTPSlot
-            className='w-12 h-12 text-2xl'
-            index={3}
-          />
-          <InputOTPSlot
-            className='w-12 h-12 text-2xl'
-            index={4}
-          />
-          <InputOTPSlot
-            className='w-12 h-12 text-2xl'
-            index={5}
-          />
+          <InputOTPSlot className='w-12 h-12 text-xl' index={0} />
+          <InputOTPSlot className='w-12 h-12 text-2xl' index={1} />
+          <InputOTPSlot className='w-12 h-12 text-2xl' index={2} />
+          <InputOTPSlot className='w-12 h-12 text-2xl' index={3} />
+          <InputOTPSlot className='w-12 h-12 text-2xl' index={4} />
+          <InputOTPSlot className='w-12 h-12 text-2xl' index={5} />
         </InputOTPGroup>
       </InputOTP>
 

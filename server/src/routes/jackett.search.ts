@@ -59,7 +59,7 @@ export const jackettSearchRoute = new Hono().get(
 
       if (season && season !== 0) {
         url += `&Query=${encodeURIComponent(query)}%20S${String(
-          season
+          season,
         ).padStart(2, '0')}`;
       } else {
         url += `&Query=${encodeURIComponent(query)}`;
@@ -87,5 +87,5 @@ export const jackettSearchRoute = new Hono().get(
       data: results,
     };
     return c.json(response);
-  }
+  },
 );

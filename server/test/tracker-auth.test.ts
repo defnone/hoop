@@ -33,7 +33,7 @@ describe('TrackerAuth.getCookies', () => {
       'l',
       'p',
       'https://kinozal.tv',
-      '/takelogin.php'
+      '/takelogin.php',
     );
   });
 
@@ -48,7 +48,7 @@ describe('TrackerAuth.getCookies', () => {
       tracker: 'kinozal',
     });
     await expect(ta.getCookies()).rejects.toThrow(
-      /Failed to authenticate kinozal with/
+      /Failed to authenticate kinozal with/,
     );
   });
 });

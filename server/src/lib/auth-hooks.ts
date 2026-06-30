@@ -5,15 +5,15 @@ import { SettingsService } from '@server/features/settings/settings.service';
 
 export async function onBeforeUserCreate(
   _user: User & Record<string, unknown>,
-  ctx: GenericEndpointContext | null
+  ctx: GenericEndpointContext | null,
 ): Promise<boolean | void>;
 export async function onBeforeUserCreate(
   _user: User & Record<string, unknown>,
-  ctx?: GenericEndpointContext
+  ctx?: GenericEndpointContext,
 ): Promise<boolean | void>;
 export async function onBeforeUserCreate(
   _user: User & Record<string, unknown>,
-  ctx?: GenericEndpointContext | null
+  ctx?: GenericEndpointContext | null,
 ): Promise<boolean | void> {
   if ((usersCountStorage.get('count') ?? 0) > 0) {
     ctx?.context.logger.warn('Sign-up disabled');

@@ -221,7 +221,7 @@ export default function EditTorrentDialog({
 function buildEpisodes(data: TorrentItemDto): EpisodesObj {
   const episodesArray = Array.from(
     { length: data.totalEpisodes ?? 0 },
-    (_, i) => i + 1
+    (_, i) => i + 1,
   );
 
   return episodesArray.map((episode) => ({
@@ -230,7 +230,7 @@ function buildEpisodes(data: TorrentItemDto): EpisodesObj {
     trackedEpisodes: (data.trackedEpisodes as number[]).includes(episode),
     available: (data.haveEpisodes as number[]).includes(episode),
     files: (data.files as string[]).filter((file) =>
-      file.includes('E' + episode.toString().padStart(2, '0'))
+      file.includes('E' + episode.toString().padStart(2, '0')),
     ),
   }));
 }

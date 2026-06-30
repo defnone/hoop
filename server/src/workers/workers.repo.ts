@@ -32,8 +32,8 @@ export class WorkersRepo {
           eq(torrentItems.controlStatus, 'downloading'),
           eq(torrentItems.controlStatus, 'downloadCompleted'),
           eq(torrentItems.controlStatus, 'idle'),
-          eq(torrentItems.controlStatus, 'paused')
-        )
+          eq(torrentItems.controlStatus, 'paused'),
+        ),
       );
 
     return rows ?? null;
@@ -68,7 +68,7 @@ export class WorkersRepo {
 
   async update(
     id: number,
-    data: Partial<DbTorrentItemInsert>
+    data: Partial<DbTorrentItemInsert>,
   ): Promise<DbTorrentItem | undefined> {
     const [row] = await this.database
       .update(torrentItems)

@@ -1,22 +1,22 @@
-import customSonner from "@/components/CustomSonner";
-import GeneralSettings from "@/components/settings/GeneralSettings";
-import FlareSolverrSettings from "@/components/settings/FlareSolverrSettings";
-import JackettSettings from "@/components/settings/JackettSettings";
-import NotificationSettings from "@/components/settings/NotificationSettings";
-import SettingsMenu from "@/components/settings/SettingsMenu";
-import TorrentClientSettings from "@/components/settings/TorrentClientSettings";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import useSettings from "@/hooks/useSettings";
-import type { DbUserSettings } from "@server/db/app/app-schema";
-import { Loader2 } from "lucide-react";
+import customSonner from '@/components/CustomSonner';
+import GeneralSettings from '@/components/settings/GeneralSettings';
+import FlareSolverrSettings from '@/components/settings/FlareSolverrSettings';
+import JackettSettings from '@/components/settings/JackettSettings';
+import NotificationSettings from '@/components/settings/NotificationSettings';
+import SettingsMenu from '@/components/settings/SettingsMenu';
+import TorrentClientSettings from '@/components/settings/TorrentClientSettings';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import useSettings from '@/hooks/useSettings';
+import type { DbUserSettings } from '@server/db/app/app-schema';
+import { Loader2 } from 'lucide-react';
 import {
   useCallback,
   useEffect,
   useState,
   type Dispatch,
   type SetStateAction,
-} from "react";
+} from 'react';
 
 export default function Settings() {
   const {
@@ -35,9 +35,9 @@ export default function Settings() {
         setPendingData((currentData) => {
           const resolvedCurrentData = currentData ?? settingsData ?? undefined;
 
-          if (typeof next === "function") {
+          if (typeof next === 'function') {
             const updater = next as (
-              prevState: DbUserSettings | null | undefined
+              prevState: DbUserSettings | null | undefined,
             ) => DbUserSettings | null | undefined;
             const updated = updater(resolvedCurrentData);
             return updated ?? undefined;
@@ -46,7 +46,7 @@ export default function Settings() {
           return next ?? undefined;
         });
       },
-      [settingsData]
+      [settingsData],
     );
 
   const handleSave = async () => {
@@ -57,8 +57,8 @@ export default function Settings() {
   useEffect(() => {
     if (errorSettings) {
       customSonner({
-        variant: "error",
-        text: "Error while loading settings",
+        variant: 'error',
+        text: 'Error while loading settings',
         description: errorSettings.message,
       });
     }
@@ -67,11 +67,11 @@ export default function Settings() {
   if (isLoadingSettings) {
     return (
       <>
-        <div className="flex flex-col w-full">
+        <div className='flex flex-col w-full'>
           <SettingsMenu />
         </div>
-        <div className="flex flex-col gap-4 mx-auto mt-[30vh]">
-          <Loader2 className="w-10 h-10 animate-spin" />
+        <div className='flex flex-col gap-4 mx-auto mt-[30vh]'>
+          <Loader2 className='w-10 h-10 animate-spin' />
         </div>
       </>
     );
@@ -79,8 +79,8 @@ export default function Settings() {
 
   if (!data) {
     customSonner({
-      variant: "error",
-      text: "Error while loading settings",
+      variant: 'error',
+      text: 'Error while loading settings',
     });
     return null;
   }
@@ -92,43 +92,43 @@ export default function Settings() {
         syncInterval={data?.syncInterval ?? 0}
         setData={setData}
       />
-      <Separator className="my-12" />
+      <Separator className='my-12' />
       <TorrentClientSettings
-        downloadDir={data?.downloadDir ?? ""}
-        mediaDir={data?.mediaDir ?? ""}
+        downloadDir={data?.downloadDir ?? ''}
+        mediaDir={data?.mediaDir ?? ''}
         deleteAfterDownload={data?.deleteAfterDownload ?? false}
         setData={setData}
       />
-      <Separator className="my-12" />
+      <Separator className='my-12' />
       <FlareSolverrSettings
         enabled={data?.flaresolverrEnabled ?? false}
-        serverUrl={data?.flaresolverrUrl ?? ""}
+        serverUrl={data?.flaresolverrUrl ?? ''}
         timeoutSeconds={data?.flaresolverrTimeoutSeconds ?? 60}
         setData={setData}
       />
-      <Separator className="my-12" />
+      <Separator className='my-12' />
       <NotificationSettings
         telegramId={data?.telegramId ?? 0}
-        botToken={data?.botToken ?? ""}
+        botToken={data?.botToken ?? ''}
         setData={setData}
       />
-      <Separator className="my-12" />
+      <Separator className='my-12' />
       <JackettSettings
-        jackettUrl={data?.jackettUrl ?? ""}
-        jackettApiKey={data?.jackettApiKey ?? ""}
+        jackettUrl={data?.jackettUrl ?? ''}
+        jackettApiKey={data?.jackettApiKey ?? ''}
         setData={setData}
       />
-      <Separator className="my-12" />
+      <Separator className='my-12' />
 
       <Button
-        className="w-fit my-10 flex font-extrabold ml-auto"
-        size="lg"
+        className='w-fit my-10 flex font-extrabold ml-auto'
+        size='lg'
         onClick={handleSave}
       >
         {isSavingSettings ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <Loader2 className='w-4 h-4 animate-spin' />
         ) : (
-          "Save Settings"
+          'Save Settings'
         )}
       </Button>
     </>

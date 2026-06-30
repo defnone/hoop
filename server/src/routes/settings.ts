@@ -27,21 +27,25 @@ export const settingsRoute = new Hono()
       return c.json(response, 400);
     }
   })
-  .post('/', sValidator('json', jsonSchema, handleStandardValidation), async (c) => {
-    const data = c.req.valid('json');
-    try {
-      const resp = await new SettingsService({ data }).upsert();
-      const response: ApiResponse<typeof resp> = {
-        success: true,
-        data: resp,
-      };
-      return c.json(response);
-    } catch (e) {
-      const response: ApiResponse<null> = {
-        success: false,
-        message: (e as Error).message,
-      };
-      logger.error(e);
-      return c.json(response, 400);
-    }
-  });
+  .post(
+    '/',
+    sValidator('json', jsonSchema, handleStandardValidation),
+    async (c) => {
+      const data = c.req.valid('json');
+      try {
+        const resp = await new SettingsService({ data }).upsert();
+        const response: ApiResponse<typeof resp> = {
+          success: true,
+          data: resp,
+        };
+        return c.json(response);
+      } catch (e) {
+        const response: ApiResponse<null> = {
+          success: false,
+          message: (e as Error).message,
+        };
+        logger.error(e);
+        return c.json(response, 400);
+      }
+    },
+  );

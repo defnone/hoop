@@ -7,7 +7,7 @@ import path from 'path';
 export class FileManagementService {
   async copyTrackedEpisodes(
     torrentItem: DbTorrentItem,
-    settings: DbUserSettings
+    settings: DbUserSettings,
   ): Promise<Record<number, string>> {
     if (!settings.downloadDir || !settings.mediaDir) {
       logger.error('No download or media directory found');
@@ -28,7 +28,7 @@ export class FileManagementService {
     }
 
     const sanitizedTitle = FileManagementService.sanitizeFolderName(
-      torrentItem.title
+      torrentItem.title,
     );
 
     const trackedNumbers: number[] = Array.isArray(torrentItem.trackedEpisodes)
@@ -52,7 +52,7 @@ export class FileManagementService {
         relPath: f.name,
         base: path.basename(f.name),
         episode: FileManagementService.getEpisodeFromName(
-          path.basename(f.name)
+          path.basename(f.name),
         ),
       }))
       .filter((x) => x.episode !== null) as Array<{
@@ -69,11 +69,11 @@ export class FileManagementService {
       }
 
       const videos = matches.filter(
-        (m) => FileManagementService.detectKind(m.base) === 'video'
+        (m) => FileManagementService.detectKind(m.base) === 'video',
       );
       if (videos.length === 0) {
         logger.error(
-          `No video file found for tracked episode ${episodeNumber}, continuing`
+          `No video file found for tracked episode ${episodeNumber}, continuing`,
         );
         continue;
       }
@@ -100,7 +100,7 @@ export class FileManagementService {
           const sourcePath = path.join(
             settings.downloadDir,
             torrentName,
-            relPath
+            relPath,
           );
 
           const destinationPath = FileManagementService.buildDestinationPath(
@@ -108,7 +108,7 @@ export class FileManagementService {
             sanitizedTitle,
             torrentItem.season ?? null,
             episodeNumber,
-            m.base
+            m.base,
           );
 
           await FileManagementService.ensureDirExists(destinationPath);
@@ -123,17 +123,17 @@ export class FileManagementService {
           try {
             const mode = await FileManagementService.tryLinkOrCopy(
               sourcePath,
-              destinationPath
+              destinationPath,
             );
             logger.info(
               `${
                 mode === 'linked' ? 'Created hardlink' : 'Copied'
-              } from ${sourcePath} to ${destinationPath}`
+              } from ${sourcePath} to ${destinationPath}`,
             );
           } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
             logger.error(
-              `Failed to copy from ${sourcePath} to ${destinationPath}: ${msg}`
+              `Failed to copy from ${sourcePath} to ${destinationPath}: ${msg}`,
             );
             throw e;
           }
@@ -167,7 +167,7 @@ export class FileManagementService {
     season: number | null,
     episodeNumber: number,
     originalFileName: string,
-    suffix: string = ''
+    suffix: string = '',
   ): string {
     const seasonStr = (season ?? 0).toString().padStart(2, '0');
     const episodeStr = episodeNumber.toString().padStart(2, '0');
@@ -181,7 +181,7 @@ export class FileManagementService {
     return path.join(
       mediaDir,
       FileManagementService.sanitizeFolderName(title),
-      fileName
+      fileName,
     );
   }
 
@@ -191,7 +191,7 @@ export class FileManagementService {
 
   private static async tryLinkOrCopy(
     source: string,
-    target: string
+    target: string,
   ): Promise<'linked' | 'copied'> {
     try {
       await fs.promises.link(source, target);
@@ -245,7 +245,7 @@ export class FileManagementService {
         return false;
       }
       logger.error(
-        `[FileManagement] Error deleting ${filePath}: ${String(err)}`
+        `[FileManagement] Error deleting ${filePath}: ${String(err)}`,
       );
       throw err;
     }

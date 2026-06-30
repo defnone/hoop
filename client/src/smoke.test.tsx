@@ -6,4 +6,3 @@ describe('client smoke', () => {
     expect(sum).toBe(2);
   });
 });
-

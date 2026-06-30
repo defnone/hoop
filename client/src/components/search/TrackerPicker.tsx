@@ -23,11 +23,12 @@ export default function TrackerPicker({
         <Button
           className={cn(
             ' font-bold',
-            tracker === item.value && 'border border-border'
+            tracker === item.value && 'border border-border',
           )}
           variant={tracker === item.value ? 'secondary' : 'outline'}
           key={`${id}-${item.value}`}
-          onClick={() => setTracker(item.value)}>
+          onClick={() => setTracker(item.value)}
+        >
           {item.label}{' '}
           {resultsByTracker[item.value] > 0 &&
             (tracker === 'all' || tracker === item.value) && (

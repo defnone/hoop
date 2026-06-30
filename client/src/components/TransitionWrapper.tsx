@@ -77,7 +77,8 @@ export default function TransitionWrapper({
           ? 'translateX(0)'
           : `translateX(${getTranslateValue(isVisible ? enterFrom : exitTo)})`,
         transition: `transform ${duration}ms cubic-bezier(0.4, 0, 0.2, 1), opacity ${duration}ms cubic-bezier(0.4, 0, 0.2, 1)`,
-      }}>
+      }}
+    >
       {children}
     </div>
   );

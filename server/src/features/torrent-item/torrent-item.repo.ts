@@ -32,7 +32,7 @@ export class TorrentItemRepo {
         ? (rows[0] as { total: number }).total
         : rows.length;
     const items = rows.map(
-      ({ total: _total, ...rest }) => rest as DbTorrentItem
+      ({ total: _total, ...rest }) => rest as DbTorrentItem,
     );
     return { items, total };
   }
@@ -72,7 +72,7 @@ export class TorrentItemRepo {
 
   async update(
     id: number,
-    data: Partial<DbTorrentItemInsert>
+    data: Partial<DbTorrentItemInsert>,
   ): Promise<DbTorrentItem | undefined> {
     const [row] = await this.database
       .update(torrentItems)

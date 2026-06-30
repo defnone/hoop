@@ -4,7 +4,7 @@ import type { ApiResponse } from 'shared/dist';
 
 export const torrentsStatusRoute = new Hono().get('/', (c) => {
   const status = Object.fromEntries(
-    [...statusStorage].map(([id, data]) => [id, { data }])
+    [...statusStorage].map(([id, data]) => [id, { data }]),
   );
   const response: ApiResponse<typeof status> = {
     success: true,

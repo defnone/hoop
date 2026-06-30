@@ -48,5 +48,5 @@ export const torrentsAddRoute = new Hono().post(
       logger.error(e);
       return c.json(response, 400);
     }
-  }
+  },
 );

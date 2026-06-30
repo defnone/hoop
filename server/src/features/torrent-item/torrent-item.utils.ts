@@ -18,7 +18,7 @@ export function extractTrackersAndHosts(): Record<string, string[]> {
         .filter((s) => s.length > 0);
       return acc;
     },
-    {}
+    {},
   );
 }
 
@@ -27,7 +27,7 @@ export function detectTracker(url: string) {
   const trackersAndHosts = extractTrackersAndHosts();
   const findTracker =
     Object.entries(trackersAndHosts).find(([_, value]) =>
-      value.includes(host)
+      value.includes(host),
     )?.[0] ?? null;
 
   if (!findTracker) throw new Error(`Tracker not found for ${url}`);

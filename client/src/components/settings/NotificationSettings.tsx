@@ -45,7 +45,8 @@ export default function NotificationSettings({
               <a
                 href='https://t.me/BotFather'
                 target='_blank'
-                className='text-blue-500'>
+                className='text-blue-500'
+              >
                 BotFather
               </a>
               .
@@ -77,7 +78,8 @@ export default function NotificationSettings({
               <a
                 href='https://t.me/userinfobot'
                 target='_blank'
-                className='text-blue-500'>
+                className='text-blue-500'
+              >
                 Userinfobot
               </a>
               .

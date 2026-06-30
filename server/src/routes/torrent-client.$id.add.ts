@@ -34,5 +34,5 @@ export const torrentClientAddRoute = new Hono().post(
       };
       return c.json(response, 400);
     }
-  }
+  },
 );

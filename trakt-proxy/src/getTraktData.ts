@@ -1,14 +1,14 @@
-import { Context } from "hono";
-import type { TraktWatchedShow } from "./types/trakt";
-import { buildTraktWatchedShowsUrl } from "./utils/buildTraktWatchedShowsUrl";
+import { Context } from 'hono';
+import type { TraktWatchedShow } from './types/trakt';
+import { buildTraktWatchedShowsUrl } from './utils/buildTraktWatchedShowsUrl';
 
-export const getTraktData = async (c: Context, period: "weekly" | "daily") => {
+export const getTraktData = async (c: Context, period: 'weekly' | 'daily') => {
   const response = await fetch(buildTraktWatchedShowsUrl(period), {
     headers: {
-      "Content-Type": "application/json",
-      "trakt-api-version": "2",
-      "trakt-api-key": c.env.CLIENT_ID,
-      "User-Agent": "HTTPie",
+      'Content-Type': 'application/json',
+      'trakt-api-version': '2',
+      'trakt-api-key': c.env.CLIENT_ID,
+      'User-Agent': 'HTTPie',
     },
   });
 

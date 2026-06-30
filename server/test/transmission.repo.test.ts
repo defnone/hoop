@@ -14,8 +14,10 @@ const updateQueue: Array<Array<DbTorrentItem> | null> = [];
 let lastUpdateSet: Partial<DbTorrentItemInsert> | null = null;
 
 const makeAwaitable = <T>(value: T) => ({
-  then: (onFulfilled?: (v: T) => unknown, onRejected?: (reason: unknown) => unknown) =>
-    Promise.resolve(value).then(onFulfilled, onRejected),
+  then: (
+    onFulfilled?: (v: T) => unknown,
+    onRejected?: (reason: unknown) => unknown,
+  ) => Promise.resolve(value).then(onFulfilled, onRejected),
   catch: (onRejected: (reason: unknown) => unknown) =>
     Promise.resolve(value).catch(onRejected),
   finally: (onFinally: () => void) => Promise.resolve(value).finally(onFinally),
@@ -89,7 +91,9 @@ describe('TransmissionClientRepo (mocked database)', () => {
     const updated = makeRow({ id: 3, controlStatus: 'processing' });
     updateQueue.push([updated]);
 
-    const result = await repo.updateTorrentItem(3, { controlStatus: 'processing' });
+    const result = await repo.updateTorrentItem(3, {
+      controlStatus: 'processing',
+    });
 
     expect(lastUpdateSet?.controlStatus).toBe('processing');
     expect(result?.id).toBe(3);

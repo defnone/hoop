@@ -40,7 +40,7 @@ export class SettingsRepo {
   }
 
   async update(
-    data: Partial<Omit<DbUserSettingsInsert, 'id'>>
+    data: Partial<Omit<DbUserSettingsInsert, 'id'>>,
   ): Promise<DbUserSettings | null> {
     const [row] = await this.database
       .update(userSettings)

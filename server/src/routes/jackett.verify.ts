@@ -33,7 +33,7 @@ export const jackettVerifyRoute = new Hono()
           {
             method: 'GET',
           },
-          jackettTimeoutMs
+          jackettTimeoutMs,
         );
 
         if (response.status >= 500) {
@@ -66,7 +66,7 @@ export const jackettVerifyRoute = new Hono()
         };
         return c.json(errorResponse, 500);
       }
-    }
+    },
   )
   .post(
     '/api-key',
@@ -85,7 +85,7 @@ export const jackettVerifyRoute = new Hono()
           {
             method: 'GET',
           },
-          jackettTimeoutMs
+          jackettTimeoutMs,
         );
 
         if (response.status === 401) {
@@ -124,5 +124,5 @@ export const jackettVerifyRoute = new Hono()
         };
         return c.json(errorResponse, 500);
       }
-    }
+    },
   );

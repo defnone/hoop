@@ -15,7 +15,7 @@ function resolveMigrationsDir(): string {
 
   // Local single-build fallback: ../server/src/db/migrations
   candidates.push(
-    resolve(process.cwd(), '..', 'server', 'src', 'db', 'migrations')
+    resolve(process.cwd(), '..', 'server', 'src', 'db', 'migrations'),
   );
 
   // Dev (server workspace): src/db/migrations

@@ -78,7 +78,7 @@ describe('auth integration: single sign-up policy', () => {
           email: 'second@example.com',
           password: 'password123',
         },
-      })
+      }),
     ).rejects.toThrowError(/Failed to create user/);
 
     expect(usersCountStorage.get('count')).toBe(1);
