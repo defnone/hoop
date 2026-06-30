@@ -11,9 +11,13 @@ describe('torrent-item.utils', () => {
     );
   });
 
-  it('detectTracker matches kinozal by host list with commas', () => {
-    const tracker = detectTracker('https://kinozal.tv/details.php?id=2098851');
-    expect(tracker).toBe('kinozal');
+  it('detectTracker matches kinozal alternative domains', () => {
+    expect(detectTracker('https://kinozal.tv/details.php?id=2098851')).toBe(
+      'kinozal',
+    );
+    expect(detectTracker('https://kinozal.guru/details.php?id=2098851')).toBe(
+      'kinozal',
+    );
   });
 
   it('detectTracker matches rutracker', () => {
