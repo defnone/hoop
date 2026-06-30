@@ -29,6 +29,7 @@ export class TrackerDataAdapter {
   private rawTitle: string = '';
   private showTitle: string = '';
   private rawUrl: string;
+  private activeUrl: string;
   private trackerTorrentId: string;
   private magnet: string = '';
   private epAndSeason: EpAndSeason | null = null;
@@ -41,6 +42,7 @@ export class TrackerDataAdapter {
     const trackerTorrentId = tConf.trackerId(url);
     if (!trackerTorrentId) throw new Error('Tracker id not found');
     this.rawUrl = url;
+    this.activeUrl = url;
     this.tConf = tConf;
     this.trackerTorrentId = trackerTorrentId;
     this.trackerAuth = trackerAuth || null;
@@ -76,10 +78,12 @@ export class TrackerDataAdapter {
           flaresolverrUserAgentAvailable: Boolean(this.cloudflareUserAgent),
         });
         await this.handleForbiddenResponse(url, cookies, root);
+        this.activeUrl = url;
         return;
       }
 
       this.domRoot = root;
+      this.activeUrl = url;
     } catch (e) {
       if (tryAlternativeDomains && isFetchTimeout(e)) {
         for (const alternativeUrl of getAlternativeTrackerUrls(
@@ -189,7 +193,7 @@ export class TrackerDataAdapter {
     if (!login || !password)
       throw new Error('No auth credentials found for ' + this.tracker);
 
-    const baseUrl = new URL(this.rawUrl).origin;
+    const baseUrl = new URL(this.activeUrl).origin;
     this.trackerAuth = new TrackerAuth({
       login: String(login),
       password: String(password),
@@ -238,7 +242,7 @@ export class TrackerDataAdapter {
   }
 
   private async extractMagnet() {
-    const newUrl = new URL(this.rawUrl);
+    const newUrl = new URL(this.activeUrl);
 
     if (this.tConf.isDifferentMagnetUrl) {
       if (!this.tConf.magnetUrl) throw new Error('No magnet url found');
