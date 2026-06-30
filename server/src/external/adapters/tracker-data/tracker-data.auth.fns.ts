@@ -5,9 +5,10 @@ export const authFns = {
     login: string,
     password: string,
     baseUrl: string,
-    authPath: string
+    authPath: string,
   ): Promise<string> => {
-    const resp = await customFetch(`${baseUrl}/${authPath}`, {
+    const authUrl = new URL(authPath, baseUrl);
+    const resp = await customFetch(authUrl.href, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',

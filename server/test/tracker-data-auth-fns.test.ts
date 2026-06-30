@@ -38,12 +38,12 @@ describe('authFns.kinozal', () => {
       baseArgs.login,
       baseArgs.password,
       baseArgs.baseUrl,
-      baseArgs.authPath
+      baseArgs.authPath,
     );
 
     expect(cookies).toBe('sid=abc; uid=1');
     expect(mockedFetch).toHaveBeenCalledWith(
-      `${baseArgs.baseUrl}/${baseArgs.authPath}`,
+      'https://kinozal.tv/takelogin.php',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
@@ -52,7 +52,7 @@ describe('authFns.kinozal', () => {
         }),
         body: expect.any(URLSearchParams),
         redirect: 'manual',
-      })
+      }),
     );
 
     const body = mockedFetch.mock.calls[0]?.[1]?.body as URLSearchParams;
@@ -68,8 +68,8 @@ describe('authFns.kinozal', () => {
         baseArgs.login,
         baseArgs.password,
         baseArgs.baseUrl,
-        baseArgs.authPath
-      )
+        baseArgs.authPath,
+      ),
     ).rejects.toThrow('Failed to authenticate with Error: network down');
   });
 
@@ -87,8 +87,8 @@ describe('authFns.kinozal', () => {
         baseArgs.login,
         baseArgs.password,
         baseArgs.baseUrl,
-        baseArgs.authPath
-      )
+        baseArgs.authPath,
+      ),
     ).rejects.toThrow('No cookies found');
   });
 });

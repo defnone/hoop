@@ -25,8 +25,8 @@ const { settingsMock } = vi.hoisted(() => ({
     syncInterval: 30,
     jackettApiKey: null,
     jackettUrl: null,
-    kinozalUsername: null,
-    kinozalPassword: null,
+    kinozalUsername: null as string | null,
+    kinozalPassword: null as string | null,
     flaresolverrEnabled: false as boolean,
     flaresolverrUrl: null as string | null,
     flaresolverrTimeoutSeconds: 60,
@@ -59,6 +59,8 @@ const toResponse = (html: string): Response =>
 describe('TrackerData.collect', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    settingsMock.kinozalUsername = null;
+    settingsMock.kinozalPassword = null;
     settingsMock.flaresolverrEnabled = false;
     settingsMock.flaresolverrUrl = null;
   });
@@ -409,6 +411,54 @@ describe('TrackerData.collect', () => {
       totalEp: 10,
     });
     expect(result.magnet).toBe('DEADBEEF1234');
+  });
+
+  it('kinozal: uses the successful alternative domain for auth and magnet', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+
+    const pageHtml = `
+      <html>
+        <body>
+          <h1>Series / Alternative show (1 \u0441\u0435\u0437\u043e\u043d: 1-2 \u0441\u0435\u0440\u0438\u0438 \u0438\u0437 2)</h1>
+        </body>
+      </html>`;
+    const magnetHtml = `
+      <html>
+        <body>
+          <ul><li>\u0418\u043d\u0444\u043e \u0445\u0435\u0448: DEADBEEF1234</li></ul>
+        </body>
+      </html>`;
+    const timeoutError = new Error(
+      'Failed to fetch https://kinozal.tv/details.php?id=780 after 3 attempts: Timeout error',
+    );
+    const authResponse = {
+      headers: {
+        getSetCookie: vi.fn(() => ['sid=abc']),
+      },
+    } as unknown as Response;
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockRejectedValueOnce(timeoutError)
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(authResponse)
+      .mockResolvedValueOnce(toResponse(magnetHtml));
+
+    const td = new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=780',
+      tracker: 'kinozal',
+    });
+    const result = await td.collect();
+
+    expect(result.magnet).toBe('DEADBEEF1234');
+    expect(
+      mockedFetch.mock.calls.map(([requestedUrl]) => requestedUrl),
+    ).toEqual([
+      'https://kinozal.tv/details.php?id=780',
+      'https://kinozal.me/details.php?id=780',
+      'https://kinozal.me/takelogin.php',
+      'https://kinozal.me/get_srv_details.php?action=2&id=780',
+    ]);
   });
 
   it('kinozal: parses single episode with plural word', async () => {
