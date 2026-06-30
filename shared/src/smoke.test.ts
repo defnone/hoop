@@ -6,4 +6,3 @@ describe('shared smoke', () => {
     expect(sum).toBe(4);
   });
 });
-

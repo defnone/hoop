@@ -3,14 +3,12 @@ import { systemExitRoute } from '@server/routes/system.exit';
 
 describe('systemExitRoute', () => {
   it('invokes process exit with code 0', async () => {
-    const exitSpy = vi
-      .spyOn(process, 'exit')
-      .mockImplementation(
-        ((code?: string | number | null | undefined) => {
-          void code;
-          return undefined as never;
-        }) as never
-      );
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(((
+      code?: string | number | null | undefined,
+    ) => {
+      void code;
+      return undefined as never;
+    }) as never);
 
     try {
       const response = await systemExitRoute.request('/', { method: 'POST' });

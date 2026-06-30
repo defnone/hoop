@@ -40,7 +40,7 @@ export class TelegramAdapter {
 
   private async callApi<T>(
     method: string,
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
   ): Promise<T> {
     const res = await fetch(`${this.apiBase}/${method}`, {
       method: 'POST',
@@ -62,7 +62,7 @@ export class TelegramAdapter {
 
     if (!json.ok) {
       throw new Error(
-        `Telegram API ${method} error: ${json.error_code ?? ''} ${json.description ?? ''}`.trim()
+        `Telegram API ${method} error: ${json.error_code ?? ''} ${json.description ?? ''}`.trim(),
       );
     }
 
@@ -71,7 +71,7 @@ export class TelegramAdapter {
 
   public async sendUpdate(
     tvshow: string,
-    data: Record<number, string>
+    data: Record<number, string>,
   ): Promise<TelegramMessage> {
     let text = `Downloaded "${tvshow}" episodes:\n`;
     for (const [_, file] of Object.entries(data)) {

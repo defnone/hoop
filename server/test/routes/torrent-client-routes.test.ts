@@ -113,7 +113,7 @@ describe('torrent-client routes', () => {
     statusStorage.set(9, createStatus());
     const app = mountRoute(
       '/torrent-client/:id/delete',
-      torrentClientDeleteRoute
+      torrentClientDeleteRoute,
     );
 
     const response = await app.request('/torrent-client/9/delete', {
@@ -133,7 +133,7 @@ describe('torrent-client routes', () => {
     statusStorage.set(9, createStatus());
     const app = mountRoute(
       '/torrent-client/:id/delete',
-      torrentClientDeleteRoute
+      torrentClientDeleteRoute,
     );
 
     const response = await app.request('/torrent-client/9/delete', {

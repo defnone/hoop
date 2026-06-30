@@ -133,9 +133,9 @@ describe('FileManagementService.copyTrackedEpisodes', () => {
 });
 
 describe('FileManagementService.getEpisodeFromName', () => {
-  const getEpisodeFromName = FileManagementService[
-    'getEpisodeFromName'
-  ] as (name: string) => number | null;
+  const getEpisodeFromName = FileManagementService['getEpisodeFromName'] as (
+    name: string,
+  ) => number | null;
 
   it('returns episode number for classic SxxEyy pattern', () => {
     expect(getEpisodeFromName('Show.S01E05.mkv')).toBe(5);
@@ -148,7 +148,7 @@ describe('FileManagementService.getEpisodeFromName', () => {
 
   it('throws when episode number cannot be detected', () => {
     expect(() => getEpisodeFromName('Show.Special.mkv')).toThrow(
-      'Cannot detect episode number from filename: Show.Special.mkv'
+      'Cannot detect episode number from filename: Show.Special.mkv',
     );
   });
 });

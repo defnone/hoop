@@ -25,14 +25,16 @@ export default function ConfirmDelete({
             <Button
               className='flex w-full font-bold'
               variant='outline'
-              onClick={() => onDelete(false)}>
+              onClick={() => onDelete(false)}
+            >
               From Hoop
             </Button>
             <Button
               disabled={files.length === 0}
               className='flex w-full font-bold'
               variant='destructive'
-              onClick={() => onDelete(true)}>
+              onClick={() => onDelete(true)}
+            >
               From Hoop and With Files
             </Button>
           </div>

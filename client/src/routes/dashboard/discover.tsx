@@ -63,9 +63,10 @@ export default function Discover() {
               variant={period === 'weekly' ? 'secondary' : 'outline'}
               className={cn(
                 'font-bold',
-                period == 'weekly' ? 'border border-border' : ''
+                period == 'weekly' ? 'border border-border' : '',
               )}
-              onClick={() => setSearchParams({ period: 'weekly' })}>
+              onClick={() => setSearchParams({ period: 'weekly' })}
+            >
               Last Week
             </Button>
             <Button
@@ -73,9 +74,10 @@ export default function Discover() {
               variant={period === 'daily' ? 'secondary' : 'outline'}
               className={cn(
                 'font-bold',
-                period == 'daily' ? 'border border-border' : ''
+                period == 'daily' ? 'border border-border' : '',
               )}
-              onClick={() => setSearchParams({ period: 'daily' })}>
+              onClick={() => setSearchParams({ period: 'daily' })}
+            >
               Last 24h
             </Button>
           </ButtonGroup>
@@ -95,12 +97,13 @@ export default function Discover() {
                   index === 0 || index === 1
                     ? 'md:col-span-2 lg:col-span-2'
                     : ''
-                }`}>
+                }`}
+              >
                 <OneItem
                   item={item}
                   isBig={index === 0 || index === 1}
                   isJackettPrepared={Boolean(
-                    settingsData?.jackettUrl && settingsData?.jackettApiKey
+                    settingsData?.jackettUrl && settingsData?.jackettApiKey,
                   )}
                 />
               </div>

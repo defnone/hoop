@@ -93,7 +93,8 @@ export default function ChangePassword({
             password === '' ||
             confirmPassword !== password ||
             currentPassword === ''
-          }>
+          }
+        >
           {isLoading ? <Loader2 className='w-4 h-4 animate-spin' /> : 'Change'}
         </Button>
       </DialogContent>

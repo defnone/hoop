@@ -28,11 +28,12 @@ export default function CategoryPicker({
           <Button
             className={cn(
               'font-bold',
-              category === item.value && 'border border-border'
+              category === item.value && 'border border-border',
             )}
             variant={category === item.value ? 'secondary' : 'outline'}
             key={`${id}-${item.value}`}
-            onClick={() => setCategory(item.value)}>
+            onClick={() => setCategory(item.value)}
+          >
             {item.label}
           </Button>
         ))}
@@ -47,7 +48,8 @@ export default function CategoryPicker({
           <PopoverContent
             sideOffset={15}
             align='start'
-            className='text-sm shadow-lg'>
+            className='text-sm shadow-lg'
+          >
             These are the categories sent to Jackett for searching on trackers.
             They don’t always work effectively for category-based searches. It’s
             usually best to use “All” and then filter the search results using

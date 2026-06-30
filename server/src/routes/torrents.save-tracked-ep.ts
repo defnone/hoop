@@ -42,5 +42,5 @@ export const torrentsSaveTrackedEpRoute = new Hono().post(
       };
       return c.json(response, 400);
     }
-  }
+  },
 );

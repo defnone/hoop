@@ -29,7 +29,7 @@ export class TrackerAuth {
         this.login,
         this.password,
         this.baseUrl,
-        this.tConf.authPath
+        this.tConf.authPath,
       );
       if (!this.cookies) throw new Error('No cookies found');
       return this.cookies;

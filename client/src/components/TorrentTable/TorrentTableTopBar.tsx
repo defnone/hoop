@@ -38,7 +38,8 @@ export function TorrentTopBar() {
             size='lg'
             variant={'secondary'}
             className='font-extrabold rounded-md text-sm justify-center items-center bg-blue-700'
-            onClick={() => setDialogOpen(true)}>
+            onClick={() => setDialogOpen(true)}
+          >
             <Plus size={16} />
             New Torrent
           </Button>

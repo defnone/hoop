@@ -74,7 +74,7 @@ export default function Journal() {
     onSuccess: (updatedEvent) => {
       queryClient.setQueryData<InfiniteData<EventJournalPageDto>>(
         EVENT_JOURNAL_QUERY_KEY,
-        (currentData) => updateReadEventInPages(currentData, updatedEvent)
+        (currentData) => updateReadEventInPages(currentData, updatedEvent),
       );
     },
   });
@@ -95,14 +95,14 @@ export default function Journal() {
     onSuccess: () => {
       queryClient.setQueryData<InfiniteData<EventJournalPageDto>>(
         EVENT_JOURNAL_QUERY_KEY,
-        markAllReadEventsInPages
+        markAllReadEventsInPages,
       );
     },
   });
 
   const events = useMemo(
     () => data?.pages.flatMap((page) => page.items) ?? [],
-    [data]
+    [data],
   );
   const hasUnreadEvents = events.some((event) => event.readAt === null);
 
@@ -219,7 +219,7 @@ function JournalEventRow({
         <span
           className={cn(
             'text-base font-bold ',
-            event.state === 'error' ? 'text-red-500' : 'text-zinc-100'
+            event.state === 'error' ? 'text-red-500' : 'text-zinc-100',
           )}
         >
           {formatEventTitle(event.type, event.torrentTitle)}
@@ -242,7 +242,7 @@ function hasSelectedText(): boolean {
 
 function formatEventTitle(
   type: EventJournalType,
-  torrentTitle: string
+  torrentTitle: string,
 ): string {
   switch (type) {
     case 'torrentTitleChanged':
@@ -346,7 +346,7 @@ function DiffPart({
         'px-1 py-0.5',
         variant === 'added'
           ? 'bg-emerald-500/20 text-emerald-200'
-          : 'bg-red-500/20 text-red-200'
+          : 'bg-red-500/20 text-red-200',
       )}
     >
       {part.value}
@@ -361,7 +361,7 @@ type DiffPartValue = {
 
 function buildDiffParts(
   oldValue: string,
-  newValue: string
+  newValue: string,
 ): { oldParts: DiffPartValue[]; newParts: DiffPartValue[] } {
   const oldTokens = tokenizeDiffValue(oldValue);
   const newTokens = tokenizeDiffValue(newValue);
@@ -369,7 +369,7 @@ function buildDiffParts(
   const suffixLength = getCommonSuffixLength(
     oldTokens,
     newTokens,
-    prefixLength
+    prefixLength,
   );
 
   return {
@@ -384,7 +384,7 @@ function tokenizeDiffValue(value: string): string[] {
 
 function getCommonPrefixLength(
   oldTokens: string[],
-  newTokens: string[]
+  newTokens: string[],
 ): number {
   const maxLength = Math.min(oldTokens.length, newTokens.length);
   let index = 0;
@@ -399,12 +399,12 @@ function getCommonPrefixLength(
 function getCommonSuffixLength(
   oldTokens: string[],
   newTokens: string[],
-  prefixLength: number
+  prefixLength: number,
 ): number {
   let suffixLength = 0;
   const maxLength = Math.min(
     oldTokens.length - prefixLength,
-    newTokens.length - prefixLength
+    newTokens.length - prefixLength,
   );
 
   while (
@@ -421,7 +421,7 @@ function getCommonSuffixLength(
 function createDiffParts(
   tokens: string[],
   prefixLength: number,
-  suffixLength: number
+  suffixLength: number,
 ): DiffPartValue[] {
   const changedStart = prefixLength;
   const changedEnd = tokens.length - suffixLength;
@@ -434,7 +434,7 @@ function createDiffParts(
 
 function updateReadEventInPages(
   currentData: InfiniteData<EventJournalPageDto> | undefined,
-  updatedEvent: EventJournalDto
+  updatedEvent: EventJournalDto,
 ): InfiniteData<EventJournalPageDto> | undefined {
   if (!currentData) return currentData;
 
@@ -443,14 +443,14 @@ function updateReadEventInPages(
     pages: currentData.pages.map((page) => ({
       ...page,
       items: page.items.map((event) =>
-        event.id === updatedEvent.id ? updatedEvent : event
+        event.id === updatedEvent.id ? updatedEvent : event,
       ),
     })),
   };
 }
 
 function markAllReadEventsInPages(
-  currentData: InfiniteData<EventJournalPageDto> | undefined
+  currentData: InfiniteData<EventJournalPageDto> | undefined,
 ): InfiniteData<EventJournalPageDto> | undefined {
   if (!currentData) return currentData;
   const readAt = Date.now();
@@ -571,7 +571,7 @@ function getMockEventJournalPage(page: number): EventJournalPageDto {
   const startIndex = (page - 1) * EVENTS_PAGE_LIMIT;
   const items = mockEventJournalItems.slice(
     startIndex,
-    startIndex + EVENTS_PAGE_LIMIT
+    startIndex + EVENTS_PAGE_LIMIT,
   );
 
   return {

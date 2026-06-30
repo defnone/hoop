@@ -42,7 +42,7 @@ vi.mock('@server/external/adapters/tracker-data', () => ({
 }));
 
 const deleteFileMock = vi.fn(
-  async (_filePath: string): Promise<boolean> => true
+  async (_filePath: string): Promise<boolean> => true,
 );
 
 vi.mock('@server/features/file-management/file-management.service', () => ({
@@ -58,23 +58,23 @@ class RepoMock extends TorrentItemRepo {
     async (): Promise<{ items: DbTorrentItem[]; total: number }> => ({
       items: [],
       total: 0,
-    })
+    }),
   );
   public findById = vi.fn(
-    async (_id: number): Promise<DbTorrentItem | null> => null
+    async (_id: number): Promise<DbTorrentItem | null> => null,
   );
   public upsert = vi.fn(
     async (_payload: DbTorrentItemInsert): Promise<DbTorrentItem | undefined> =>
-      undefined
+      undefined,
   );
   public deleteById = vi.fn(
-    async (_id: number): Promise<void> => undefined as unknown as void
+    async (_id: number): Promise<void> => undefined as unknown as void,
   );
   public update = vi.fn(
     async (
       _id: number,
-      _payload: Partial<DbTorrentItemInsert>
-    ): Promise<DbTorrentItem | undefined> => undefined
+      _payload: Partial<DbTorrentItemInsert>,
+    ): Promise<DbTorrentItem | undefined> => undefined,
   );
 }
 
@@ -83,7 +83,7 @@ function createRepoMock(): RepoMock {
 }
 
 function createDbTorrentItem(
-  override: Partial<DbTorrentItem> = {}
+  override: Partial<DbTorrentItem> = {},
 ): DbTorrentItem {
   return {
     id: 1,
@@ -213,7 +213,7 @@ describe('TorrentItem service', () => {
         trackerId: '555',
         haveEpisodes: [3, 4],
         totalEpisodes: 10,
-      })
+      }),
     );
     expect(dto).toMatchObject({ id: 99, trackerId: '555', totalEpisodes: 5 });
     expect(item.id).toBe(99);
@@ -264,7 +264,7 @@ describe('TorrentItem service', () => {
     const item = new TorrentItem({ id: dbItem.id, repo });
 
     await expect(item.updateTrackedEpisodes([6])).rejects.toThrow(
-      'Episode is greater than total episodes'
+      'Episode is greater than total episodes',
     );
   });
 

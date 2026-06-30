@@ -11,7 +11,7 @@ export async function getUserCount() {
     const users = await db.$count(user);
     usersCountStorage.set('count', users);
     logger.debug(
-      `[usersStateStorage] Users count: ${usersCountStorage.get('count')}`
+      `[usersStateStorage] Users count: ${usersCountStorage.get('count')}`,
     );
     return users ?? 1;
   }
@@ -27,7 +27,7 @@ export function normalizeBaseUrl(hostOrUrl: string): string {
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `Failed to normalize base URL from ${hostOrUrl}: ${detail}`
+      `Failed to normalize base URL from ${hostOrUrl}: ${detail}`,
     );
   }
 }

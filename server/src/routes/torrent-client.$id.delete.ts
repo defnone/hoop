@@ -35,5 +35,5 @@ export const torrentClientDeleteRoute = new Hono().delete(
       };
       return c.json(response, 400);
     }
-  }
+  },
 );

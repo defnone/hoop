@@ -68,9 +68,7 @@ const repo = new TorrentItemRepo({
   $client: {} as unknown as Database,
 } as never);
 
-function makeRow(
-  override: Partial<DbTorrentItem> = {}
-): DbTorrentItem {
+function makeRow(override: Partial<DbTorrentItem> = {}): DbTorrentItem {
   return {
     id: 1,
     trackerId: 'tid-1',
@@ -132,7 +130,11 @@ describe('TorrentItemRepo (mocked database)', () => {
   });
 
   it('upserts record and maps returning row', async () => {
-    const returningRow = makeRow({ id: 7, trackerId: 'tid-7', haveEpisodes: [1, 2] });
+    const returningRow = makeRow({
+      id: 7,
+      trackerId: 'tid-7',
+      haveEpisodes: [1, 2],
+    });
     upsertQueue.push([returningRow]);
 
     const data: DbTorrentItemInsert = {

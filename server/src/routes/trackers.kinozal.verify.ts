@@ -70,5 +70,5 @@ export const trackersKinozalVerifyRoute = new Hono().post(
     };
 
     return c.json(response, 400);
-  }
+  },
 );

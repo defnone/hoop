@@ -1,6 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { createLogger as createWinstonLogger, format, transports } from 'winston';
+import {
+  createLogger as createWinstonLogger,
+  format,
+  transports,
+} from 'winston';
 import type { Logger as WinstonLogger } from 'winston';
 
 interface AppLogger {
@@ -52,7 +56,10 @@ function normalizeMetaValue(value: unknown): unknown {
   return { value };
 }
 
-function prepareLogArguments(primary: unknown, rest: unknown[]): { message: string; meta: unknown[] } {
+function prepareLogArguments(
+  primary: unknown,
+  rest: unknown[],
+): { message: string; meta: unknown[] } {
   if (isRecord(primary) && rest.length > 0 && typeof rest[0] === 'string') {
     const [message, ...remaining] = rest;
     return { message, meta: [primary, ...remaining] };
@@ -61,11 +68,13 @@ function prepareLogArguments(primary: unknown, rest: unknown[]): { message: stri
 }
 
 function createAppLoggerInstance(instance: WinstonLogger): AppLogger {
-  const log = (level: 'debug' | 'info' | 'warn' | 'error') => (primary: unknown, ...rest: unknown[]) => {
-    const { message, meta } = prepareLogArguments(primary, rest);
-    const normalizedMeta: unknown[] = meta.map(normalizeMetaValue);
-    instance.log(level, message, ...normalizedMeta);
-  };
+  const log =
+    (level: 'debug' | 'info' | 'warn' | 'error') =>
+    (primary: unknown, ...rest: unknown[]) => {
+      const { message, meta } = prepareLogArguments(primary, rest);
+      const normalizedMeta: unknown[] = meta.map(normalizeMetaValue);
+      instance.log(level, message, ...normalizedMeta);
+    };
 
   return {
     debug: log('debug'),
@@ -76,7 +85,9 @@ function createAppLoggerInstance(instance: WinstonLogger): AppLogger {
       if (!bindings || Object.keys(bindings).length === 0) {
         return createAppLoggerInstance(instance);
       }
-      const childLogger: WinstonLogger = instance.child({ defaultMeta: bindings });
+      const childLogger: WinstonLogger = instance.child({
+        defaultMeta: bindings,
+      });
       return createAppLoggerInstance(childLogger);
     },
   };
@@ -92,7 +103,8 @@ const baseLogger: WinstonLogger = createWinstonLogger({
         format.colorize(),
         format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
         format.printf(({ level, message, timestamp, ...meta }) => {
-          const metadata = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : '';
+          const metadata =
+            Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : '';
           return `${timestamp as string} ${level}: ${message}${metadata}`;
         }),
       ),

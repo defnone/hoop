@@ -16,7 +16,7 @@ export default function QueryProvider({
             retry: 999,
           },
         },
-      })
+      }),
   );
 
   return (

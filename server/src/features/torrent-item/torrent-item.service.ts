@@ -72,7 +72,7 @@ export class TorrentItem implements TorrentItemPort {
     await this.fetchData();
     if (!this.trackerData)
       throw new Error(
-        'Tracker data not found, are you fetching the data first?'
+        'Tracker data not found, are you fetching the data first?',
       );
     if (!this.tracker) throw new Error('Tracker not found');
     if (!this.trackerId) throw new Error('Torrent ID not found');
@@ -90,7 +90,7 @@ export class TorrentItem implements TorrentItemPort {
         typeof this.trackerData.epAndSeason.endEp === 'number'
           ? makeRange(
               this.trackerData.epAndSeason.startEp,
-              this.trackerData.epAndSeason.endEp
+              this.trackerData.epAndSeason.endEp,
             )
           : [],
       totalEpisodes: this.trackerData.epAndSeason?.totalEp,
@@ -168,7 +168,7 @@ export class TorrentItem implements TorrentItemPort {
         await new FileManagementService().deleteFile(filePath);
         await this.repo.update(this.id, {
           files: (this.databaseData?.files as string[])?.filter(
-            (f) => f !== filePath
+            (f) => f !== filePath,
           ),
         });
       } catch (e) {

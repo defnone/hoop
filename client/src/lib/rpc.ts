@@ -7,7 +7,7 @@ const SERVER_URL: string = import.meta.env.VITE_BACKEND_URL ?? '';
 
 const withAuthRedirectFetch = async (
   input: RequestInfo | URL,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<Response> => {
   const res = await fetch(input, { ...init, credentials: 'include' });
 

@@ -63,7 +63,8 @@ export default function CredentialsSettings() {
         <Button
           className='w-fit my-10 font-extrabold ml-auto'
           size='lg'
-          onClick={handleSave}>
+          onClick={handleSave}
+        >
           {isSavingSettings ? (
             <Loader2 className='w-4 h-4 animate-spin' />
           ) : (

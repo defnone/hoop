@@ -50,7 +50,8 @@ export default function customSonner({
             variant='ghost'
             className='group -my-1.5 -me-2 size-8 shrink-0 p-0 hover:bg-transparent'
             onClick={() => toast.dismiss(t)}
-            aria-label='Close banner'>
+            aria-label='Close banner'
+          >
             <XIcon
               size={16}
               className='opacity-60 transition-opacity group-hover:opacity-100'
@@ -62,6 +63,6 @@ export default function customSonner({
     ),
     {
       duration: delayDuration || 5000,
-    }
+    },
   );
 }

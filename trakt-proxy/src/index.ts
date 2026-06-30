@@ -47,7 +47,7 @@ app.use(
   cloudflareRateLimiter<AppType, '*', {}>({
     rateLimitBinding: (c) => c.env.RATE_LIMITER,
     keyGenerator: (c) => resolveRateLimitKey(c),
-  })
+  }),
 );
 
 // Initialize CORS middleware
@@ -58,7 +58,7 @@ app.use(
     allowMethods: ['GET', 'OPTIONS'],
     allowHeaders: ['*'],
     maxAge: 86400,
-  })
+  }),
 );
 
 // Initialize cache middleware
@@ -67,7 +67,7 @@ app.use(
   cache({
     cacheName: 'trakt-proxy-cache',
     cacheControl: 'max-age=3600',
-  })
+  }),
 );
 
 app.get('/api/trakt/:period', async (c) => {

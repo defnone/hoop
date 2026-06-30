@@ -1,9 +1,9 @@
-const TRAKT_API_URL = "https://api.trakt.tv";
-const DEFAULT_LIMIT = "10";
-const DEFAULT_LANGUAGE = "en";
-const DEFAULT_EXTENDED = "full,images";
+const TRAKT_API_URL = 'https://api.trakt.tv';
+const DEFAULT_LIMIT = '10';
+const DEFAULT_LANGUAGE = 'en';
+const DEFAULT_EXTENDED = 'full,images';
 
-export function buildTraktWatchedShowsUrl(period: "weekly" | "daily"): string {
+export function buildTraktWatchedShowsUrl(period: 'weekly' | 'daily'): string {
   const searchParams = new URLSearchParams({
     extended: DEFAULT_EXTENDED,
     limit: DEFAULT_LIMIT,

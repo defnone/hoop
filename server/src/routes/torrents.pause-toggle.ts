@@ -52,5 +52,5 @@ export const torrentsPauseToggleRoute = new Hono().put(
       };
       return c.json(response, 400);
     }
-  }
+  },
 );

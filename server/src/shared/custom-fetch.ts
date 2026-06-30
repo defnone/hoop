@@ -4,7 +4,7 @@ export async function customFetch(
   url: string,
   options: RequestInit = {},
   timeout = 10_000,
-  attempts = 3
+  attempts = 3,
 ): Promise<Response> {
   const { headers, ...restOptions } = options;
 
@@ -27,14 +27,14 @@ export async function customFetch(
       logger.error(
         `Error fetching ${url}, attempt ${i + 1}: ${
           e instanceof Error && e.name === 'AbortError' ? 'Timeout error' : e
-        }`
+        }`,
       );
 
       if (i === attempts - 1) {
         throw new Error(
           `Failed to fetch ${url} after ${attempts} attempts: ${
             e instanceof Error && e.name === 'AbortError' ? 'Timeout error' : e
-          }`
+          }`,
         );
       }
     }
