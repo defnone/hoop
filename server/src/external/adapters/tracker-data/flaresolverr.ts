@@ -1,4 +1,7 @@
 import { customFetch } from '@server/shared/custom-fetch';
+import logger from '@server/lib/logger';
+
+const FLARESOLVERR_SOLVE_ATTEMPTS = 3;
 
 export type FlareSolverrCookie = {
   name: string;
@@ -54,29 +57,48 @@ export async function fetchWithFlareSolverr(params: {
     payload.cookies = parsedCookies;
   }
 
-  const response = await customFetch(
-    endpoint.href,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+  for (let attempt = 1; attempt <= FLARESOLVERR_SOLVE_ATTEMPTS; attempt++) {
+    const response = await customFetch(
+      endpoint.href,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       },
-      body: JSON.stringify(payload),
-    },
-    params.timeout + 5_000,
-    1,
-  );
-  const body = (await response.json()) as FlareSolverrResponse;
+      params.timeout + 5_000,
+      1,
+    );
+    const body = (await response.json()) as FlareSolverrResponse;
 
-  if (!response.ok || body.status !== 'ok' || !body.solution) {
-    throw new Error(body.message || 'FlareSolverr request failed');
+    if (!response.ok || body.status !== 'ok' || !body.solution) {
+      const errorMessage = body.message || 'FlareSolverr request failed';
+      const shouldRetry =
+        attempt < FLARESOLVERR_SOLVE_ATTEMPTS &&
+        isChallengeSolveTimeout(errorMessage);
+
+      if (shouldRetry) {
+        logger.warn('Retrying FlareSolverr challenge solve after timeout', {
+          targetUrl: params.targetUrl,
+          attempt,
+          nextAttempt: attempt + 1,
+          maxAttempts: FLARESOLVERR_SOLVE_ATTEMPTS,
+        });
+        continue;
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    if (!body.solution.response) {
+      throw new Error('FlareSolverr response body is empty');
+    }
+
+    return body.solution;
   }
 
-  if (!body.solution.response) {
-    throw new Error('FlareSolverr response body is empty');
-  }
-
-  return body.solution;
+  throw new Error('FlareSolverr challenge solve failed');
 }
 
 export async function verifyFlareSolverr(params: {
@@ -120,6 +142,13 @@ function normalizeServerUrl(serverUrl: string): string {
   }
 
   return trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
+}
+
+function isChallengeSolveTimeout(message: string): boolean {
+  return (
+    message.includes('Error solving the challenge') &&
+    message.includes('Timeout after')
+  );
 }
 
 function parseCookieHeader(cookieHeader: string): FlareSolverrCookie[] {

@@ -86,6 +86,50 @@ describe('FlareSolverr client', () => {
     ).rejects.toThrow('failed');
   });
 
+  it('retries challenge solve timeouts twice before succeeding', async () => {
+    const timeoutResponse = (): Response =>
+      new Response(
+        JSON.stringify({
+          status: 'error',
+          message: 'Error solving the challenge. Timeout after 60.0 seconds.',
+        }),
+        {
+          status: 500,
+          headers: { 'content-type': 'application/json' },
+        },
+      );
+    const successResponse = new Response(
+      JSON.stringify({
+        status: 'ok',
+        solution: {
+          status: 200,
+          response: '<html></html>',
+          cookies: [],
+          userAgent: 'Mozilla/5.0',
+        },
+      }),
+      {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      },
+    );
+
+    vi.mocked(customFetch)
+      .mockResolvedValueOnce(timeoutResponse())
+      .mockResolvedValueOnce(timeoutResponse())
+      .mockResolvedValueOnce(successResponse);
+
+    const solution = await fetchWithFlareSolverr({
+      serverUrl: 'http://localhost:8191',
+      targetUrl: 'https://example.com/topic',
+      timeout: 60_000,
+      cookies: '',
+    });
+
+    expect(solution.response).toBe('<html></html>');
+    expect(vi.mocked(customFetch)).toHaveBeenCalledTimes(3);
+  });
+
   it('throws when response body is empty', async () => {
     vi.mocked(customFetch).mockResolvedValueOnce(
       new Response(
