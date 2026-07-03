@@ -287,7 +287,7 @@ describe('jackettVerifyRoute /api-key', () => {
 
     expect(response.status).toBe(500);
     expect(body.message).toBe(
-      'Failed to validate Jackett API Key: Failed to fetch http://jackett.test/api/v2.0/indexers/all/results/?apikey=key&Query=ping&Category=5000 after 3 attempts: Error: network',
+      'Failed to validate Jackett API Key: Failed to fetch http://jackett.test/api/v2.0/indexers/all/results/?apikey=[REDACTED]&Query=ping&Category=5000 after 3 attempts: Error: network',
     );
   });
 });
