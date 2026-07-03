@@ -1,12 +1,12 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import db from '../db';
+import db, { sqlite } from '../db';
 // import { emailOTP } from 'better-auth/plugins';
 // import { sendVerificationOTP } from './utils';
 import * as schema from '../db/auth/auth-schema';
-import { onAfterUserCreate, onBeforeUserCreate } from './auth-hooks';
-import { createAuthMiddleware, APIError } from 'better-auth/api';
-import { usersCountStorage } from './users-count-storage';
+import { onAfterUserCreate } from './auth-hooks';
+import { SingleUserSignup } from './single-user-signup';
+import { SqliteSingleUserSignupDatabase } from '@server/db/single-user-signup-database';
 
 const authBaseUrl = process.env.ORIGIN || 'http://localhost:5173';
 
@@ -37,24 +37,9 @@ export const auth = betterAuth({
 
   trustedOrigins: [authBaseUrl],
 
-  hooks: {
-    before: createAuthMiddleware(async (ctx) => {
-      // This hook is implemented to prevent attempts to guess a user's email during sign-up by brute force.
-      if (
-        ctx.path === '/sign-up/email' &&
-        (usersCountStorage.get('count') ?? 1) > 0
-      ) {
-        throw new APIError('FORBIDDEN', {
-          message: 'Sign-up disabled',
-        });
-      }
-    }),
-  },
-
   databaseHooks: {
     user: {
       create: {
-        before: onBeforeUserCreate,
         after: onAfterUserCreate,
       },
     },
@@ -80,3 +65,11 @@ export const auth = betterAuth({
   //   }),
   // ],
 });
+
+const singleUserSignup = new SingleUserSignup(
+  new SqliteSingleUserSignupDatabase(sqlite),
+);
+
+export async function handleAuthRequest(request: Request): Promise<Response> {
+  return singleUserSignup.handle(request, () => auth.handler(request));
+}

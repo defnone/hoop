@@ -7,14 +7,18 @@ export { formatErrorMessage } from './error-message';
 export { usersCountStorage };
 
 export async function getUserCount() {
-  if (!usersCountStorage.get('count')) {
-    const users = await db.$count(user);
-    usersCountStorage.set('count', users);
-    logger.debug(
-      `[usersStateStorage] Users count: ${usersCountStorage.get('count')}`,
+  const users = await db.$count(user);
+  usersCountStorage.set('count', users);
+  logger.debug(`[usersStateStorage] Users count: ${users}`);
+
+  if (users > 1) {
+    logger.error(
+      { userCount: users },
+      'Critical: single-user invariant violated',
     );
-    return users ?? 1;
   }
+
+  return users;
 }
 
 export function normalizeBaseUrl(hostOrUrl: string): string {

@@ -1,7 +1,7 @@
 import { Hono } from 'hono/tiny';
 import { cors } from 'hono/cors';
 import { serveStatic } from 'hono/bun';
-import { auth } from './lib/auth';
+import { auth, handleAuthRequest } from './lib/auth';
 import healthRoute from './routes/health';
 import { onErrorHandler } from './shared/middlewares';
 import logger from './lib/logger';
@@ -65,7 +65,7 @@ if (process.env.NODE_ENV !== 'production') {
 app.onError(onErrorHandler);
 
 app.on(['POST', 'GET'], '/auth/*', (c) => {
-  return auth.handler(c.req.raw);
+  return handleAuthRequest(c.req.raw);
 });
 
 app.use('*', async (c, next) => {
