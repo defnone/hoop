@@ -130,6 +130,41 @@ describe('FlareSolverr client', () => {
     expect(vi.mocked(customFetch)).toHaveBeenCalledTimes(3);
   });
 
+  it('retries transport errors twice before succeeding', async () => {
+    const successResponse = new Response(
+      JSON.stringify({
+        status: 'ok',
+        solution: {
+          status: 200,
+          response: '<html></html>',
+          cookies: [],
+          userAgent: 'Mozilla/5.0',
+        },
+      }),
+      {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      },
+    );
+
+    vi.mocked(customFetch)
+      .mockRejectedValueOnce(
+        new Error('Failed to fetch after 1 attempts: Timeout error'),
+      )
+      .mockRejectedValueOnce(new Error('Connection refused'))
+      .mockResolvedValueOnce(successResponse);
+
+    const solution = await fetchWithFlareSolverr({
+      serverUrl: 'http://localhost:8191',
+      targetUrl: 'https://example.com/topic',
+      timeout: 60_000,
+      cookies: '',
+    });
+
+    expect(solution.response).toBe('<html></html>');
+    expect(vi.mocked(customFetch)).toHaveBeenCalledTimes(3);
+  });
+
   it('throws when response body is empty', async () => {
     vi.mocked(customFetch).mockResolvedValueOnce(
       new Response(
