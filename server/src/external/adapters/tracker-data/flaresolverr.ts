@@ -58,18 +58,36 @@ export async function fetchWithFlareSolverr(params: {
   }
 
   for (let attempt = 1; attempt <= FLARESOLVERR_SOLVE_ATTEMPTS; attempt++) {
-    const response = await customFetch(
-      endpoint.href,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+    let response: Response;
+
+    try {
+      response = await customFetch(
+        endpoint.href,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
         },
-        body: JSON.stringify(payload),
-      },
-      params.timeout + 5_000,
-      1,
-    );
+        params.timeout + 5_000,
+        1,
+      );
+    } catch (error) {
+      if (attempt === FLARESOLVERR_SOLVE_ATTEMPTS) {
+        throw error;
+      }
+
+      logger.warn('Retrying FlareSolverr request after transport error', {
+        targetUrl: params.targetUrl,
+        attempt,
+        nextAttempt: attempt + 1,
+        maxAttempts: FLARESOLVERR_SOLVE_ATTEMPTS,
+        error: getErrorMessage(error),
+      });
+      continue;
+    }
+
     const body = (await response.json()) as FlareSolverrResponse;
 
     if (!response.ok || body.status !== 'ok' || !body.solution) {
@@ -149,6 +167,10 @@ function isChallengeSolveTimeout(message: string): boolean {
     message.includes('Error solving the challenge') &&
     message.includes('Timeout after')
   );
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function parseCookieHeader(cookieHeader: string): FlareSolverrCookie[] {
