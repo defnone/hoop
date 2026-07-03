@@ -1,4 +1,5 @@
 import logger from '@server/lib/logger';
+import { redactSensitiveUrl } from '@server/shared/url-redaction.utils';
 
 export async function customFetch(
   url: string,
@@ -7,6 +8,7 @@ export async function customFetch(
   attempts = 3,
 ): Promise<Response> {
   const { headers, ...restOptions } = options;
+  const redactedUrl = redactSensitiveUrl(url);
 
   for (let i = 0; i < attempts; i++) {
     const c = new AbortController();
@@ -24,21 +26,28 @@ export async function customFetch(
       return response;
     } catch (e) {
       clearTimeout(t);
+      const errorMessage = getErrorMessage(e);
       logger.error(
-        `Error fetching ${url}, attempt ${i + 1}: ${
-          e instanceof Error && e.name === 'AbortError' ? 'Timeout error' : e
-        }`,
+        `Error fetching ${redactedUrl}, attempt ${i + 1}: ${errorMessage}`,
       );
 
       if (i === attempts - 1) {
         throw new Error(
-          `Failed to fetch ${url} after ${attempts} attempts: ${
-            e instanceof Error && e.name === 'AbortError' ? 'Timeout error' : e
-          }`,
+          `Failed to fetch ${redactedUrl} after ${attempts} attempts: ${errorMessage}`,
         );
       }
     }
   }
 
-  throw new Error(`Failed to fetch ${url}`);
+  throw new Error(`Failed to fetch ${redactedUrl}`);
+}
+
+// Utilities
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.name === 'AbortError') {
+    return 'Timeout error';
+  }
+
+  return redactSensitiveUrl(String(error));
 }
