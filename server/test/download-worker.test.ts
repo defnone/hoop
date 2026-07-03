@@ -105,7 +105,9 @@ const status = vi.fn(
     isCompleted: false,
   }),
 );
-const selectEpisodes = vi.fn(async () => undefined);
+const selectEpisodes = vi.fn(
+  async (_downloadStatus: NormalizedTorrent) => undefined,
+);
 const remove = vi.fn(async () => undefined);
 const sendUpdate = vi.fn((title: string, payload: Record<number, string>) => {
   void title;
@@ -122,8 +124,8 @@ vi.mock('@server/external/adapters/transmission', () => ({
     async status() {
       return status();
     }
-    async selectEpisodes() {
-      return selectEpisodes();
+    async selectEpisodes(downloadStatus: NormalizedTorrent) {
+      return selectEpisodes(downloadStatus);
     }
     async remove() {
       return remove();
@@ -279,6 +281,30 @@ describe('DownloadWorker', () => {
 
     expect(repo.markAsIdle).toHaveBeenCalledWith(item.id);
     expect(statusStorage.get(item.id)).toBeUndefined();
+  });
+
+  it('processDownloading: records one failure and skips episode selection after a temporary request failure', async () => {
+    const { DownloadWorker } = await import('@server/workers/download-worker');
+    const repo = new RepoMock();
+    const eventJournal = new EventJournalMock();
+    const worker = new DownloadWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
+
+    status.mockRejectedValueOnce(
+      new Error('Transmission request failed without an HTTP response'),
+    );
+
+    await worker.processDownloading({ ...item });
+
+    expect(selectEpisodes).not.toHaveBeenCalled();
+    expect(eventJournal.recordTorrentDownloadFailed).toHaveBeenCalledTimes(1);
+    expect(eventJournal.recordTorrentDownloadFailed).toHaveBeenCalledWith({
+      torrentItem: expect.objectContaining({ id: item.id }),
+      errorMessage:
+        'DownloadWorker: Failed to check download status, Transmission request failed without an HTTP response',
+    });
   });
 
   it('processCompletedDownload: copies files and removes from Transmission', async () => {

@@ -1,6 +1,7 @@
 import { Transmission, type AddTorrentOptions } from '@ctrl/transmission';
 import type {
   AddMagnetResult,
+  EpisodeSelectionStatus,
   TransmissionItemParams,
 } from './transmission.types';
 import { TransmissionClientRepo } from './transmission.repo';
@@ -11,6 +12,8 @@ import type {
   TorrentClientItemDto,
 } from './transmission.types';
 import { toTorrentClientItemDto } from './transmission.utils';
+import { normalizeTransmissionError } from './transmission-error.utils';
+import type { NormalizedTorrent } from '@ctrl/shared-torrent';
 
 export class TransmissionAdapter {
   private client: Transmission;
@@ -84,15 +87,20 @@ export class TransmissionAdapter {
     });
   }
 
-  async status() {
+  async status(): Promise<NormalizedTorrent> {
     await this.loadSettings();
     if (!this.tiData?.transmissionId) throw new Error('No transmissionId');
-    const status = await this.client.getTorrent(this.tiData.transmissionId);
-    return status;
+    try {
+      const status = await this.client.getTorrent(this.tiData.transmissionId);
+      if (!status) throw new Error('Torrent not found');
+      return status;
+    } catch (error: unknown) {
+      throw normalizeTransmissionError(error);
+    }
   }
 
-  async selectEpisodes() {
-    const status = await this.status();
+  async selectEpisodes(status: EpisodeSelectionStatus) {
+    await this.loadSettings();
     const filesFromClient = status.raw.files as Record<string, string>[];
     const trackedEpisodes = this.tiData?.trackedEpisodes as number[];
     const forUnselect = filesFromClient.reduce((arr: number[], file, index) => {

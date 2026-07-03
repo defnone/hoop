@@ -62,7 +62,9 @@ const add = vi.fn(async () => undefined);
 const status = vi.fn(
   async () => ({ isCompleted: false }) as { isCompleted: boolean },
 );
-const selectEpisodes = vi.fn(async () => undefined);
+const selectEpisodes = vi.fn(
+  async (_downloadStatus: { isCompleted: boolean }) => undefined,
+);
 const remove = vi.fn(async () => undefined);
 
 vi.mock('@server/external/adapters/transmission', () => ({
@@ -76,8 +78,8 @@ vi.mock('@server/external/adapters/transmission', () => ({
     async status() {
       return status();
     }
-    async selectEpisodes() {
-      return selectEpisodes();
+    async selectEpisodes(downloadStatus: { isCompleted: boolean }) {
+      return selectEpisodes(downloadStatus);
     }
     async remove() {
       return remove();
@@ -213,6 +215,7 @@ describe('DownloadWorker errorMessage persistence', () => {
     expect(String(errUpdate?.data.errorMessage)).toContain(
       'Failed to check download status',
     );
+    expect(selectEpisodes).not.toHaveBeenCalled();
   });
 
   it('persists errorMessage when selectEpisodes() fails during downloading', async () => {
@@ -235,6 +238,7 @@ describe('DownloadWorker errorMessage persistence', () => {
     expect(String(errUpdate?.data.errorMessage)).toContain(
       'Error selecting episodes',
     );
+    expect(selectEpisodes).toHaveBeenCalledWith({ isCompleted: false });
   });
 
   it('persists errorMessage when checkFiles() encounters unexpected fs error', async () => {

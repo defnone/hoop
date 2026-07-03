@@ -17,6 +17,12 @@ export type AddMagnetResult = {
   };
 };
 
+export type EpisodeSelectionStatus = {
+  raw: {
+    files: Array<{ name: string }>;
+  };
+};
+
 export const torrentClientActions = [
   'pause',
   'resume',

@@ -501,7 +501,15 @@ describe('TransmissionAdapter', () => {
       repo: repo as unknown as never,
     });
 
-    await adapter.selectEpisodes();
+    await adapter.selectEpisodes({
+      raw: {
+        files: [
+          { name: 'Show.S01E01.mkv' },
+          { name: 'Show.S01E02.mkv' },
+          { name: 'Show.S01E03.mkv' },
+        ],
+      },
+    });
     expect(client.setCalls).toHaveLength(1);
     expect(client.setCalls[0]).toEqual({
       id: 'abc123',
@@ -542,7 +550,7 @@ describe('TransmissionAdapter', () => {
       repo: repo as unknown as never,
     });
 
-    await adapter.selectEpisodes();
+    await adapter.selectEpisodes({ raw: { files: [{ name: 'S01E01' }] } });
     expect(client.setCalled).toBe(false);
   });
 
@@ -575,7 +583,9 @@ describe('TransmissionAdapter', () => {
       repo: repo as unknown as never,
     });
 
-    await expect(adapter.selectEpisodes()).rejects.toThrow('No transmissionId');
+    await expect(
+      adapter.selectEpisodes({ raw: { files: [{ name: 'S01E01' }] } }),
+    ).rejects.toThrow('No transmissionId');
   });
 
   it('constructor: throws when required env vars are missing', async () => {
@@ -656,7 +666,15 @@ describe('TransmissionAdapter', () => {
       repo: repo as unknown as never,
     });
 
-    await adapter.selectEpisodes();
+    await adapter.selectEpisodes({
+      raw: {
+        files: [
+          { name: 'Show.E02.mkv' },
+          { name: 'Show.12.mkv' },
+          { name: 'Other.007.extra.mkv' },
+        ],
+      },
+    });
     // Only the 007 (episode 7) should be unselected => index 2
     expect(client.setCalls).toHaveLength(1);
     expect(client.setCalls[0]).toEqual({
@@ -708,7 +726,15 @@ describe('TransmissionAdapter', () => {
       repo: repo as unknown as never,
     });
 
-    await adapter.selectEpisodes();
+    await adapter.selectEpisodes({
+      raw: {
+        files: [
+          { name: 'Show.S01.E04.mkv' },
+          { name: 'Show.S01E05.mkv' },
+          { name: 'Show.S01.E06.mkv' },
+        ],
+      },
+    });
     expect(client.setCalls).toHaveLength(1);
     expect(client.setCalls[0]).toEqual({
       id: 'abc123',

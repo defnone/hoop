@@ -100,7 +100,9 @@ export class DownloadWorker {
         torrentItem: row,
         errorMessage: this.error,
       });
+      return;
     }
+    if (!status) return;
     const isDone = Boolean(
       status?.isCompleted &&
         status.dateCompleted &&
@@ -117,7 +119,7 @@ export class DownloadWorker {
     } else {
       try {
         // Select only tracked episodes in Transmission to optimize downloads
-        await client.selectEpisodes();
+        await client.selectEpisodes(status);
         statusStorage.set(row.id, status);
       } catch (e) {
         logger.error(
