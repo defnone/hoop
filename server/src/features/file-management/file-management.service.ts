@@ -3,6 +3,7 @@ import { TransmissionAdapter } from '@server/external/adapters/transmission';
 import logger from '@server/lib/logger';
 import fs from 'fs';
 import path from 'path';
+import { safeLinkOrCopyFile } from '@server/features/file-management/file-management.utils';
 
 export class FileManagementService {
   async copyTrackedEpisodes(
@@ -111,20 +112,13 @@ export class FileManagementService {
             m.base,
           );
 
-          await FileManagementService.ensureDirExists(destinationPath);
-
           try {
-            await fs.promises.access(sourcePath);
-          } catch (e) {
-            logger.error(`Source file not accessible: ${sourcePath}`);
-            throw e;
-          }
-
-          try {
-            const mode = await FileManagementService.tryLinkOrCopy(
+            const mode = await safeLinkOrCopyFile({
+              sourceRoot: settings.downloadDir,
               sourcePath,
-              destinationPath,
-            );
+              targetRoot: settings.mediaDir,
+              targetPath: destinationPath,
+            });
             logger.info(
               `${
                 mode === 'linked' ? 'Created hardlink' : 'Copied'
@@ -183,23 +177,6 @@ export class FileManagementService {
       FileManagementService.sanitizeFolderName(title),
       fileName,
     );
-  }
-
-  private static async ensureDirExists(filePath: string): Promise<void> {
-    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-  }
-
-  private static async tryLinkOrCopy(
-    source: string,
-    target: string,
-  ): Promise<'linked' | 'copied'> {
-    try {
-      await fs.promises.link(source, target);
-      return 'linked';
-    } catch {
-      await fs.promises.copyFile(source, target);
-      return 'copied';
-    }
   }
 
   private static getEpisodeFromName(name: string): number | null {

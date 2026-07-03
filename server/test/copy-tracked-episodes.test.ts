@@ -130,6 +130,58 @@ describe('FileManagementService.copyTrackedEpisodes', () => {
     expect(res[3]).toBe(dest);
     expect(fs.existsSync(dest)).toBe(true);
   });
+
+  it('rejects a torrent file path that escapes download directory', async () => {
+    const outsideDir = path.join(tmpRoot, 'outside');
+    const outsideFile = path.join(outsideDir, 'Some.Show.S01E04.mkv');
+    await fs.promises.mkdir(outsideDir, { recursive: true });
+    await fs.promises.writeFile(outsideFile, 'secret');
+    rawFiles = [{ name: '../../outside/Some.Show.S01E04.mkv' }];
+
+    const torrentItem = makeTorrentItem({
+      title: 'Some Show',
+      season: 1,
+      trackedEpisodes: [4],
+    });
+
+    const result = await new FileManagementService().copyTrackedEpisodes(
+      torrentItem,
+      makeSettings(),
+    );
+
+    expect(result).toEqual({});
+    expect(
+      fs.existsSync(path.join(dirs.media, 'Some Show', 'S01E04.mkv')),
+    ).toBe(false);
+  });
+
+  it('rejects a torrent source symlink that points outside download directory', async () => {
+    const sourceDir = path.join(dirs.dl, statusName);
+    const outsideDir = path.join(tmpRoot, 'outside');
+    const outsideFile = path.join(outsideDir, 'Some.Show.S01E05.mkv');
+    const sourceLink = path.join(sourceDir, 'Some.Show.S01E05.mkv');
+    await fs.promises.mkdir(sourceDir, { recursive: true });
+    await fs.promises.mkdir(outsideDir, { recursive: true });
+    await fs.promises.writeFile(outsideFile, 'secret');
+    await fs.promises.symlink(outsideFile, sourceLink);
+    rawFiles = [{ name: 'Some.Show.S01E05.mkv' }];
+
+    const torrentItem = makeTorrentItem({
+      title: 'Some Show',
+      season: 1,
+      trackedEpisodes: [5],
+    });
+
+    const result = await new FileManagementService().copyTrackedEpisodes(
+      torrentItem,
+      makeSettings(),
+    );
+
+    expect(result).toEqual({});
+    expect(
+      fs.existsSync(path.join(dirs.media, 'Some Show', 'S01E05.mkv')),
+    ).toBe(false);
+  });
 });
 
 describe('FileManagementService.getEpisodeFromName', () => {
