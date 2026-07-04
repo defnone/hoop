@@ -86,6 +86,26 @@ describe('FlareSolverr client', () => {
     ).rejects.toThrow('failed');
   });
 
+  it('identifies FlareSolverr when its response is not valid JSON', async () => {
+    vi.mocked(customFetch).mockResolvedValueOnce(
+      new Response('<html>Bad gateway</html>', {
+        status: 502,
+        headers: { 'content-type': 'text/html' },
+      }),
+    );
+
+    await expect(
+      fetchWithFlareSolverr({
+        serverUrl: 'http://localhost:8191/proxy/',
+        targetUrl: 'https://example.com/topic',
+        timeout: 10_000,
+        cookies: '',
+      }),
+    ).rejects.toThrow(
+      'Failed to parse JSON response from FlareSolverr at http://localhost:8191/proxy/v1 (HTTP 502, Content-Type: text/html)',
+    );
+  });
+
   it('retries challenge solve timeouts twice before succeeding', async () => {
     const timeoutResponse = (): Response =>
       new Response(

@@ -88,7 +88,7 @@ export async function fetchWithFlareSolverr(params: {
       continue;
     }
 
-    const body = (await response.json()) as FlareSolverrResponse;
+    const body = await parseFlareSolverrResponse(response, endpoint);
 
     if (!response.ok || body.status !== 'ok' || !body.solution) {
       const errorMessage = body.message || 'FlareSolverr request failed';
@@ -139,7 +139,7 @@ export async function verifyFlareSolverr(params: {
     params.timeout,
     1,
   );
-  const body = (await response.json()) as FlareSolverrResponse;
+  const body = await parseFlareSolverrResponse(response, endpoint);
 
   if (!response.ok || body.status !== 'ok') {
     throw new Error(body.message || 'FlareSolverr connection failed');
@@ -171,6 +171,22 @@ function isChallengeSolveTimeout(message: string): boolean {
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+async function parseFlareSolverrResponse(
+  response: Response,
+  endpoint: URL,
+): Promise<FlareSolverrResponse> {
+  const responseText = await response.text();
+
+  try {
+    return JSON.parse(responseText) as FlareSolverrResponse;
+  } catch (error) {
+    throw new Error(
+      `Failed to parse JSON response from FlareSolverr at ${endpoint.href} (HTTP ${response.status}, Content-Type: ${response.headers.get('content-type') || 'missing'})`,
+      { cause: error },
+    );
+  }
 }
 
 function parseCookieHeader(cookieHeader: string): FlareSolverrCookie[] {
