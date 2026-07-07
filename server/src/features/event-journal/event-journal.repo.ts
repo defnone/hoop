@@ -48,7 +48,20 @@ export class EventJournalRepo {
       .insert(eventJournal)
       .values(data)
       .returning();
+    await this.trimTo(EVENT_JOURNAL_LIMIT);
     return row;
+  }
+
+  async trimTo(limit: number): Promise<void> {
+    await this.database.run(sql`
+      DELETE FROM ${eventJournal}
+      WHERE ${eventJournal.id} NOT IN (
+        SELECT ${eventJournal.id}
+        FROM ${eventJournal}
+        ORDER BY ${eventJournal.createdAt} DESC, ${eventJournal.id} DESC
+        LIMIT ${limit}
+      )
+    `);
   }
 
   async markAsRead(id: number): Promise<DbEventJournal | undefined> {
@@ -68,3 +81,5 @@ export class EventJournalRepo {
       .returning();
   }
 }
+
+const EVENT_JOURNAL_LIMIT = 500;

@@ -19,6 +19,7 @@ let lastInsertValues: DbEventJournalInsert | null = null;
 let lastUpdateSet: Partial<DbEventJournalInsert> | null = null;
 
 const database = {
+  run: vi.fn(async () => undefined),
   select: vi.fn(() => ({
     from: vi.fn(() => ({
       orderBy: vi.fn(() => ({
@@ -88,6 +89,7 @@ describe('EventJournalRepo (mocked database)', () => {
     lastLimit = null;
     lastInsertValues = null;
     lastUpdateSet = null;
+    database.run.mockClear();
   });
 
   it('returns paginated events with total', async () => {
@@ -121,6 +123,13 @@ describe('EventJournalRepo (mocked database)', () => {
     expect(lastInsertValues?.state).toBe('info');
     expect(lastInsertValues?.isNotification).toBe(true);
     expect(row?.id).toBe(7);
+    expect(database.run).toHaveBeenCalledTimes(1);
+  });
+
+  it('trims old events to requested limit', async () => {
+    await repo.trimTo(500);
+
+    expect(database.run).toHaveBeenCalledTimes(1);
   });
 
   it('marks an event as read', async () => {
