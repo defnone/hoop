@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.7.0 - 2026-07-09
+
+### Added
+
+- Client: add Event Journal page for browsing worker and system events.
+- Client: add Transmission transfers sheet with search, filters, speed summary, torrent actions, and removal flow.
+- Client: add manual torrent sync status in the header.
+- Client: allow searching by torrent title directly from the edit dialog.
+- Server: add event journal storage, API routes, read-state support, and retention trimming.
+- Server: add batched manual torrent sync endpoint.
+- Server: add Transmission management API for listing, pausing, starting, stopping, and removing torrents.
+- Server: add `kinozal.guru` as an alternative tracker domain.
+
+### Changed
+
+- Server: retry tracker-data fetches across alternative domains after timeout.
+- Server: use the active tracker URL for authentication and fetching.
+- Server: retry FlareSolverr challenge solves on timeout and report invalid JSON responses more clearly.
+- Server: process update-worker items in batches for better reliability under larger queues.
+- Server: normalize Transmission errors so worker failures surface cleaner diagnostics.
+- Server: use safer link-or-copy file handling for tracked episode copies.
+- Client: polish settings labels, sync messages, layouts, and React runtime patterns.
+
+### Security
+
+- Server: redact sensitive URL values in outbound fetch logging.
+- Build: exclude private keys, certificates, local SQLite databases, backups, and env-like secrets from Docker context.
+- Server: make first-user signup transactional to prevent duplicate initial account creation.
+- Server: allow auth base URL configuration through environment.
+
+### Build/Infra
+
+- Updated client dependencies, including React, React Router, TanStack Query, Tailwind, Radix UI, Vite, and related tooling.
+- Updated server dependencies, including Hono, Better Auth, Drizzle, Transmission client packages, and HTML parsing tooling.
+- Updated baseline browser data and added an override to prevent stale browser mapping warnings.
+- Migrated Vite React plugin setup for the refreshed frontend toolchain.
+- Added Prettier single-quote defaults and formatted the project.
+
+### Tests
+
+- Added coverage for Event Journal repo/service/routes.
+- Added coverage for Transmission sheet utilities and management routes.
+- Added coverage for FlareSolverr retries, invalid JSON handling, tracker fallback, URL redaction, file copy helpers, signup locking, and sync routes.
+
+### Notes
+
+- Includes new SQLite migrations for Event Journal tables, state, and notification flags.
+- No breaking changes expected.
+
 ## 0.6.0 - 2026-06-22
 
 ### Added
