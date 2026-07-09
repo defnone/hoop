@@ -51,6 +51,10 @@ vi.mock('@server/features/settings/settings.service', () => {
   };
 });
 
+vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
+  return { TransmissionClientRepo: class {} };
+});
+
 // Repository mock
 class RepoMock {
   public findTorrentItemById = vi.fn<
@@ -120,9 +124,6 @@ describe('TransmissionAdapter', () => {
 
   it('add(): adds torrent and updates item', async () => {
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
@@ -158,9 +159,6 @@ describe('TransmissionAdapter', () => {
 
   it('add(): throws when torrent item not found', async () => {
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
@@ -180,9 +178,6 @@ describe('TransmissionAdapter', () => {
 
   it('add(): handles duplicate and stores hashString', async () => {
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
@@ -212,9 +207,6 @@ describe('TransmissionAdapter', () => {
 
   it('remove(): removes torrent and clears linkage', async () => {
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
@@ -251,9 +243,6 @@ describe('TransmissionAdapter', () => {
 
   it('remove(): throws when no transmissionId', async () => {
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
@@ -272,9 +261,6 @@ describe('TransmissionAdapter', () => {
 
   it('status(): returns status when transmissionId present', async () => {
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
@@ -299,9 +285,6 @@ describe('TransmissionAdapter', () => {
 
   it('status(): throws when no transmissionId', async () => {
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
@@ -320,9 +303,6 @@ describe('TransmissionAdapter', () => {
 
   it('getAll(): returns list of torrents', async () => {
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
@@ -342,15 +322,12 @@ describe('TransmissionAdapter', () => {
 
   it('add(): omits download-dir when not set in settings', async () => {
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
 
     const repo = new RepoMock();
-    // Настроим мок SettingsService на отсутствие downloadDir
+    // Configure SettingsService mock without downloadDir.
     nextSettings = { ...baseSettings, downloadDir: null } as DbUserSettings;
     const client = new TransmissionMock();
 
@@ -379,9 +356,6 @@ describe('TransmissionAdapter', () => {
     }
 
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
@@ -410,9 +384,6 @@ describe('TransmissionAdapter', () => {
     }
 
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
@@ -433,9 +404,6 @@ describe('TransmissionAdapter', () => {
 
   it('remove(): forwards explicit delete flag to client', async () => {
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
@@ -480,9 +448,6 @@ describe('TransmissionAdapter', () => {
     }
 
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
@@ -529,9 +494,6 @@ describe('TransmissionAdapter', () => {
     }
 
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
@@ -565,9 +527,6 @@ describe('TransmissionAdapter', () => {
     }
 
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
@@ -645,9 +604,6 @@ describe('TransmissionAdapter', () => {
     }
 
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
@@ -705,9 +661,6 @@ describe('TransmissionAdapter', () => {
     }
 
     vi.resetModules();
-    vi.mock('@server/external/adapters/transmission/transmission.repo', () => {
-      return { TransmissionClientRepo: class {} };
-    });
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
     );
