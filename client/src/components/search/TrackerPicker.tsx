@@ -10,7 +10,7 @@ export default function TrackerPicker({
   resultsByTracker,
 }: {
   tracker: string;
-  setTracker: React.Dispatch<React.SetStateAction<string>>;
+  setTracker: (tracker: string) => void;
   trackers: { value: string; label: string }[];
   resultsByTracker: Record<string, number>;
 }) {

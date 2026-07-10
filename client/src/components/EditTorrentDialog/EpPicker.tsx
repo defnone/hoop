@@ -31,6 +31,7 @@ export default function EpPicker({
     }, []);
   });
   const { setStartFetch } = useTorrentStore();
+  const selectedEpisodeIds = new Set(selectedEpisodes);
 
   const handleCheckedChange = (checked: boolean, episodeId: number) => {
     const newSelected = checked
@@ -70,7 +71,7 @@ export default function EpPicker({
               <Checkbox
                 id={`${id}-${item.id}`}
                 autoFocus={false}
-                checked={selectedEpisodes.includes(item.id)}
+                checked={selectedEpisodeIds.has(item.id)}
                 className='order-1 after:absolute after:inset-0 '
                 onCheckedChange={(checked: boolean) =>
                   handleCheckedChange(checked, item.id)

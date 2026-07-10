@@ -15,6 +15,7 @@ export default function FileList({
 }) {
   const [deletedFiles, setDeletedFiles] = useState<string[]>([]);
   const { setStartFetch } = useTorrentStore();
+  const deletedFileSet = new Set(deletedFiles);
 
   const handleDelete = async (filePath: string, id: number) => {
     try {
@@ -43,24 +44,9 @@ export default function FileList({
     }
   };
 
-  const visibleFiles = files.filter((file) => !deletedFiles.includes(file));
-  const sortedFiles = [...visibleFiles].sort((a: string, b: string) => {
-    const aName =
-      a
-        .split('/')
-        .slice(-1)[0]
-        .match(/E(\d+)/)?.[0] || '';
-    const bName =
-      b
-        .split('/')
-        .slice(-1)[0]
-        .match(/E(\d+)/)?.[0] || '';
-
-    const aNumber = aName ? parseInt(aName.replace('E', '')) : 0;
-    const bNumber = bName ? parseInt(bName.replace('E', '')) : 0;
-
-    return aNumber - bNumber;
-  });
+  const sortedFiles = files
+    .filter((file) => !deletedFileSet.has(file))
+    .sort(compareEpisodeFiles);
 
   return (
     <div className='w-full flex flex-col gap-2'>
@@ -69,7 +55,7 @@ export default function FileList({
           key={file}
           className={cn(
             'w-full flex flex-row items-center  border-b border-border py-4 gap-2 font-mono hover:text-white',
-            index === visibleFiles.length - 1 && 'border-b-0',
+            index === sortedFiles.length - 1 && 'border-b-0',
           )}
         >
           <div title={file} className='truncate pr-4'>
@@ -80,6 +66,7 @@ export default function FileList({
             size='icon'
             className='flex ml-auto'
             onClick={() => handleDelete(file, torrentId)}
+            aria-label={`Delete ${file.split('/').pop() ?? 'file'}`}
           >
             <Trash2 className='w-4 h-4 text-red-400' />
           </Button>
@@ -87,6 +74,18 @@ export default function FileList({
       ))}
     </div>
   );
+}
+
+function compareEpisodeFiles(a: string, b: string): number {
+  return getEpisodeNumber(a) - getEpisodeNumber(b);
+}
+
+function getEpisodeNumber(filePath: string): number {
+  const episodeMatch = filePath
+    .split('/')
+    .pop()
+    ?.match(/E(\d+)/)?.[1];
+  return episodeMatch ? parseInt(episodeMatch) : 0;
 }
 
 function getCurrentTimestamp() {

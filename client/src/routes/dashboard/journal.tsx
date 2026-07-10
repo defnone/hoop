@@ -13,7 +13,7 @@ import {
   type InfiniteData,
 } from '@tanstack/react-query';
 import { LoaderCircle } from 'lucide-react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 const EVENTS_PAGE_LIMIT = 30;
@@ -100,10 +100,7 @@ export default function Journal() {
     },
   });
 
-  const events = useMemo(
-    () => data?.pages.flatMap((page) => page.items) ?? [],
-    [data],
-  );
+  const events = data?.pages.flatMap((page) => page.items) ?? [];
   const hasUnreadEvents = events.some((event) => event.readAt === null);
 
   useEffect(() => {
@@ -199,16 +196,11 @@ function JournalEventRow({
   };
 
   return (
-    <article
-      role='button'
+    <button
+      type='button'
       tabIndex={isUnread ? 0 : -1}
       aria-disabled={!isUnread || isMarkingAsRead}
       onClick={handleMarkAsRead}
-      onKeyDown={(event) => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        event.preventDefault();
-        handleMarkAsRead();
-      }}
       className='grid w-full grid-cols-[10px_1fr] gap-4 border-b border-zinc-800 py-7 px-2 text-left transition-colors hover:bg-zinc-900/70'
     >
       <span className='flex h-6 items-center justify-center'>
@@ -232,7 +224,7 @@ function JournalEventRow({
           {new Date(event.createdAt).toLocaleString()}
         </time>
       </div>
-    </article>
+    </button>
   );
 }
 
@@ -290,9 +282,9 @@ function JournalEventDetails({ event }: { event: EventJournalDto }) {
   }
 
   return (
-    <p className='wrap-break-word whitespace-pre-wrap font-mono text-[0.90rem] text-zinc-400'>
+    <span className='wrap-break-word whitespace-pre-wrap font-mono text-[0.90rem] text-zinc-400'>
       {formatEventDetails(event)}
-    </p>
+    </span>
   );
 }
 
@@ -306,26 +298,26 @@ function DiffDetails({
   const diff = buildDiffParts(oldValue, newValue);
 
   return (
-    <div className='flex min-w-0 flex-col gap-1 text-[0.90rem] font-mono leading-6'>
-      <p className='wrap-break-word text-zinc-400'>
-        {diff.oldParts.map((part, index) => (
+    <span className='flex min-w-0 flex-col gap-1 text-[0.90rem] font-mono leading-6'>
+      <span className='wrap-break-word text-zinc-400'>
+        {diff.oldParts.map((part) => (
           <DiffPart
-            key={`${part.value}-${index}`}
+            key={`${part.offset}-${part.value}`}
             part={part}
             variant='removed'
           />
         ))}
-      </p>
-      <p className='wrap-break-word text-zinc-300'>
-        {diff.newParts.map((part, index) => (
+      </span>
+      <span className='wrap-break-word text-zinc-300'>
+        {diff.newParts.map((part) => (
           <DiffPart
-            key={`${part.value}-${index}`}
+            key={`${part.offset}-${part.value}`}
             part={part}
             variant='added'
           />
         ))}
-      </p>
-    </div>
+      </span>
+    </span>
   );
 }
 
@@ -357,6 +349,7 @@ function DiffPart({
 type DiffPartValue = {
   value: string;
   changed: boolean;
+  offset: number;
 };
 
 function buildDiffParts(
@@ -426,10 +419,17 @@ function createDiffParts(
   const changedStart = prefixLength;
   const changedEnd = tokens.length - suffixLength;
 
-  return tokens.map((value, index) => ({
-    value,
-    changed: index >= changedStart && index < changedEnd,
-  }));
+  let offset = 0;
+
+  return tokens.map((value, index) => {
+    const part = {
+      value,
+      changed: index >= changedStart && index < changedEnd,
+      offset,
+    };
+    offset += value.length;
+    return part;
+  });
 }
 
 function updateReadEventInPages(

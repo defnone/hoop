@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowDown,
@@ -171,15 +171,13 @@ export default function TransmissionSheet() {
     },
   });
 
-  const torrents = useMemo(
-    () => torrentsQuery.data ?? [],
-    [torrentsQuery.data],
+  const torrents = torrentsQuery.data ?? [];
+  const visibleTorrents = filterTransmissionTorrents(
+    torrents,
+    deferredSearch,
+    filter,
   );
-  const visibleTorrents = useMemo(
-    () => filterTransmissionTorrents(torrents, deferredSearch, filter),
-    [deferredSearch, filter, torrents],
-  );
-  const speeds = useMemo(() => sumTransferSpeeds(torrents), [torrents]);
+  const speeds = sumTransferSpeeds(torrents);
 
   return (
     <>
@@ -374,6 +372,9 @@ function TorrentRow({
             isAlternate ? 'bg-transfer-row-alternate' : 'bg-transfer-row',
           )}
           data-torrent-state={torrent.state}
+          role='button'
+          aria-haspopup='menu'
+          aria-label={`Open actions for ${torrent.name}`}
           tabIndex={0}
         >
           <TorrentStateIcon

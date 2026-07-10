@@ -10,13 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import useSettings from '@/hooks/useSettings';
 import type { DbUserSettings } from '@server/db/app/app-schema';
 import { Loader2 } from 'lucide-react';
-import {
-  useCallback,
-  useEffect,
-  useState,
-  type Dispatch,
-  type SetStateAction,
-} from 'react';
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 
 export default function Settings() {
   const {
@@ -29,25 +23,23 @@ export default function Settings() {
   const [pendingData, setPendingData] = useState<DbUserSettings | undefined>();
   const data = pendingData ?? settingsData ?? undefined;
 
-  const setData: Dispatch<SetStateAction<DbUserSettings | null | undefined>> =
-    useCallback(
-      (next) => {
-        setPendingData((currentData) => {
-          const resolvedCurrentData = currentData ?? settingsData ?? undefined;
+  const setData: Dispatch<SetStateAction<DbUserSettings | null | undefined>> = (
+    next,
+  ) => {
+    setPendingData((currentData) => {
+      const resolvedCurrentData = currentData ?? settingsData ?? undefined;
 
-          if (typeof next === 'function') {
-            const updater = next as (
-              prevState: DbUserSettings | null | undefined,
-            ) => DbUserSettings | null | undefined;
-            const updated = updater(resolvedCurrentData);
-            return updated ?? undefined;
-          }
+      if (typeof next === 'function') {
+        const updater = next as (
+          prevState: DbUserSettings | null | undefined,
+        ) => DbUserSettings | null | undefined;
+        const updated = updater(resolvedCurrentData);
+        return updated ?? undefined;
+      }
 
-          return next ?? undefined;
-        });
-      },
-      [settingsData],
-    );
+      return next ?? undefined;
+    });
+  };
 
   const handleSave = async () => {
     if (!data) return;

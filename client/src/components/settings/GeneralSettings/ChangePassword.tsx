@@ -8,7 +8,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { changePassword } from '@/lib/auth-client';
 import { Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -22,33 +22,32 @@ export default function ChangePassword({
   const [currentPassword, setCurrentPassword] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const error =
     password !== confirmPassword && password !== '' && confirmPassword !== ''
       ? 'Passwords do not match.'
       : '';
 
   const handleChange = () => {
-    setIsLoading(true);
-    changePassword({
-      currentPassword,
-      newPassword: password,
-      revokeOtherSessions: true,
-      fetchOptions: {
-        onSuccess: () => {
-          setIsLoading(false);
-          customSonner({
-            text: 'Password changed successfully',
-          });
+    startTransition(async () => {
+      await changePassword({
+        currentPassword,
+        newPassword: password,
+        revokeOtherSessions: true,
+        fetchOptions: {
+          onSuccess: () => {
+            customSonner({
+              text: 'Password changed successfully',
+            });
+          },
+          onError: (error) => {
+            customSonner({
+              variant: 'error',
+              text: error.error.message || 'Failed to change password',
+            });
+          },
         },
-        onError: (error) => {
-          setIsLoading(false);
-          customSonner({
-            variant: 'error',
-            text: error.error.message || 'Failed to change password',
-          });
-        },
-      },
+      });
     });
   };
 
@@ -89,13 +88,13 @@ export default function ChangePassword({
         <Button
           onClick={handleChange}
           disabled={
-            isLoading ||
+            isPending ||
             password === '' ||
             confirmPassword !== password ||
             currentPassword === ''
           }
         >
-          {isLoading ? <Loader2 className='w-4 h-4 animate-spin' /> : 'Change'}
+          {isPending ? <Loader2 className='w-4 h-4 animate-spin' /> : 'Change'}
         </Button>
       </DialogContent>
     </Dialog>
