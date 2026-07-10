@@ -8,7 +8,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { changeEmail } from '@/lib/auth-client';
 import { Loader2 } from 'lucide-react';
 import { signOut } from '@/lib/auth-client';
@@ -20,28 +20,27 @@ export default function ChangeEmail({
   children: React.ReactNode;
 }) {
   const [email, setEmail] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const handleChange = () => {
-    setIsLoading(true);
-    changeEmail({
-      newEmail: email,
-      fetchOptions: {
-        onSuccess: () => {
-          setIsLoading(false);
-          customSonner({
-            text: 'Email changed successfully',
-          });
-          signOut();
+    startTransition(async () => {
+      await changeEmail({
+        newEmail: email,
+        fetchOptions: {
+          onSuccess: () => {
+            customSonner({
+              text: 'Email changed successfully',
+            });
+            void signOut();
+          },
+          onError: (error) => {
+            customSonner({
+              variant: 'error',
+              text: error.error.message || 'Failed to change email',
+            });
+          },
         },
-        onError: (error) => {
-          setIsLoading(false);
-          customSonner({
-            variant: 'error',
-            text: error.error.message || 'Failed to change email',
-          });
-        },
-      },
+      });
     });
   };
 
@@ -64,8 +63,8 @@ export default function ChangeEmail({
           onChange={(e) => setEmail(e.target.value)}
         />
 
-        <Button onClick={handleChange} disabled={isLoading || email === ''}>
-          {isLoading ? <Loader2 className='w-4 h-4 animate-spin' /> : 'Change'}
+        <Button onClick={handleChange} disabled={isPending || email === ''}>
+          {isPending ? <Loader2 className='w-4 h-4 animate-spin' /> : 'Change'}
         </Button>
       </DialogContent>
     </Dialog>

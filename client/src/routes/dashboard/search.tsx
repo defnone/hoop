@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import CategoryPicker from '@/components/search/CategoryPicker';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, SearchIcon } from 'lucide-react';
 import SearchTable from '@/components/search/SearchTable';
 import customSonner from '@/components/CustomSonner';
@@ -33,31 +33,23 @@ export default function SearchPage() {
   const [items, setItems] = useState<JackettSearchResult[]>([]);
   const [search, setSearch] = useState('');
   const [tracker, setTracker] = useState<string>('all');
-  const isFirstRenderRef = useRef(true);
 
-  const trackers = useMemo(() => {
-    const defaultTrackers = [
-      { value: 'all', label: 'All' },
-      { value: 'rutracker', label: 'Rutracker' },
-      { value: 'noname-club', label: 'NNM-Club' },
-    ];
+  const trackers = getTrackerOptions(
+    Boolean(settingsData?.kinozalUsername && settingsData?.kinozalPassword),
+  );
 
-    if (settingsData?.kinozalUsername && settingsData?.kinozalPassword) {
-      return [...defaultTrackers, { value: 'kinozal', label: 'Kinozal' }];
-    }
-
-    return defaultTrackers;
-  }, [settingsData?.kinozalPassword, settingsData?.kinozalUsername]);
-
-  const handleSearch = useCallback(async () => {
+  const handleSearch = async (
+    nextCategory: number = category,
+    nextTracker: string = tracker,
+  ) => {
     if (tvName.length === 0) return;
     try {
       setIsLoading(true);
       const data = await getJackett(
         tvName,
         parseInt(season as string),
-        category,
-        tracker,
+        nextCategory,
+        nextTracker,
       );
       const sortedData = data?.sort((a, b) => b.Seeders - a.Seeders);
       setItems(sortedData || []);
@@ -70,58 +62,35 @@ export default function SearchPage() {
       });
       setIsLoading(false);
     }
-  }, [category, season, tracker, tvName]);
+  };
 
   useEffect(() => {
-    if (isFirstRenderRef.current) {
-      isFirstRenderRef.current = false;
-      if (searchQuery && tvName.length > 0) {
-        queueMicrotask(() => {
-          void handleSearch();
-        });
-      }
-      return;
-    }
-    if (tvName.length === 0) return;
     queueMicrotask(() => {
       void handleSearch();
     });
-    // Search should rerun only when filters change, not on every input edit.
+    // URL-provided search should run once after the initial render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, tracker]);
+  }, []);
 
-  const searchFilteredData = useMemo(() => {
-    return items.filter((item) => {
-      if (item.Title.match(/S\d+-\d+/i)) return false; // Multiple seasons in title, skip
-      const phrases = search.toLowerCase().split(' ');
-      for (const phrase of phrases) {
-        if (!phrase.length) continue;
-        if (!item.Title.toLowerCase().includes(phrase)) return false;
-      }
-      return true;
-    });
-  }, [items, search]);
+  const handleCategoryChange = (nextCategory: number) => {
+    setCategory(nextCategory);
+    if (tvName.length > 0) {
+      void handleSearch(nextCategory, tracker);
+    }
+  };
+
+  const handleTrackerChange = (nextTracker: string) => {
+    setTracker(nextTracker);
+    if (tvName.length > 0) {
+      void handleSearch(category, nextTracker);
+    }
+  };
+
+  const searchFilteredData = filterSearchResults(items, search);
 
   const filteredData = search.length > 0 ? searchFilteredData : items;
 
-  const resultsByTracker = useMemo(() => {
-    if (searchFilteredData.length === 0) {
-      return {};
-    }
-
-    const trackerCounts = searchFilteredData.reduce(
-      (acc: Record<string, number>, item) => {
-        acc[item.TrackerId] = (acc[item.TrackerId] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
-
-    return {
-      all: searchFilteredData.length,
-      ...trackerCounts,
-    };
-  }, [searchFilteredData]);
+  const resultsByTracker = countResultsByTracker(searchFilteredData);
 
   useEffect(() => {
     void refetchSettings();
@@ -144,7 +113,7 @@ export default function SearchPage() {
 
   const handleEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      handleSearch();
+      void handleSearch();
     }
   };
 
@@ -213,7 +182,7 @@ export default function SearchPage() {
               />
             </InputGroup>
             <Button
-              onClick={handleSearch}
+              onClick={() => void handleSearch()}
               disabled={isLoading}
               size={'icon-lg'}
               className='w-14'
@@ -224,11 +193,14 @@ export default function SearchPage() {
           </ButtonGroup>
 
           <ButtonGroup className='h-10 mt-5 flex items-center justify-center'>
-            <CategoryPicker category={category} setCategory={setCategory} />
+            <CategoryPicker
+              category={category}
+              setCategory={handleCategoryChange}
+            />
             <Separator orientation='vertical' className='flex mx-2  h-10' />
             <TrackerPicker
               tracker={tracker}
-              setTracker={setTracker}
+              setTracker={handleTrackerChange}
               trackers={trackers}
               resultsByTracker={resultsByTracker}
             />
@@ -245,4 +217,52 @@ export default function SearchPage() {
       </div>
     </>
   );
+}
+
+type TrackerOption = {
+  value: string;
+  label: string;
+};
+
+function getTrackerOptions(includeKinozal: boolean): TrackerOption[] {
+  const defaultTrackers = [
+    { value: 'all', label: 'All' },
+    { value: 'rutracker', label: 'Rutracker' },
+    { value: 'noname-club', label: 'NNM-Club' },
+  ];
+
+  return includeKinozal
+    ? [...defaultTrackers, { value: 'kinozal', label: 'Kinozal' }]
+    : defaultTrackers;
+}
+
+function filterSearchResults(
+  items: JackettSearchResult[],
+  search: string,
+): JackettSearchResult[] {
+  const phrases = search.toLowerCase().split(' ');
+
+  return items.filter((item) => {
+    if (item.Title.match(/S\d+-\d+/i)) return false;
+
+    return phrases.every(
+      (phrase) => !phrase.length || item.Title.toLowerCase().includes(phrase),
+    );
+  });
+}
+
+function countResultsByTracker(
+  items: JackettSearchResult[],
+): Record<string, number> {
+  if (items.length === 0) return {};
+
+  const trackerCounts = items.reduce<Record<string, number>>((counts, item) => {
+    counts[item.TrackerId] = (counts[item.TrackerId] || 0) + 1;
+    return counts;
+  }, {});
+
+  return {
+    all: items.length,
+    ...trackerCounts,
+  };
 }

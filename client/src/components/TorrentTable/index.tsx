@@ -33,6 +33,7 @@ export default function TorrentTable() {
         await rpc.api.torrents.$get({ query: { page: '1', limit: '1000' } })
       ).json(),
   });
+  const refetchTorrents = refetch;
 
   useEffect(() => {
     if (dataResponse?.data?.items) {
@@ -65,9 +66,9 @@ export default function TorrentTable() {
   // Manual refetch on external trigger without changing the key
   useEffect(() => {
     if (startFetch) {
-      void refetch();
+      void refetchTorrents();
     }
-  }, [startFetch, refetch]);
+  }, [startFetch, refetchTorrents]);
 
   useEffect(() => {
     if (error) {

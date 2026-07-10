@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/table';
 import EditTorrentDialog from '@/components/EditTorrentDialog';
 import { TorrentItemDto } from '@server/features/torrent-item/torrent-item.types';
-import { memo, useState } from 'react';
+import { useState } from 'react';
 import TrackerLogo from '../TrackerLogo';
 import { useTorrentStore } from '@/stores/torrentStore';
 import { cn, formatETA } from '@/lib/utils';
@@ -40,7 +40,7 @@ export function TorrentTableData() {
         <DataTableHeader />
         <TableBody>
           {filteredData.map((item) => (
-            <MemoDataTableRow
+            <DataTableRow
               key={item.id}
               item={item}
               setItem={setItem}
@@ -68,8 +68,6 @@ export function TorrentTableData() {
   );
 }
 
-const MemoDataTableRow = memo(DataTableRow);
-
 function DataTableRow({
   item,
   setItem,
@@ -91,15 +89,6 @@ function DataTableRow({
     status?.state === 'downloading' &&
     !isTrackingPaused &&
     Number(status?.eta) > 0;
-
-  const filterMediaFiles = (files: string[]) => {
-    if (!files) return [];
-    const mediaFilesArr = ['mp4', 'mkv', 'avi', 'mov', 'webm', 'm4v'];
-
-    return files.filter((file) =>
-      mediaFilesArr.some((ext) => file.endsWith(ext)),
-    );
-  };
 
   const downloadedFiles = filterMediaFiles(item.files as string[]).length;
   return (
@@ -212,6 +201,14 @@ function DataTableRow({
         />
       )}
     </TableRow>
+  );
+}
+
+const MEDIA_FILE_EXTENSIONS = ['mp4', 'mkv', 'avi', 'mov', 'webm', 'm4v'];
+
+function filterMediaFiles(files: string[]): string[] {
+  return files.filter((file) =>
+    MEDIA_FILE_EXTENSIONS.some((extension) => file.endsWith(extension)),
   );
 }
 

@@ -10,7 +10,7 @@ export default function CategoryPicker({
   setCategory,
 }: {
   category: number;
-  setCategory: React.Dispatch<React.SetStateAction<number>>;
+  setCategory: (category: number) => void;
 }) {
   const id = useId();
 

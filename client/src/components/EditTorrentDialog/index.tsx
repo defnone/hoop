@@ -205,11 +205,22 @@ export default function EditTorrentDialog({
             <DialogFooterContent
               data={data}
               handleDelete={handleDelete}
-              handleAddToClient={handleAddToClient}
-              handleRmFromClient={handleRmFromClient}
               handlePauseToggle={handlePauseToggle}
-              isAddingToClient={isAddingToClient}
-              isRemovingFromClient={isRemovingFromClient}
+              clientAction={
+                data.controlStatus === 'idle' ? (
+                  <AddToClientButton
+                    isPending={isAddingToClient}
+                    isDisabled={data.trackedEpisodes.length === 0}
+                    onClick={handleAddToClient}
+                  />
+                ) : data.controlStatus === 'downloading' ||
+                  data.controlStatus === 'downloadCompleted' ? (
+                  <RemoveFromClientButton
+                    isPending={isRemovingFromClient}
+                    onClick={handleRmFromClient}
+                  />
+                ) : null
+              }
             />
           </>
         )}
@@ -219,6 +230,8 @@ export default function EditTorrentDialog({
 }
 
 function buildEpisodes(data: TorrentItemDto): EpisodesObj {
+  const trackedEpisodeIds = new Set(data.trackedEpisodes as number[]);
+  const availableEpisodeIds = new Set(data.haveEpisodes as number[]);
   const episodesArray = Array.from(
     { length: data.totalEpisodes ?? 0 },
     (_, i) => i + 1,
@@ -227,8 +240,8 @@ function buildEpisodes(data: TorrentItemDto): EpisodesObj {
   return episodesArray.map((episode) => ({
     id: episode,
     title: `EP ${episode}`,
-    trackedEpisodes: (data.trackedEpisodes as number[]).includes(episode),
-    available: (data.haveEpisodes as number[]).includes(episode),
+    trackedEpisodes: trackedEpisodeIds.has(episode),
+    available: availableEpisodeIds.has(episode),
     files: (data.files as string[]).filter((file) =>
       file.includes('E' + episode.toString().padStart(2, '0')),
     ),
@@ -328,19 +341,13 @@ function DialogHeaderContent({
 function DialogFooterContent({
   data,
   handleDelete,
-  handleAddToClient,
-  handleRmFromClient,
-  isAddingToClient,
-  isRemovingFromClient,
   handlePauseToggle,
+  clientAction,
 }: {
   data: TorrentItemDto;
   handleDelete: (withFiles: boolean) => Promise<void>;
-  handleAddToClient: () => Promise<void>;
-  handleRmFromClient: () => Promise<void>;
-  isAddingToClient: boolean;
-  isRemovingFromClient: boolean;
   handlePauseToggle: () => Promise<void>;
+  clientAction: React.ReactNode;
 }) {
   return (
     <DialogFooter className='flex flex-row items-center relative border-t border-border px-6 h-20 -mt-4'>
@@ -353,6 +360,7 @@ function DialogFooterContent({
           type='button'
           variant='destructive'
           className='font-extrabold h-10 w-10 hover:transform-none'
+          aria-label='Delete torrent'
         >
           <Trash2 strokeWidth={3} className='w-4 h-4' />
         </Button>
@@ -366,6 +374,9 @@ function DialogFooterContent({
         }
         onClick={handlePauseToggle}
         className='font-extrabold h-10 w-10 hover:transform-none mr-auto'
+        aria-label={
+          data.controlStatus === 'paused' ? 'Resume torrent' : 'Pause torrent'
+        }
       >
         {data.controlStatus === 'paused' ? (
           <Play strokeWidth={4} className='w-4 h-4' />
@@ -374,42 +385,61 @@ function DialogFooterContent({
         )}
       </Button>
 
-      {data.controlStatus === 'idle' && (
-        <Button
-          type='button'
-          variant='default'
-          onClick={handleAddToClient}
-          disabled={isAddingToClient || data.trackedEpisodes.length === 0}
-          className='font-bold'
-        >
-          {isAddingToClient ? (
-            <Loader2 className='w-4 h-4 animate-spin' />
-          ) : (
-            <>
-              <SiTransmission className='w-4 h-4' /> Add to Transmission
-            </>
-          )}
-        </Button>
-      )}
-
-      {(data.controlStatus === 'downloading' ||
-        data.controlStatus === 'downloadCompleted') && (
-        <Button
-          type='button'
-          variant='destructive'
-          onClick={handleRmFromClient}
-          disabled={isRemovingFromClient}
-          className='font-bold'
-        >
-          {isRemovingFromClient ? (
-            <Loader2 className='w-4 h-4 animate-spin' />
-          ) : (
-            <>
-              <Trash2 className='w-4 h-4' /> Remove from Transmission
-            </>
-          )}
-        </Button>
-      )}
+      {clientAction}
     </DialogFooter>
+  );
+}
+
+function AddToClientButton({
+  isPending,
+  isDisabled,
+  onClick,
+}: {
+  isPending: boolean;
+  isDisabled: boolean;
+  onClick: () => Promise<void>;
+}) {
+  return (
+    <Button
+      type='button'
+      variant='default'
+      onClick={onClick}
+      disabled={isPending || isDisabled}
+      className='font-bold'
+    >
+      {isPending ? (
+        <Loader2 className='w-4 h-4 animate-spin' />
+      ) : (
+        <>
+          <SiTransmission className='w-4 h-4' /> Add to Transmission
+        </>
+      )}
+    </Button>
+  );
+}
+
+function RemoveFromClientButton({
+  isPending,
+  onClick,
+}: {
+  isPending: boolean;
+  onClick: () => Promise<void>;
+}) {
+  return (
+    <Button
+      type='button'
+      variant='destructive'
+      onClick={onClick}
+      disabled={isPending}
+      className='font-bold'
+    >
+      {isPending ? (
+        <Loader2 className='w-4 h-4 animate-spin' />
+      ) : (
+        <>
+          <Trash2 className='w-4 h-4' /> Remove from Transmission
+        </>
+      )}
+    </Button>
   );
 }

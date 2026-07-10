@@ -48,6 +48,7 @@ function BottomButtons({
                 onClick={() => na(`/search?query=${item.show.title}`)}
                 variant='ghost'
                 size='default'
+                aria-label={`Search torrents for ${item.show.title}`}
                 className='w-fit border-0 bg-zinc-700/60 backdrop-blur-sm hover:bg-background/70 transition-all duration-300 flex h-9'
               >
                 <Search size={20} strokeWidth={3} />
@@ -56,7 +57,12 @@ function BottomButtons({
 
             {item.show.trailer && (
               <div className='flex items-center justify-center h-10 gap-2 mr-auto'>
-                <a href={item.show.trailer} target='_blank'>
+                <a
+                  href={item.show.trailer}
+                  target='_blank'
+                  rel='noreferrer'
+                  aria-label={`Watch ${item.show.title} trailer`}
+                >
                   <FaYoutube
                     size={50}
                     color='#ff1a1a'
@@ -70,6 +76,8 @@ function BottomButtons({
           <a
             href={`https://trakt.tv/shows/${item.show.ids.trakt}`}
             target='_blank'
+            rel='noreferrer'
+            aria-label={`Open ${item.show.title} on Trakt`}
           >
             <div className='flex items-center justify-center gap-2'>
               <SiTrakt size={35} color='#ff1a1a' />
@@ -79,6 +87,8 @@ function BottomButtons({
             <a
               href={`https://www.imdb.com/title/${item.show.ids.imdb}`}
               target='_blank'
+              rel='noreferrer'
+              aria-label={`Open ${item.show.title} on IMDb`}
             >
               <div className='flex items-center justify-center gap-2'>
                 <FaImdb size={35} color='#eaff2e' />
