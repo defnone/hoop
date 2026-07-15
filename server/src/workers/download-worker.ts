@@ -10,6 +10,13 @@ import { formatErrorMessage } from '@server/lib/error-message';
 import { EventJournalService } from '@server/features/event-journal/event-journal.service';
 import type { EventJournalPort } from '@server/features/event-journal/event-journal.port';
 
+const DOWNLOAD_START_RETRY_DELAY_MS = 5 * 60 * 1000;
+
+type DownloadStartRetry = {
+  errorMessage: string;
+  nextAttemptAt: number;
+};
+
 // In-memory cache for the last known Transmission status per torrent item
 export const statusStorage = new Map<number, NormalizedTorrent | undefined>();
 
@@ -25,6 +32,7 @@ export class DownloadWorker {
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private error: string | null = null;
   private isProcessing = false;
+  private readonly downloadStartRetries = new Map<number, DownloadStartRetry>();
 
   constructor({
     repo,
@@ -48,7 +56,10 @@ export class DownloadWorker {
   }
 
   // Transition item from request to active download in Transmission
-  async startDownload(row: DbTorrentItem) {
+  async startDownload(row: DbTorrentItem): Promise<boolean> {
+    const retry = this.downloadStartRetries.get(row.id);
+    if (retry && retry.nextAttemptAt > Date.now()) return false;
+
     logger.info(`[DownloadWorker] Start downloading ${row.title}`);
     const client = new TransmissionAdapter({
       id: row.id,
@@ -60,15 +71,27 @@ export class DownloadWorker {
         torrentItem: row,
         message: 'Download started',
       });
+      this.downloadStartRetries.delete(row.id);
+      return true;
     } catch (e) {
       logger.error(`[DownloadWorker] Failed to start downloading ${row.title}`);
       logger.error(e);
       this.error =
         'DownloadWorker: Failed to start downloading, ' + formatErrorMessage(e);
-      await this.eventJournal.recordTorrentDownloadFailed({
-        torrentItem: row,
+      const previousRetry = this.downloadStartRetries.get(row.id);
+      this.downloadStartRetries.set(row.id, {
         errorMessage: this.error,
+        nextAttemptAt: Date.now() + DOWNLOAD_START_RETRY_DELAY_MS,
       });
+
+      if (previousRetry?.errorMessage !== this.error) {
+        await this.eventJournal.recordTorrentDownloadFailed({
+          torrentItem: row,
+          errorMessage: this.error,
+        });
+      }
+
+      return true;
     }
   }
 
@@ -254,17 +277,22 @@ export class DownloadWorker {
       for (const row of rows) {
         this.error = null;
         switch (row.controlStatus) {
-          case 'downloadRequested':
-            await this.startDownload(row);
+          case 'downloadRequested': {
+            const attempted = await this.startDownload(row);
+            if (!attempted) continue;
             break;
+          }
           case 'downloading':
+            this.downloadStartRetries.delete(row.id);
             await this.processDownloading(row);
             break;
           case 'downloadCompleted':
+            this.downloadStartRetries.delete(row.id);
             await this.processCompletedDownload(row);
             break;
           case 'idle':
           case 'paused':
+            this.downloadStartRetries.delete(row.id);
             if (
               process.env.HOOP_LAST_SYNC &&
               parseInt(process.env.HOOP_LAST_SYNC) <= Date.now()
