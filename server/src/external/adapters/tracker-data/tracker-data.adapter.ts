@@ -216,6 +216,41 @@ export class TrackerDataAdapter {
     this.showTitle = title.trim();
   }
 
+  private async extractTitlesWithDomainFallback(): Promise<void> {
+    try {
+      this.extractRawTitle();
+      this.extractShowTitle();
+      return;
+    } catch (error) {
+      for (const alternativeUrl of getAlternativeTrackerUrls(
+        this.activeUrl,
+        this.tConf.urls,
+      )) {
+        logger.warn('Retrying invalid tracker page with alternative domain', {
+          url: this.activeUrl,
+          alternativeUrl,
+          tracker: this.tracker,
+          error: this.describeError(error),
+        });
+
+        try {
+          await this.fetchDom(alternativeUrl, '', false);
+          this.extractRawTitle();
+          this.extractShowTitle();
+          return;
+        } catch (alternativeError) {
+          logger.warn('Alternative tracker page is invalid', {
+            url: alternativeUrl,
+            tracker: this.tracker,
+            error: this.describeError(alternativeError),
+          });
+        }
+      }
+
+      throw error;
+    }
+  }
+
   private extractEpsAndSeason() {
     for (const pattern of this.tConf.epsAndSeasonRegExps) {
       const match = this.rawTitle.match(pattern);
@@ -296,8 +331,7 @@ export class TrackerDataAdapter {
 
   public async collect(): Promise<TorrentDataResult> {
     await this.fetchDom();
-    this.extractRawTitle();
-    this.extractShowTitle();
+    await this.extractTitlesWithDomainFallback();
     this.extractEpsAndSeason();
     await this.extractMagnet();
     return {

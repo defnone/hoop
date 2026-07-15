@@ -461,6 +461,56 @@ describe('TrackerData.collect', () => {
     ]);
   });
 
+  it('kinozal: retries an alternative domain when the page has no title', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+
+    const unavailablePageHtml =
+      '<html><body><h1>Domain unavailable</h1></body></html>';
+    const pageHtml = `
+      <html>
+        <body>
+          <h1>Series / Alternative show (1 \u0441\u0435\u0437\u043e\u043d: 1-2 \u0441\u0435\u0440\u0438\u0438 \u0438\u0437 2)</h1>
+        </body>
+      </html>`;
+    const magnetHtml = `
+      <html>
+        <body>
+          <ul><li>\u0418\u043d\u0444\u043e \u0445\u0435\u0448: DEADBEEF1234</li></ul>
+        </body>
+      </html>`;
+    const authResponse = {
+      headers: {
+        getSetCookie: vi.fn(() => ['sid=abc']),
+      },
+    } as unknown as Response;
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(toResponse(unavailablePageHtml))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(authResponse)
+      .mockResolvedValueOnce(toResponse(magnetHtml));
+
+    const td = new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=781',
+      tracker: 'kinozal',
+    });
+    const result = await td.collect();
+
+    expect(result.showTitle).toBe(
+      'Alternative show (1 \u0441\u0435\u0437\u043e\u043d: 1-2 \u0441\u0435\u0440\u0438\u0438 \u0438\u0437 2)',
+    );
+    expect(result.magnet).toBe('DEADBEEF1234');
+    expect(
+      mockedFetch.mock.calls.map(([requestedUrl]) => requestedUrl),
+    ).toEqual([
+      'https://kinozal.tv/details.php?id=781',
+      'https://kinozal.me/details.php?id=781',
+      'https://kinozal.me/takelogin.php',
+      'https://kinozal.me/get_srv_details.php?action=2&id=781',
+    ]);
+  });
+
   it('kinozal: parses single episode with plural word', async () => {
     const pageHtml = `
       <html>
