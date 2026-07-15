@@ -214,6 +214,39 @@ describe('DownloadWorker', () => {
     });
   });
 
+  it('process: delays repeated download attempts and deduplicates journal failures', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-15T12:00:00Z'));
+
+    const { DownloadWorker } = await import('@server/workers/download-worker');
+    const repo = new RepoMock();
+    const eventJournal = new EventJournalMock();
+    const worker = new DownloadWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
+    const requestedItem = {
+      ...item,
+      controlStatus: 'downloadRequested' as const,
+    };
+    repo.findAllNeedToControl.mockResolvedValue([requestedItem]);
+    add.mockRejectedValue(new Error('Transmission unavailable'));
+
+    await worker.process();
+    await worker.process();
+
+    expect(add).toHaveBeenCalledTimes(1);
+    expect(eventJournal.recordTorrentDownloadFailed).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    await worker.process();
+
+    expect(add).toHaveBeenCalledTimes(2);
+    expect(eventJournal.recordTorrentDownloadFailed).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
+  });
+
   it('processDownloading: marks completed when status is done', async () => {
     const { DownloadWorker, statusStorage } = await import(
       '@server/workers/download-worker'

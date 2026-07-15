@@ -72,8 +72,10 @@ export class TransmissionAdapter {
         transmissionId: hash,
       });
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      throw new Error(`Failed to add torrent: ${msg}`);
+      const normalizedError = normalizeTransmissionError(e);
+      throw new Error(`Failed to add torrent: ${normalizedError.message}`, {
+        cause: normalizedError,
+      });
     }
   }
 

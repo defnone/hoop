@@ -372,6 +372,36 @@ describe('TransmissionAdapter', () => {
     await expect(adapter.add()).rejects.toThrow('Failed to add torrent: boom');
   });
 
+  it('add(): normalizes a missing Transmission HTTP response', async () => {
+    class TransmissionMissingResponseMock extends TransmissionMock {
+      override async addMagnet(
+        _magnet: string,
+        _options: Record<string, unknown>,
+      ): Promise<{ arguments: Record<string, unknown> }> {
+        throw new TypeError(
+          "undefined is not an object (evaluating 'G.response.status')",
+        );
+      }
+    }
+
+    vi.resetModules();
+    const { TransmissionAdapter } = await import(
+      '@server/external/adapters/transmission'
+    );
+
+    const repo = new RepoMock();
+    const client = new TransmissionMissingResponseMock();
+    const adapter = new TransmissionAdapter({
+      id: 1,
+      client: client as unknown as Transmission,
+      repo: repo as unknown as never,
+    });
+
+    await expect(adapter.add()).rejects.toThrow(
+      'Failed to add torrent: Transmission request failed without an HTTP response',
+    );
+  });
+
   it('add(): throws when transmission returns no hashString', async () => {
     class TransmissionNoHashMock extends TransmissionMock {
       override async addMagnet(
