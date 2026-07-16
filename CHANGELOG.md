@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.7.1 - 2026-07-16
+
+### Fixed
+
+- Server: retry failed Transmission download starts after a cooldown and avoid duplicate failure journal entries.
+- Server: preserve normalized Transmission errors as causes for clearer retry diagnostics.
+- Server: retry alternative tracker domains when a fetched page cannot provide valid title data.
+
+### Changed
+
+- Client: simplify search filter state, torrent dialog actions, and related component state management.
+- Client: improve torrent action accessibility labels and episode lookup performance.
+- Client: remove unused UI components and dependencies.
+
+### Tests
+
+- Added coverage for download retry cooldowns, tracker title fallback, and normalized Transmission errors.
+- Simplified Transmission adapter test setup.
+
+### Notes
+
+- No breaking changes expected.
+
 ## 0.7.0 - 2026-07-09
 
 ### Added
