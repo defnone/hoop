@@ -54,6 +54,10 @@ vi.mock('@server/features/event-journal/event-journal.service', () => ({
     async recordTorrentFileCopyFailed(): Promise<void> {
       return Promise.resolve();
     }
+
+    async recordTransmissionUnavailable(): Promise<void> {
+      return Promise.resolve();
+    }
   },
 }));
 
@@ -179,6 +183,7 @@ class EventJournalMock {
   public recordTorrentFileCopyStarted = vi.fn(async () => undefined);
   public recordTorrentFileCopyCompleted = vi.fn(async () => undefined);
   public recordTorrentFileCopyFailed = vi.fn(async () => undefined);
+  public recordTransmissionUnavailable = vi.fn(async () => undefined);
 }
 
 describe('DownloadWorker', () => {
@@ -186,6 +191,7 @@ describe('DownloadWorker', () => {
     vi.clearAllMocks();
   });
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -316,7 +322,7 @@ describe('DownloadWorker', () => {
     expect(statusStorage.get(item.id)).toBeUndefined();
   });
 
-  it('processDownloading: records one failure and skips episode selection after a temporary request failure', async () => {
+  it('processDownloading: suppresses a temporary Transmission transport failure', async () => {
     const { DownloadWorker } = await import('@server/workers/download-worker');
     const repo = new RepoMock();
     const eventJournal = new EventJournalMock();
@@ -332,12 +338,78 @@ describe('DownloadWorker', () => {
     await worker.processDownloading({ ...item });
 
     expect(selectEpisodes).not.toHaveBeenCalled();
-    expect(eventJournal.recordTorrentDownloadFailed).toHaveBeenCalledTimes(1);
-    expect(eventJournal.recordTorrentDownloadFailed).toHaveBeenCalledWith({
-      torrentItem: expect.objectContaining({ id: item.id }),
+    expect(eventJournal.recordTorrentDownloadFailed).not.toHaveBeenCalled();
+    expect(eventJournal.recordTransmissionUnavailable).not.toHaveBeenCalled();
+  });
+
+  it('processDownloading: reports one general alert after a three-minute Transmission outage', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-16T12:00:00Z'));
+
+    const { DownloadWorker } = await import('@server/workers/download-worker');
+    const repo = new RepoMock();
+    const eventJournal = new EventJournalMock();
+    const worker = new DownloadWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
+    const requestError = new Error(
+      'Transmission request failed without an HTTP response',
+    );
+
+    status.mockRejectedValueOnce(requestError);
+    await worker.processDownloading({ ...item });
+
+    await vi.advanceTimersByTimeAsync(2 * 60 * 1000);
+    status.mockRejectedValueOnce(requestError);
+    await worker.processDownloading({ ...item, id: 2 });
+
+    expect(eventJournal.recordTransmissionUnavailable).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(60 * 1000);
+    status.mockRejectedValueOnce(requestError);
+    await worker.processDownloading({ ...item });
+
+    expect(eventJournal.recordTransmissionUnavailable).toHaveBeenCalledTimes(1);
+    expect(eventJournal.recordTransmissionUnavailable).toHaveBeenCalledWith({
       errorMessage:
         'DownloadWorker: Failed to check download status, Transmission request failed without an HTTP response',
     });
+
+    status.mockRejectedValueOnce(requestError);
+    await worker.processDownloading({ ...item, id: 2 });
+
+    expect(eventJournal.recordTransmissionUnavailable).toHaveBeenCalledTimes(1);
+    expect(eventJournal.recordTorrentDownloadFailed).not.toHaveBeenCalled();
+  });
+
+  it('processDownloading: resets Transmission outage window after a successful response', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-16T12:00:00Z'));
+
+    const { DownloadWorker } = await import('@server/workers/download-worker');
+    const repo = new RepoMock();
+    const eventJournal = new EventJournalMock();
+    const worker = new DownloadWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
+    const requestError = new Error(
+      'Transmission request failed without an HTTP response',
+    );
+
+    status.mockRejectedValueOnce(requestError);
+    await worker.processDownloading({ ...item });
+
+    await vi.advanceTimersByTimeAsync(2 * 60 * 1000);
+    status.mockResolvedValueOnce({ isCompleted: false });
+    await worker.processDownloading({ ...item });
+
+    await vi.advanceTimersByTimeAsync(2 * 60 * 1000);
+    status.mockRejectedValueOnce(requestError);
+    await worker.processDownloading({ ...item });
+
+    expect(eventJournal.recordTransmissionUnavailable).not.toHaveBeenCalled();
   });
 
   it('processCompletedDownload: copies files and removes from Transmission', async () => {

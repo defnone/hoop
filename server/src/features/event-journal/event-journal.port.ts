@@ -21,6 +21,10 @@ export type TorrentProcessFailedEventParams = {
   errorMessage: string;
 };
 
+export type TransmissionUnavailableEventParams = {
+  errorMessage: string;
+};
+
 export interface EventJournalPort {
   recordTorrentTitleChanged(params: TorrentUpdateEventParams): Promise<void>;
   recordTorrentMagnetChanged(params: TorrentUpdateEventParams): Promise<void>;
@@ -42,5 +46,8 @@ export interface EventJournalPort {
   ): Promise<void>;
   recordTorrentFileCopyFailed(
     params: TorrentProcessFailedEventParams,
+  ): Promise<void>;
+  recordTransmissionUnavailable(
+    params: TransmissionUnavailableEventParams,
   ): Promise<void>;
 }

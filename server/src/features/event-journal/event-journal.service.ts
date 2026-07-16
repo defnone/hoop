@@ -10,6 +10,7 @@ import type {
   TorrentProcessFailedEventParams,
   TorrentSyncFailedEventParams,
   TorrentUpdateEventParams,
+  TransmissionUnavailableEventParams,
 } from './event-journal.port';
 
 export class EventJournalService implements EventJournalPort {
@@ -136,6 +137,20 @@ export class EventJournalService implements EventJournalPort {
       type: 'torrentFileCopyFailed',
       params,
       isNotification: false,
+    });
+  }
+
+  async recordTransmissionUnavailable(
+    params: TransmissionUnavailableEventParams,
+  ): Promise<void> {
+    await this.repo.create({
+      type: 'transmissionUnavailable',
+      state: 'error',
+      torrentItemId: null,
+      torrentTitle: 'Transmission',
+      oldValue: null,
+      newValue: params.errorMessage,
+      isNotification: true,
     });
   }
 

@@ -21,6 +21,7 @@ export const eventJournalTypes = [
   'torrentFileCopyStarted',
   'torrentFileCopyCompleted',
   'torrentFileCopyFailed',
+  'transmissionUnavailable',
 ] as const;
 
 export const eventJournalStates = ['info', 'error'] as const;

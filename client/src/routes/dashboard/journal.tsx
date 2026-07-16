@@ -255,6 +255,8 @@ function formatEventTitle(
       return `Torrent ${torrentTitle} file copy completed`;
     case 'torrentFileCopyFailed':
       return `Torrent ${torrentTitle} file copy failed`;
+    case 'transmissionUnavailable':
+      return 'Transmission unavailable';
   }
 }
 

@@ -182,4 +182,20 @@ describe('EventJournalService', () => {
       }),
     ]);
   });
+
+  it('creates a general Transmission unavailable notification', async () => {
+    await service.recordTransmissionUnavailable({
+      errorMessage: 'Transmission request failed without an HTTP response',
+    });
+
+    expect(repo.created[0]).toMatchObject({
+      type: 'transmissionUnavailable',
+      state: 'error',
+      torrentItemId: null,
+      torrentTitle: 'Transmission',
+      oldValue: null,
+      newValue: 'Transmission request failed without an HTTP response',
+      isNotification: true,
+    });
+  });
 });
