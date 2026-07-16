@@ -263,6 +263,7 @@ class EventJournalMock implements EventJournalPort {
   public recordTorrentFileCopyStarted = vi.fn(async () => undefined);
   public recordTorrentFileCopyCompleted = vi.fn(async () => undefined);
   public recordTorrentFileCopyFailed = vi.fn(async () => undefined);
+  public recordTransmissionUnavailable = vi.fn(async () => undefined);
 }
 
 describe('UpdateWorker.process', () => {

@@ -11,6 +11,7 @@ import { EventJournalService } from '@server/features/event-journal/event-journa
 import type { EventJournalPort } from '@server/features/event-journal/event-journal.port';
 
 const DOWNLOAD_START_RETRY_DELAY_MS = 5 * 60 * 1000;
+const TRANSMISSION_UNAVAILABLE_WINDOW_MS = 3 * 60 * 1000;
 
 type DownloadStartRetry = {
   errorMessage: string;
@@ -33,6 +34,8 @@ export class DownloadWorker {
   private error: string | null = null;
   private isProcessing = false;
   private readonly downloadStartRetries = new Map<number, DownloadStartRetry>();
+  private transmissionUnavailableSince: number | null = null;
+  private transmissionOutageReported = false;
 
   constructor({
     repo,
@@ -104,24 +107,40 @@ export class DownloadWorker {
     let status: NormalizedTorrent | undefined;
     try {
       status = await client.status();
+      this.resetTransmissionAvailability();
       if (status) statusStorage.set(row.id, status);
     } catch (e) {
       logger.error(
         `[DownloadWorker] Failed to check download status ${row.title}: ${e}`,
       );
       if (e instanceof Error && e.message.includes('Torrent not found')) {
+        this.resetTransmissionAvailability();
         logger.error(
           `[DownloadWorker] Torrent ${row.title} not found, looks like it was removed from Transmission. Mark as idle.`,
         );
         await this.repo.markAsIdle(row.id);
         statusStorage.delete(row.id);
+        this.error =
+          'DownloadWorker: Failed to check download status, ' +
+          formatErrorMessage(e);
+        await this.eventJournal.recordTorrentDownloadFailed({
+          torrentItem: row,
+          errorMessage: this.error,
+        });
+        return;
       }
-      this.error =
+      const errorMessage =
         'DownloadWorker: Failed to check download status, ' +
         formatErrorMessage(e);
+      if (isTransmissionUnavailableError(e)) {
+        await this.recordTransmissionUnavailable(errorMessage);
+        return;
+      }
+      this.resetTransmissionAvailability();
+      this.error = errorMessage;
       await this.eventJournal.recordTorrentDownloadFailed({
         torrentItem: row,
-        errorMessage: this.error,
+        errorMessage,
       });
       return;
     }
@@ -155,8 +174,35 @@ export class DownloadWorker {
           torrentItem: row,
           errorMessage: this.error,
         });
+        return;
       }
     }
+  }
+
+  private async recordTransmissionUnavailable(
+    errorMessage: string,
+  ): Promise<void> {
+    if (this.transmissionUnavailableSince === null) {
+      this.transmissionUnavailableSince = Date.now();
+      return;
+    }
+    if (this.transmissionOutageReported) return;
+    if (
+      Date.now() - this.transmissionUnavailableSince <
+      TRANSMISSION_UNAVAILABLE_WINDOW_MS
+    ) {
+      return;
+    }
+
+    await this.eventJournal.recordTransmissionUnavailable({
+      errorMessage,
+    });
+    this.transmissionOutageReported = true;
+  }
+
+  private resetTransmissionAvailability(): void {
+    this.transmissionUnavailableSince = null;
+    this.transmissionOutageReported = false;
   }
 
   // After download finishes, copy files to the media library and remove from Transmission
@@ -340,4 +386,13 @@ function formatCopiedFilesMessage(files: string[]): string {
   const title = `Copied ${files.length} file(s)`;
   if (!files.length) return title;
   return [title, ...files].join('\n');
+}
+
+function isTransmissionUnavailableError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.includes(
+      'Transmission request failed without an HTTP response',
+    )
+  );
 }
