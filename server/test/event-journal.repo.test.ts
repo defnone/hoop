@@ -56,6 +56,9 @@ const database = {
       };
     }),
   })),
+  delete: vi.fn(() => ({
+    returning: vi.fn(async () => [makeEvent({ id: 1 }), makeEvent({ id: 2 })]),
+  })),
 } as const;
 
 const repo = new EventJournalRepo({
@@ -151,6 +154,13 @@ describe('EventJournalRepo (mocked database)', () => {
 
     expect(typeof lastUpdateSet?.readAt).toBe('number');
     expect(whereCalls.length).toBe(1);
+    expect(rows.map((row) => row.id)).toEqual([1, 2]);
+  });
+
+  it('deletes all events', async () => {
+    const rows = await repo.deleteAll();
+
+    expect(database.delete).toHaveBeenCalledTimes(1);
     expect(rows.map((row) => row.id)).toEqual([1, 2]);
   });
 });

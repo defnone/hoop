@@ -80,6 +80,10 @@ export class EventJournalRepo {
       .where(isNull(eventJournal.readAt))
       .returning();
   }
+
+  async deleteAll(): Promise<DbEventJournal[]> {
+    return await this.database.delete(eventJournal).returning();
+  }
 }
 
 const EVENT_JOURNAL_LIMIT = 500;

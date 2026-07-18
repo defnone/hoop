@@ -1,4 +1,14 @@
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import SettingsMenu from '@/components/settings/SettingsMenu';
 import { rpc } from '@/lib/rpc';
 import type {
@@ -13,7 +23,7 @@ import {
   type InfiniteData,
 } from '@tanstack/react-query';
 import { LoaderCircle } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 const EVENTS_PAGE_LIMIT = 30;
@@ -23,6 +33,7 @@ const USE_DEV_EVENT_JOURNAL = import.meta.env.DEV;
 export default function Journal() {
   const queryClient = useQueryClient();
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
 
   const {
     data,
@@ -100,6 +111,26 @@ export default function Journal() {
     },
   });
 
+  const clearAllMutation = useMutation({
+    mutationFn: async (): Promise<number> => {
+      if (USE_DEV_EVENT_JOURNAL) return clearMockEvents();
+
+      const response = await rpc.api['event-journal'].$delete();
+      const body = await response.json();
+      if (!body.success || body.data === undefined || body.data === null) {
+        throw new Error(body.message || 'Failed to clear event journal');
+      }
+      return body.data;
+    },
+    onSuccess: () => {
+      queryClient.setQueryData<InfiniteData<EventJournalPageDto>>(
+        EVENT_JOURNAL_QUERY_KEY,
+        clearEventsInPages,
+      );
+      setIsClearDialogOpen(false);
+    },
+  });
+
   const events = data?.pages.flatMap((page) => page.items) ?? [];
   const hasUnreadEvents = events.some((event) => event.readAt === null);
 
@@ -144,6 +175,44 @@ export default function Journal() {
           >
             Mark all as read
           </Button>
+          <Dialog
+            open={isClearDialogOpen}
+            onOpenChange={(open) => {
+              if (!clearAllMutation.isPending) setIsClearDialogOpen(open);
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button variant='destructive' disabled={events.length === 0}>
+                Clear all
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Clear event journal?</DialogTitle>
+                <DialogDescription>
+                  This will permanently delete all event journal entries. This
+                  action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button
+                    variant='outline'
+                    disabled={clearAllMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                </DialogClose>
+                <Button
+                  variant='destructive'
+                  disabled={clearAllMutation.isPending}
+                  onClick={() => clearAllMutation.mutate()}
+                >
+                  Clear all
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -469,6 +538,17 @@ function markAllReadEventsInPages(
   };
 }
 
+function clearEventsInPages(
+  currentData: InfiniteData<EventJournalPageDto> | undefined,
+): InfiniteData<EventJournalPageDto> | undefined {
+  if (!currentData) return currentData;
+
+  return {
+    pageParams: [1],
+    pages: [{ items: [], total: 0, page: 1, hasNext: false }],
+  };
+}
+
 const mockEventJournalItems: EventJournalDto[] = [
   {
     id: 1,
@@ -604,4 +684,8 @@ function markAllMockEventsAsRead(): EventJournalDto[] {
       ...event,
       readAt,
     }));
+}
+
+function clearMockEvents(): number {
+  return mockEventJournalItems.splice(0).length;
 }

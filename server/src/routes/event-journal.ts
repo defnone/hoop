@@ -11,26 +11,39 @@ const schema = z.object({
   limit: z.coerce.number({ message: 'limit is required' }).min(1).max(100),
 });
 
-export const eventJournalRoute = new Hono().get(
-  '/',
-  sValidator('query', schema, handleStandardValidation),
-  async (c) => {
-    const { page, limit } = c.req.valid('query');
+export const eventJournalRoute = new Hono()
+  .get(
+    '/',
+    sValidator('query', schema, handleStandardValidation),
+    async (c) => {
+      const { page, limit } = c.req.valid('query');
 
+      try {
+        const data = await new EventJournalService().getAll(page, limit);
+        const response: ApiResponse<typeof data> = {
+          success: true,
+          data,
+        };
+        return c.json(response);
+      } catch (e) {
+        logger.error(e);
+        const response: ApiResponse<null> = {
+          success: false,
+          message: (e as Error).message,
+        };
+        return c.json(response, 400);
+      }
+    },
+  )
+  .delete('/', async (c) => {
     try {
-      const data = await new EventJournalService().getAll(page, limit);
-      const response: ApiResponse<typeof data> = {
-        success: true,
-        data,
-      };
-      return c.json(response);
+      const data = await new EventJournalService().deleteAll();
+      return c.json<ApiResponse<number>>({ success: true, data });
     } catch (e) {
       logger.error(e);
-      const response: ApiResponse<null> = {
-        success: false,
-        message: (e as Error).message,
-      };
-      return c.json(response, 400);
+      return c.json<ApiResponse<null>>(
+        { success: false, message: (e as Error).message },
+        400,
+      );
     }
-  },
-);
+  });
