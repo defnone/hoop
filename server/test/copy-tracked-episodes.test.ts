@@ -80,7 +80,7 @@ describe('FileManagementService.copyTrackedEpisodes', () => {
     rawFiles = [];
   });
 
-  it('copies into /<title>/S01E02.ext from the Transmission status.name directory', async () => {
+  it('copies into /<title>/Season 01/S01E02.ext from the Transmission status.name directory', async () => {
     // Arrange: create the source file under downloadDir/<status.name>
     const srcDir = path.join(dirs.dl, statusName);
     await fs.promises.mkdir(srcDir, { recursive: true });
@@ -100,12 +100,12 @@ describe('FileManagementService.copyTrackedEpisodes', () => {
     const res = await svc.copyTrackedEpisodes(torrentItem, settings);
 
     // Assert
-    const dest = path.join(dirs.media, 'Some Show', 'S01E02.mkv');
+    const dest = path.join(dirs.media, 'Some Show', 'Season 01', 'S01E02.mkv');
     expect(res[2]).toBe(dest);
     expect(fs.existsSync(dest)).toBe(true);
   });
 
-  it('places the file under /<sanitize(title)>/S01E03.ext and parses number from name', async () => {
+  it('places the file under /<sanitize(title)>/Season 01/S01E03.ext and parses number from name', async () => {
     // Arrange: files live in the Transmission status directory and name contains E03
     statusName = 'Other Name';
     const srcDir = path.join(dirs.dl, statusName);
@@ -126,7 +126,7 @@ describe('FileManagementService.copyTrackedEpisodes', () => {
     const res = await svc.copyTrackedEpisodes(torrentItem, settings);
 
     // Assert: destination directory uses sanitize(title)
-    const dest = path.join(dirs.media, 'BadName', 'S01E03.mp4');
+    const dest = path.join(dirs.media, 'BadName', 'Season 01', 'S01E03.mp4');
     expect(res[3]).toBe(dest);
     expect(fs.existsSync(dest)).toBe(true);
   });
@@ -151,7 +151,9 @@ describe('FileManagementService.copyTrackedEpisodes', () => {
 
     expect(result).toEqual({});
     expect(
-      fs.existsSync(path.join(dirs.media, 'Some Show', 'S01E04.mkv')),
+      fs.existsSync(
+        path.join(dirs.media, 'Some Show', 'Season 01', 'S01E04.mkv'),
+      ),
     ).toBe(false);
   });
 
@@ -179,7 +181,9 @@ describe('FileManagementService.copyTrackedEpisodes', () => {
 
     expect(result).toEqual({});
     expect(
-      fs.existsSync(path.join(dirs.media, 'Some Show', 'S01E05.mkv')),
+      fs.existsSync(
+        path.join(dirs.media, 'Some Show', 'Season 01', 'S01E05.mkv'),
+      ),
     ).toBe(false);
   });
 });

@@ -175,6 +175,7 @@ export class FileManagementService {
     return path.join(
       mediaDir,
       FileManagementService.sanitizeFolderName(title),
+      `Season ${seasonStr}`,
       fileName,
     );
   }
