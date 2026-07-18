@@ -40,6 +40,11 @@ export class EventJournalService implements EventJournalPort {
     return toEventJournalDtos(rows);
   }
 
+  async deleteAll(): Promise<number> {
+    const rows = await this.repo.deleteAll();
+    return rows.length;
+  }
+
   async recordTorrentTitleChanged(
     params: TorrentUpdateEventParams,
   ): Promise<void> {

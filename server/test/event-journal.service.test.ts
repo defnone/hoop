@@ -23,6 +23,10 @@ class RepoMock {
     return [];
   }
 
+  async deleteAll(): Promise<DbEventJournal[]> {
+    return [];
+  }
+
   async create(
     data: DbEventJournalInsert,
   ): Promise<DbEventJournal | undefined> {

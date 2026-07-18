@@ -14,14 +14,21 @@ type ApiResponse<T> = {
   message?: string;
 };
 
-const { getAllMock, markAsReadMock, markAllAsReadMock } = vi.hoisted(() => {
-  const getAllMock =
-    vi.fn<(page: number, limit: number) => Promise<EventJournalPageDto>>();
-  const markAsReadMock =
-    vi.fn<(id: number) => Promise<EventJournalDto | null>>();
-  const markAllAsReadMock = vi.fn<() => Promise<EventJournalDto[]>>();
-  return { getAllMock, markAsReadMock, markAllAsReadMock } as const;
-});
+const { getAllMock, markAsReadMock, markAllAsReadMock, deleteAllMock } =
+  vi.hoisted(() => {
+    const getAllMock =
+      vi.fn<(page: number, limit: number) => Promise<EventJournalPageDto>>();
+    const markAsReadMock =
+      vi.fn<(id: number) => Promise<EventJournalDto | null>>();
+    const markAllAsReadMock = vi.fn<() => Promise<EventJournalDto[]>>();
+    const deleteAllMock = vi.fn<() => Promise<number>>();
+    return {
+      getAllMock,
+      markAsReadMock,
+      markAllAsReadMock,
+      deleteAllMock,
+    } as const;
+  });
 
 vi.mock('@server/features/event-journal/event-journal.service', () => ({
   EventJournalService: class {
@@ -35,6 +42,10 @@ vi.mock('@server/features/event-journal/event-journal.service', () => ({
 
     async markAllAsRead(): Promise<EventJournalDto[]> {
       return await markAllAsReadMock();
+    }
+
+    async deleteAll(): Promise<number> {
+      return await deleteAllMock();
     }
   },
 }));
@@ -63,6 +74,7 @@ describe('eventJournalRoute', () => {
     getAllMock.mockReset();
     markAsReadMock.mockReset();
     markAllAsReadMock.mockReset();
+    deleteAllMock.mockReset();
   });
 
   it('returns paginated journal events', async () => {
@@ -124,5 +136,16 @@ describe('eventJournalRoute', () => {
     expect(response.status).toBe(200);
     expect(markAllAsReadMock).toHaveBeenCalledTimes(1);
     expect(body.data?.map((item) => item.id)).toEqual([1, 2]);
+  });
+
+  it('deletes all journal events', async () => {
+    deleteAllMock.mockResolvedValueOnce(2);
+
+    const response = await eventJournalRoute.request('/', { method: 'DELETE' });
+    const body = (await response.json()) as ApiResponse<number>;
+
+    expect(response.status).toBe(200);
+    expect(deleteAllMock).toHaveBeenCalledTimes(1);
+    expect(body.data).toBe(2);
   });
 });
