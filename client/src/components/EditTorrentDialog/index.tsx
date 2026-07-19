@@ -19,6 +19,10 @@ import { useTorrentStore } from '@/stores/torrentStore';
 import { rpc } from '@/lib/rpc';
 import customSonner from '@/components/CustomSonner';
 import { useNavigate } from 'react-router';
+import useSettings from '@/hooks/useSettings';
+import NotificationSettings, {
+  type NotificationSettingsValue,
+} from './NotificationSettings';
 
 type EpisodesObj = {
   id: number;
@@ -41,6 +45,7 @@ export default function EditTorrentDialog({
   const [isAddingToClient, setIsAddingToClient] = useState(false);
   const [isRemovingFromClient, setIsRemovingFromClient] = useState(false);
   const navigate = useNavigate();
+  const { settingsData } = useSettings(dialogOpen);
 
   const setOpenId = useTorrentStore((state) => state.setOpenId);
   const setStartFetch = useTorrentStore((state) => state.setStartFetch);
@@ -197,10 +202,14 @@ export default function EditTorrentDialog({
         {data && (
           <>
             <DialogHeaderContent
+              key={data.id}
               data={data}
               episodesObj={episodesObj}
               handleSave={saveTrackedEpisodes}
               handleTitleSearch={handleTitleSearch}
+              telegramConfigured={Boolean(
+                settingsData?.botToken && settingsData.telegramId,
+              )}
             />
             <DialogFooterContent
               data={data}
@@ -268,6 +277,7 @@ function DialogHeaderContent({
   episodesObj,
   handleSave,
   handleTitleSearch,
+  telegramConfigured,
 }: {
   data: TorrentItemDto;
   episodesObj: {
@@ -279,7 +289,45 @@ function DialogHeaderContent({
   }[];
   handleSave: (id: number, episodes: number[]) => Promise<void>;
   handleTitleSearch: (torrent: TorrentItemDto) => void;
+  telegramConfigured: boolean;
 }) {
+  const [notificationsSaving, setNotificationsSaving] = useState(false);
+  const [notificationSettings, setNotificationSettings] =
+    useState<NotificationSettingsValue>(data);
+
+  const handleNotificationsChange = async (
+    value: NotificationSettingsValue,
+  ) => {
+    const previousValue = notificationSettings;
+    setNotificationSettings(value);
+    setNotificationsSaving(true);
+    try {
+      const response = await (
+        await rpc.api.torrents[':id']['save-notifications'].$put({
+          param: { id: String(data.id) },
+          json: value,
+        })
+      ).json();
+      if (!response.success) {
+        customSonner({
+          variant: 'error',
+          text: response.message || 'Failed to save notification settings',
+        });
+        setNotificationSettings(previousValue);
+        return;
+      }
+      useTorrentStore.getState().setStartFetch(Date.now());
+    } catch (error) {
+      customSonner({
+        variant: 'error',
+        text: `Failed to save notification settings: ${(error as Error).message}`,
+      });
+      setNotificationSettings(previousValue);
+    } finally {
+      setNotificationsSaving(false);
+    }
+  };
+
   return (
     <DialogHeader className='flex space-y-0 text-left overflow-hidden'>
       <DialogTitle className='border-b border-border px-6 py-4 text-base font-black hidden'>
@@ -320,6 +368,7 @@ function DialogHeaderContent({
             </div>
             <DataTabs
               filesData={data.files as string[]}
+              notificationsEnabled={telegramConfigured}
               torrents={
                 <EpPicker
                   itemId={data.id}
@@ -329,6 +378,13 @@ function DialogHeaderContent({
               }
               files={
                 <FileList files={data.files as string[]} torrentId={data.id} />
+              }
+              notifications={
+                <NotificationSettings
+                  value={notificationSettings}
+                  disabled={notificationsSaving}
+                  onChange={handleNotificationsChange}
+                />
               }
             />
           </div>

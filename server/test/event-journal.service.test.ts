@@ -53,6 +53,9 @@ const torrentItem: DbTorrentItem = {
   controlStatus: 'idle',
   tracker: 'kinozal',
   errorMessage: null,
+  notifyOnTitleChange: false,
+  notifyOnMagnetChange: false,
+  notifyOnDownloadComplete: true,
 };
 
 describe('EventJournalService', () => {

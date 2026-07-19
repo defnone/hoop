@@ -19,6 +19,9 @@ export function toTorrentItemDto(row: DbTorrentItem): TorrentItemDto {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     errorMessage: row.errorMessage,
+    notifyOnTitleChange: row.notifyOnTitleChange,
+    notifyOnMagnetChange: row.notifyOnMagnetChange,
+    notifyOnDownloadComplete: row.notifyOnDownloadComplete,
   };
 }
 

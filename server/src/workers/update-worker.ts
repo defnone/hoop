@@ -5,7 +5,8 @@ import logger from '@server/lib/logger';
 import { formatErrorMessage } from '@server/lib/error-message';
 import { EventJournalService } from '@server/features/event-journal/event-journal.service';
 import type { EventJournalPort } from '@server/features/event-journal/event-journal.port';
-import type { DbTorrentItem } from '@server/db/app/app-schema';
+import type { DbTorrentItem, DbUserSettings } from '@server/db/app/app-schema';
+import { TelegramAdapter } from '@server/external/adapters/telegram';
 
 export class UpdateWorker {
   // Repository used to read settings and torrent items from DB
@@ -21,6 +22,7 @@ export class UpdateWorker {
   private intervalId: ReturnType<typeof setInterval> | null = null;
   // Prevent concurrent runs of process()
   private isProcessing = false;
+  private settings: DbUserSettings | null = null;
 
   constructor({
     repo,
@@ -44,6 +46,7 @@ export class UpdateWorker {
   private async getSetting() {
     const settings = await this.repo.findSettings();
     if (!settings) throw new Error('No settings found');
+    this.settings = settings;
     // Convert minutes from settings into milliseconds for scheduling
     this.syncInterval = settings.syncInterval * 60 * 1000;
     return settings;
@@ -193,6 +196,17 @@ export class UpdateWorker {
       });
       // Persist new tracker data
       await ti.addOrUpdate();
+      if (databaseData.notifyOnTitleChange) {
+        await this.sendNotification(trackerData.showTitle);
+      }
+      if (
+        trackerData.magnet !== databaseData.magnet &&
+        databaseData.notifyOnMagnetChange
+      ) {
+        await this.sendNotification(
+          `Magnet changed for "${trackerData.showTitle}"`,
+        );
+      }
 
       // If any tracked episode is present in the new torrent — request download
       const updatedDatabaseData = ti.databaseData ?? databaseData;
@@ -222,6 +236,11 @@ export class UpdateWorker {
         newValue: trackerData.magnet,
       });
       await ti.addOrUpdate();
+      if (databaseData.notifyOnMagnetChange) {
+        await this.sendNotification(
+          `Magnet changed for "${databaseData.title}"`,
+        );
+      }
     } else {
       logger.info(`[UpdateWorker] No new data found for ${databaseData.title}`);
     }
@@ -231,6 +250,17 @@ export class UpdateWorker {
       if (isUpdateWorkerError) {
         await this.repo.update(row.id, { errorMessage: null });
       }
+    }
+  }
+
+  private async sendNotification(message: string): Promise<void> {
+    if (!this.settings?.telegramId || !this.settings.botToken) return;
+    try {
+      await new TelegramAdapter(this.settings).sendMessage(message);
+    } catch (error) {
+      logger.error(
+        `[UpdateWorker] Failed to send Telegram notification: ${formatErrorMessage(error)}`,
+      );
     }
   }
 }
