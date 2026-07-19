@@ -197,7 +197,9 @@ export class UpdateWorker {
       // Persist new tracker data
       await ti.addOrUpdate();
       if (databaseData.notifyOnTitleChange) {
-        await this.sendNotification(trackerData.showTitle);
+        await this.sendNotification(
+          `New release for "${trackerData.showTitle}": ${trackerData.rawTitle}`,
+        );
       }
       if (
         trackerData.magnet !== databaseData.magnet &&
