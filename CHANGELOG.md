@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.2 - 2026-07-19
+
+### Fixed
+
+- Server: place copied tracked episodes inside season directories.
+- Server: report sustained Transmission outages once and reset outage tracking after recovery.
+- Server: mark torrents removed from Transmission as idle and record the failed status check.
+
 ## 0.7.1 - 2026-07-16
 
 ### Fixed
