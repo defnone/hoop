@@ -65,6 +65,9 @@ function makeRow(override: Partial<DbTorrentItem> = {}): DbTorrentItem {
     controlStatus: 'idle',
     tracker: 'kinozal',
     errorMessage: null,
+    notifyOnTitleChange: false,
+    notifyOnMagnetChange: false,
+    notifyOnDownloadComplete: true,
     ...override,
   } satisfies DbTorrentItem;
 }

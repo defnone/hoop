@@ -89,6 +89,9 @@ const baseItem: DbTorrentItem = {
   controlStatus: 'idle',
   tracker: 'kinozal',
   errorMessage: null,
+  notifyOnTitleChange: false,
+  notifyOnMagnetChange: false,
+  notifyOnDownloadComplete: true,
 };
 
 const settings: DbUserSettings = {
@@ -198,6 +201,9 @@ vi.mock('@server/features/torrent-item/torrent-item.service', () => {
         createdAt: dbItem?.createdAt ?? Date.now(),
         updatedAt: dbItem?.updatedAt ?? Date.now(),
         errorMessage: dbItem?.errorMessage ?? null,
+        notifyOnTitleChange: dbItem?.notifyOnTitleChange ?? false,
+        notifyOnMagnetChange: dbItem?.notifyOnMagnetChange ?? false,
+        notifyOnDownloadComplete: dbItem?.notifyOnDownloadComplete ?? true,
       });
     }
     async addOrUpdate() {
