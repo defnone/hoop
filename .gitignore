@@ -45,6 +45,7 @@ tmp
 
 AGENTS.md
 vitest-version-check.json
+local-build.sh
 
 server/data
 

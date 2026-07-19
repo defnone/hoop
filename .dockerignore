@@ -15,6 +15,7 @@ coverage
 *.bak
 Dockerfile
 docker-compose.yml
+local-build.sh
 server/static
 build
 .DS_Store
