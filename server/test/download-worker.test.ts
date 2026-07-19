@@ -80,6 +80,9 @@ const item: DbTorrentItem = {
   controlStatus: 'idle',
   tracker: 'kinozal',
   errorMessage: null,
+  notifyOnTitleChange: false,
+  notifyOnMagnetChange: false,
+  notifyOnDownloadComplete: true,
 };
 
 const settings: DbUserSettings = {
@@ -113,10 +116,13 @@ const selectEpisodes = vi.fn(
   async (_downloadStatus: NormalizedTorrent) => undefined,
 );
 const remove = vi.fn(async () => undefined);
-const sendUpdate = vi.fn((title: string, payload: Record<number, string>) => {
-  void title;
-  void payload;
-});
+const sendUpdate = vi.fn(
+  async (title: string, payload: Record<number, string>) => {
+    void title;
+    void payload;
+    return Promise.resolve();
+  },
+);
 
 vi.mock('@server/external/adapters/transmission', () => ({
   TransmissionAdapter: class {
@@ -598,6 +604,57 @@ describe('DownloadWorker', () => {
     });
 
     expect(sendUpdate).toHaveBeenCalledWith(item.title, copyResult);
+  });
+
+  it('processCompletedDownload: skips disabled Telegram updates', async () => {
+    const { DownloadWorker } = await import('@server/workers/download-worker');
+    const repo = new RepoMock();
+    const worker = new DownloadWorker({ repo: repo as unknown as never });
+    const telegramSettings: DbUserSettings = {
+      ...settings,
+      telegramId: 123,
+      botToken: 'token',
+    };
+
+    repo.findAllNeedToControl.mockResolvedValueOnce([]);
+    repo.findSettings.mockResolvedValueOnce(telegramSettings);
+    await worker.process();
+    sendUpdate.mockClear();
+
+    await worker.processCompletedDownload({
+      ...item,
+      notifyOnDownloadComplete: false,
+      trackedEpisodes: [],
+      files: [],
+    });
+
+    expect(sendUpdate).not.toHaveBeenCalled();
+  });
+
+  it('processCompletedDownload: handles Telegram failures', async () => {
+    const { DownloadWorker } = await import('@server/workers/download-worker');
+    const repo = new RepoMock();
+    const worker = new DownloadWorker({ repo: repo as unknown as never });
+    const telegramSettings: DbUserSettings = {
+      ...settings,
+      telegramId: 123,
+      botToken: 'token',
+    };
+
+    repo.findAllNeedToControl.mockResolvedValueOnce([]);
+    repo.findSettings.mockResolvedValueOnce(telegramSettings);
+    await worker.process();
+    sendUpdate.mockRejectedValueOnce(new Error('Telegram unavailable'));
+
+    await expect(
+      worker.processCompletedDownload({
+        ...item,
+        trackedEpisodes: [],
+        files: [],
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(repo.markAsIdle).not.toHaveBeenCalled();
   });
 
   it('run: schedules processing and clears previous interval', async () => {

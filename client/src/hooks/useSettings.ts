@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 type SettingsData = DbUserSettings | null;
 
-export default function useSettings() {
+export default function useSettings(enabled: boolean = true) {
   const queryClient = useQueryClient();
   const {
     data: settingsData,
@@ -19,6 +19,7 @@ export default function useSettings() {
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     refetchInterval: 10000,
+    enabled,
     queryFn: async () => {
       const resp = await rpc.api.settings.$get();
       const payload = await resp.json();
