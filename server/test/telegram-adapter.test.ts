@@ -83,6 +83,25 @@ describe('TelegramAdapter', () => {
     expect(result).toEqual(okResponsePayload.result);
   });
 
+  it('sendMessage sends provided text', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(okResponsePayload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await new TelegramAdapter(baseSettings).sendMessage('New title');
+
+    const call = fetchMock.mock.calls[0] as [string, RequestInit];
+    const payload = JSON.parse(call[1].body as string) as {
+      chat_id: string;
+      text: string;
+    };
+    expect(payload).toEqual({ chat_id: '123456', text: 'New title' });
+  });
+
   it('sendUpdate throws on non-ok HTTP response', async () => {
     const fetchMock = vi
       .fn()

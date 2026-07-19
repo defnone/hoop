@@ -126,6 +126,9 @@ function createTorrentDto(
     createdAt: Date.now(),
     updatedAt: Date.now(),
     errorMessage: null,
+    notifyOnTitleChange: false,
+    notifyOnMagnetChange: false,
+    notifyOnDownloadComplete: true,
     ...override,
   } satisfies TorrentItemDto;
 }
