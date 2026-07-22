@@ -62,6 +62,7 @@ function makeSettingsRow(
     botToken: null,
     downloadDir: '/downloads',
     mediaDir: '/media',
+    cleanEmptySeriesDirectories: false,
     deleteAfterDownload: false,
     syncInterval: 30,
     torrentClientType: 'transmission',
@@ -97,6 +98,7 @@ describe('SettingsRepo (mocked database)', () => {
       botToken: null,
       downloadDir: '/dl',
       mediaDir: '/media',
+      cleanEmptySeriesDirectories: false,
       deleteAfterDownload: false,
       syncInterval: 20,
       jackettApiKey: null,
@@ -137,8 +139,9 @@ describe('SettingsRepo (mocked database)', () => {
 describe('SettingsService', () => {
   it('rejects changing client while another client has active torrents', async () => {
     class RepoMock extends SettingsRepo {
-      public findSettings = vi.fn(async (): Promise<DbUserSettings> =>
-        makeSettingsRow({ torrentClientType: 'transmission' }),
+      public findSettings = vi.fn(
+        async (): Promise<DbUserSettings> =>
+          makeSettingsRow({ torrentClientType: 'transmission' }),
       );
       public hasActiveTorrentForOtherClient = vi.fn(async () => true);
       public upsert = vi.fn(async (): Promise<DbUserSettings | null> => null);
@@ -207,6 +210,7 @@ describe('SettingsService', () => {
             botToken: fullData.botToken,
             downloadDir: fullData.downloadDir,
             mediaDir: fullData.mediaDir,
+            cleanEmptySeriesDirectories: fullData.cleanEmptySeriesDirectories,
             deleteAfterDownload: fullData.deleteAfterDownload,
             syncInterval: fullData.syncInterval,
             torrentClientType: fullData.torrentClientType,
@@ -232,6 +236,9 @@ describe('SettingsService', () => {
             botToken: payload.botToken ?? fullData.botToken,
             downloadDir: payload.downloadDir ?? fullData.downloadDir,
             mediaDir: payload.mediaDir ?? fullData.mediaDir,
+            cleanEmptySeriesDirectories:
+              payload.cleanEmptySeriesDirectories ??
+              fullData.cleanEmptySeriesDirectories,
             deleteAfterDownload:
               payload.deleteAfterDownload ?? fullData.deleteAfterDownload,
             syncInterval: payload.syncInterval ?? fullData.syncInterval,
@@ -268,6 +275,9 @@ describe('SettingsService', () => {
             botToken: payload.botToken ?? fullData.botToken,
             downloadDir: payload.downloadDir ?? fullData.downloadDir,
             mediaDir: payload.mediaDir ?? fullData.mediaDir,
+            cleanEmptySeriesDirectories:
+              payload.cleanEmptySeriesDirectories ??
+              fullData.cleanEmptySeriesDirectories,
             deleteAfterDownload:
               payload.deleteAfterDownload ?? fullData.deleteAfterDownload,
             syncInterval: payload.syncInterval ?? fullData.syncInterval,

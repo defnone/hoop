@@ -88,6 +88,7 @@ export default function Settings() {
       <TorrentClientSettings
         downloadDir={data?.downloadDir ?? ''}
         mediaDir={data?.mediaDir ?? ''}
+        cleanEmptySeriesDirectories={data?.cleanEmptySeriesDirectories ?? false}
         deleteAfterDownload={data?.deleteAfterDownload ?? false}
         clientType={data.torrentClientType}
         clientUrl={data.torrentClientUrl ?? ''}

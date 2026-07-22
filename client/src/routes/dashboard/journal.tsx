@@ -326,6 +326,10 @@ function formatEventTitle(
       return `Torrent ${torrentTitle} file copy failed`;
     case 'transmissionUnavailable':
       return 'Transmission unavailable';
+    case 'seriesDirectoryCleanupCompleted':
+      return 'Empty series directories removed';
+    case 'seriesDirectoryCleanupFailed':
+      return 'Series directory cleanup failed';
   }
 }
 

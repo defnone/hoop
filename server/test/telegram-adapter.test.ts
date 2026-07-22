@@ -9,6 +9,7 @@ const baseSettings: DbUserSettings = {
   botToken: 'token-123',
   downloadDir: null,
   mediaDir: null,
+  cleanEmptySeriesDirectories: false,
   deleteAfterDownload: false,
   syncInterval: 30,
   torrentClientType: 'transmission',

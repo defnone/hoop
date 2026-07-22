@@ -25,6 +25,15 @@ export type TransmissionUnavailableEventParams = {
   errorMessage: string;
 };
 
+export type SeriesDirectoryCleanupEventParams = {
+  rootPath: string;
+  removedPaths: string[];
+};
+
+export type SeriesDirectoryCleanupFailedEventParams = {
+  errorMessage: string;
+};
+
 export interface EventJournalPort {
   recordTorrentTitleChanged(params: TorrentUpdateEventParams): Promise<void>;
   recordTorrentMagnetChanged(params: TorrentUpdateEventParams): Promise<void>;

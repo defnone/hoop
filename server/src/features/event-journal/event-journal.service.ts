@@ -6,6 +6,8 @@ import type {
 } from './event-journal.types';
 import type {
   EventJournalPort,
+  SeriesDirectoryCleanupEventParams,
+  SeriesDirectoryCleanupFailedEventParams,
   TorrentProcessEventParams,
   TorrentProcessFailedEventParams,
   TorrentSyncFailedEventParams,
@@ -156,6 +158,34 @@ export class EventJournalService implements EventJournalPort {
       oldValue: null,
       newValue: params.errorMessage,
       isNotification: true,
+    });
+  }
+
+  async recordSeriesDirectoryCleanupCompleted(
+    params: SeriesDirectoryCleanupEventParams,
+  ): Promise<void> {
+    await this.repo.create({
+      type: 'seriesDirectoryCleanupCompleted',
+      state: 'info',
+      torrentItemId: null,
+      torrentTitle: 'Series Directory',
+      oldValue: null,
+      newValue: `Root: ${params.rootPath}\nRemoved:\n${params.removedPaths.join('\n')}`,
+      isNotification: false,
+    });
+  }
+
+  async recordSeriesDirectoryCleanupFailed(
+    params: SeriesDirectoryCleanupFailedEventParams,
+  ): Promise<void> {
+    await this.repo.create({
+      type: 'seriesDirectoryCleanupFailed',
+      state: 'error',
+      torrentItemId: null,
+      torrentTitle: 'Series Directory',
+      oldValue: null,
+      newValue: params.errorMessage,
+      isNotification: false,
     });
   }
 

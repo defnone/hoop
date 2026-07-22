@@ -57,6 +57,7 @@ function makeSettings(override: Partial<DbUserSettings> = {}): DbUserSettings {
     botToken: 'token',
     downloadDir: '/downloads',
     mediaDir: '/media',
+    cleanEmptySeriesDirectories: false,
     deleteAfterDownload: false,
     syncInterval: 30,
     torrentClientType: 'transmission',
