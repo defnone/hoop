@@ -11,7 +11,7 @@ import useSettings from '@/hooks/useSettings';
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { rpc } from '@/lib/rpc';
-import TransmissionSheet from '@/components/TransmissionSheet';
+import TorrentClientSheet from '@/components/TorrentClientSheet';
 
 async function handleSignOut() {
   await signOut({
@@ -129,7 +129,9 @@ export default function Header() {
           </Button>
         </div>
         <div className='flex items-center gap-2'>
-          <TransmissionSheet />
+          <TorrentClientSheet
+            clientType={settingsData?.torrentClientType ?? 'transmission'}
+          />
 
           <Separator orientation='vertical' className='h-4 mx-1' />
 

@@ -1,5 +1,5 @@
 import type { DbTorrentItem, DbUserSettings } from '@server/db/app/app-schema';
-import { TransmissionAdapter } from '@server/external/adapters/transmission';
+import { createTorrentClient } from '@server/external/adapters/torrent-client';
 import logger from '@server/lib/logger';
 import fs from 'fs';
 import path from 'path';
@@ -17,15 +17,23 @@ export class FileManagementService {
 
     const result: Record<number, string> = {};
 
-    // Resolve real torrent name from Transmission
     let torrentName = '';
+    type RawFile = { name: string };
+    let filesFromClient: RawFile[] = [];
+
+    // Resolve torrent metadata from configured client
     try {
-      const tm = new TransmissionAdapter({ id: torrentItem.id, torrentItem });
-      const info = await tm.status();
-      torrentName = info.name ?? '';
+      const client = await createTorrentClient({
+        id: torrentItem.id,
+        torrentItem,
+      });
+      const status = await client.status();
+      torrentName = status.name ?? '';
+      const files = status.raw.files as RawFile[] | undefined;
+      filesFromClient = files ?? [];
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      logger.error(`Cannot get torrent status from Transmission: ${msg}`);
+      logger.error(`Cannot get torrent status from client: ${msg}`);
     }
 
     const sanitizedTitle = FileManagementService.sanitizeFolderName(
@@ -35,18 +43,6 @@ export class FileManagementService {
     const trackedNumbers: number[] = Array.isArray(torrentItem.trackedEpisodes)
       ? (torrentItem.trackedEpisodes as number[])
       : [];
-
-    type RawFile = { name: string };
-    let filesFromClient: RawFile[] = [];
-    try {
-      const tm = new TransmissionAdapter({ id: torrentItem.id, torrentItem });
-      const status = await tm.status();
-      const files = status.raw.files as Array<{ name: string }> | undefined;
-      filesFromClient = files ?? [];
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      logger.error(`Cannot read files from Transmission: ${msg}`);
-    }
 
     const episodeFiles = filesFromClient
       .map((f) => ({

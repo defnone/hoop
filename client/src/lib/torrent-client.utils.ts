@@ -1,4 +1,4 @@
-import type { TorrentClientItemDto } from '@server/external/adapters/transmission';
+import type { TorrentClientItemDto } from '@server/external/adapters/torrent-client';
 
 export type TorrentListFilter =
   | 'all'
@@ -17,7 +17,7 @@ export type TorrentStateAppearance = {
   indicatorClassName: string;
 };
 
-export function filterTransmissionTorrents(
+export function filterTorrentClientTorrents(
   torrents: TorrentClientItemDto[],
   search: string,
   filter: TorrentListFilter,
@@ -36,6 +36,39 @@ export function filterTransmissionTorrents(
     }
     return torrent.state === filter;
   });
+}
+
+export function getAverageTransferSpeeds(
+  torrent: TorrentClientItemDto,
+  now: number = Date.now(),
+): TransferSpeeds {
+  const addedAt = new Date(torrent.dateAdded).getTime();
+  if (!Number.isFinite(addedAt) || addedAt >= now) {
+    return { download: 0, upload: 0 };
+  }
+
+  const completedAt = torrent.dateCompleted
+    ? new Date(torrent.dateCompleted).getTime()
+    : now;
+  const downloadEnd = Number.isFinite(completedAt) ? completedAt : now;
+
+  return {
+    download: getAverageSpeed(torrent.totalDownloaded, addedAt, downloadEnd),
+    upload: getAverageSpeed(torrent.totalUploaded, addedAt, now),
+  };
+}
+
+export function sumAverageTransferSpeeds(
+  torrents: TorrentClientItemDto[],
+  now: number = Date.now(),
+): TransferSpeeds {
+  return torrents.reduce<TransferSpeeds>((total, torrent) => {
+    const average = getAverageTransferSpeeds(torrent, now);
+    return {
+      download: total.download + average.download,
+      upload: total.upload + average.upload,
+    };
+  }, { download: 0, upload: 0 });
 }
 
 export function sumTransferSpeeds(
@@ -147,6 +180,20 @@ export function getTorrentStateAppearance(
     );
   }
   return createStateAppearance('text-foreground', 'bg-muted-foreground');
+}
+
+// -----------------------------------------------------------------------------
+
+function getAverageSpeed(
+  totalBytes: number,
+  startedAt: number,
+  endedAt: number,
+): number {
+  const elapsedSeconds = Math.max(0, (endedAt - startedAt) / 1000);
+  if (elapsedSeconds === 0 || !Number.isFinite(totalBytes) || totalBytes <= 0) {
+    return 0;
+  }
+  return totalBytes / elapsedSeconds;
 }
 
 // -----------------------------------------------------------------------------
