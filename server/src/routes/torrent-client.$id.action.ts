@@ -1,9 +1,9 @@
 import { Hono } from 'hono/tiny';
 import type { ApiResponse } from '@shared/types';
 import {
-  TransmissionAdapter,
+  createTorrentClient,
   torrentClientActions,
-} from '@server/external/adapters/transmission';
+} from '@server/external/adapters/torrent-client';
 import logger from '@server/lib/logger';
 import { z } from 'zod';
 import { sValidator } from '@hono/standard-validator';
@@ -23,7 +23,8 @@ export const torrentClientActionRoute = new Hono().put(
     const { action } = c.req.valid('json');
 
     try {
-      await new TransmissionAdapter({ id: 0 }).controlClientTorrent(id, action);
+      const client = await createTorrentClient({ id: 0 });
+      await client.controlClientTorrent(id, action);
       const response: ApiResponse<null> = {
         success: true,
         message: `Torrent action completed: ${action}`,
@@ -34,7 +35,9 @@ export const torrentClientActionRoute = new Hono().put(
       const response: ApiResponse<null> = {
         success: false,
         message:
-          error instanceof Error ? error.message : 'Transmission action failed',
+          error instanceof Error
+            ? error.message
+            : 'Torrent client action failed',
       };
       return c.json(response, 400);
     }

@@ -1,6 +1,6 @@
 import { Hono } from 'hono/tiny';
 import type { ApiResponse } from 'shared/dist';
-import { TransmissionAdapter } from '@server/external/adapters/transmission';
+import { createTorrentClient } from '@server/external/adapters/torrent-client';
 import logger from '@server/lib/logger';
 import { z } from 'zod';
 import { sValidator } from '@hono/standard-validator';
@@ -17,9 +17,8 @@ export const torrentClientAddRoute = new Hono().post(
     const { id } = c.req.valid('param');
 
     try {
-      await new TransmissionAdapter({
-        id,
-      }).add();
+      const client = await createTorrentClient({ id });
+      await client.add();
 
       const response: ApiResponse<null> = {
         success: true,

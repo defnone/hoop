@@ -21,11 +21,11 @@ export class TransmissionClientRepo {
     return row ?? null;
   }
 
-  async findTorrentItemByTransmissionId(transmissionId: string) {
+  async findTorrentItemByTorrentClientId(torrentClientId: string) {
     const [row] = await this.database
       .select()
       .from(torrentItems)
-      .where(eq(torrentItems.transmissionId, transmissionId));
+      .where(eq(torrentItems.torrentClientId, torrentClientId));
     return row ?? null;
   }
 

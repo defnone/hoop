@@ -35,8 +35,8 @@ class TransmissionManagementMock {
 }
 
 class TransmissionManagementRepoMock {
-  public findTorrentItemByTransmissionId = vi.fn(
-    async (_transmissionId: string): Promise<DbTorrentItem | null> => null,
+  public findTorrentItemByTorrentClientId = vi.fn(
+    async (_torrentClientId: string): Promise<DbTorrentItem | null> => null,
   );
 
   public updateTorrentItem = vi.fn(
@@ -105,7 +105,7 @@ describe('TransmissionAdapter management methods', () => {
 
   it('removes a managed torrent and resets its hoop state', async () => {
     const { adapter, client, repo } = createAdapter();
-    repo.findTorrentItemByTransmissionId.mockResolvedValueOnce(
+    repo.findTorrentItemByTorrentClientId.mockResolvedValueOnce(
       createDatabaseTorrent(),
     );
 
@@ -114,7 +114,7 @@ describe('TransmissionAdapter management methods', () => {
     expect(client.removeTorrent).toHaveBeenCalledWith('hash', true);
     expect(repo.updateTorrentItem).toHaveBeenCalledWith(7, {
       controlStatus: 'idle',
-      transmissionId: null,
+      torrentClientId: null,
     });
     expect(torrentItemId).toBe(7);
   });
@@ -176,7 +176,8 @@ function createDatabaseTorrent(): DbTorrentItem {
     haveEpisodes: [],
     totalEpisodes: null,
     files: [],
-    transmissionId: 'hash',
+    torrentClientId: 'hash',
+    torrentClientType: 'transmission',
     controlStatus: 'downloading',
     errorMessage: null,
     notifyOnTitleChange: false,

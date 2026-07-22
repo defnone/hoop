@@ -64,6 +64,10 @@ function makeSettingsRow(
     mediaDir: '/media',
     deleteAfterDownload: false,
     syncInterval: 30,
+    torrentClientType: 'transmission',
+    torrentClientUrl: null,
+    torrentClientUsername: null,
+    torrentClientPassword: null,
     jackettApiKey: null,
     jackettUrl: null,
     kinozalUsername: null,
@@ -131,6 +135,27 @@ describe('SettingsRepo (mocked database)', () => {
 });
 
 describe('SettingsService', () => {
+  it('rejects changing client while another client has active torrents', async () => {
+    class RepoMock extends SettingsRepo {
+      public findSettings = vi.fn(async (): Promise<DbUserSettings> =>
+        makeSettingsRow({ torrentClientType: 'transmission' }),
+      );
+      public hasActiveTorrentForOtherClient = vi.fn(async () => true);
+      public upsert = vi.fn(async (): Promise<DbUserSettings | null> => null);
+    }
+
+    const service = new SettingsService({
+      repo: new RepoMock({} as never),
+      data: {
+        torrentClientType: 'qbittorrent',
+      },
+    });
+
+    await expect(service.upsert()).rejects.toThrow(
+      'Cannot change torrent client while downloads are active',
+    );
+  });
+
   it('throws when updating without data', async () => {
     class RepoMock extends SettingsRepo {
       public findSettings = vi.fn(
@@ -162,6 +187,10 @@ describe('SettingsService', () => {
       mediaDir: '/media',
       deleteAfterDownload: false,
       syncInterval: 15,
+      torrentClientType: 'transmission',
+      torrentClientUrl: 'http://localhost:9091/transmission/rpc',
+      torrentClientUsername: 'user',
+      torrentClientPassword: 'password',
       jackettApiKey: null,
       jackettUrl: null,
       kinozalUsername: null,
@@ -180,6 +209,10 @@ describe('SettingsService', () => {
             mediaDir: fullData.mediaDir,
             deleteAfterDownload: fullData.deleteAfterDownload,
             syncInterval: fullData.syncInterval,
+            torrentClientType: fullData.torrentClientType,
+            torrentClientUrl: fullData.torrentClientUrl,
+            torrentClientUsername: fullData.torrentClientUsername,
+            torrentClientPassword: fullData.torrentClientPassword,
             jackettApiKey: fullData.jackettApiKey,
             jackettUrl: fullData.jackettUrl,
             kinozalUsername: fullData.kinozalUsername,
@@ -202,6 +235,14 @@ describe('SettingsService', () => {
             deleteAfterDownload:
               payload.deleteAfterDownload ?? fullData.deleteAfterDownload,
             syncInterval: payload.syncInterval ?? fullData.syncInterval,
+            torrentClientType:
+              payload.torrentClientType ?? fullData.torrentClientType,
+            torrentClientUrl:
+              payload.torrentClientUrl ?? fullData.torrentClientUrl,
+            torrentClientUsername:
+              payload.torrentClientUsername ?? fullData.torrentClientUsername,
+            torrentClientPassword:
+              payload.torrentClientPassword ?? fullData.torrentClientPassword,
             jackettApiKey: payload.jackettApiKey ?? fullData.jackettApiKey,
             jackettUrl: payload.jackettUrl ?? fullData.jackettUrl,
             kinozalUsername:
@@ -230,6 +271,14 @@ describe('SettingsService', () => {
             deleteAfterDownload:
               payload.deleteAfterDownload ?? fullData.deleteAfterDownload,
             syncInterval: payload.syncInterval ?? fullData.syncInterval,
+            torrentClientType:
+              payload.torrentClientType ?? fullData.torrentClientType,
+            torrentClientUrl:
+              payload.torrentClientUrl ?? fullData.torrentClientUrl,
+            torrentClientUsername:
+              payload.torrentClientUsername ?? fullData.torrentClientUsername,
+            torrentClientPassword:
+              payload.torrentClientPassword ?? fullData.torrentClientPassword,
             jackettApiKey: payload.jackettApiKey ?? fullData.jackettApiKey,
             jackettUrl: payload.jackettUrl ?? fullData.jackettUrl,
             kinozalUsername:
@@ -262,7 +311,7 @@ describe('SettingsService', () => {
     expect(fetched?.id).toBe(1);
     expect(
       (service as unknown as { repo: RepoMock2 }).repo.findSettings,
-    ).toHaveBeenCalledTimes(1);
+    ).toHaveBeenCalledTimes(2);
 
     const updated = await service.update();
     expect(updated?.id).toBe(1);

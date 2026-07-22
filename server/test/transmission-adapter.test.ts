@@ -17,7 +17,8 @@ const baseItem: DbTorrentItem = {
   files: null,
   createdAt: Date.now(),
   updatedAt: Date.now(),
-  transmissionId: null,
+  torrentClientId: null,
+  torrentClientType: 'transmission',
   controlStatus: 'idle',
   tracker: 'kinozal',
   errorMessage: null,
@@ -34,6 +35,10 @@ const baseSettings: DbUserSettings = {
   mediaDir: null,
   deleteAfterDownload: false,
   syncInterval: 30,
+  torrentClientType: 'transmission',
+  torrentClientUrl: null,
+  torrentClientUsername: null,
+  torrentClientPassword: null,
   jackettApiKey: null,
   jackettUrl: null,
   kinozalUsername: null,
@@ -156,7 +161,7 @@ describe('TransmissionAdapter', () => {
     expect(idArg).toBe(1);
     expect(dataArg).toMatchObject({
       controlStatus: 'downloading',
-      transmissionId: 'abc123',
+      torrentClientId: 'abc123',
     });
   });
 
@@ -203,7 +208,7 @@ describe('TransmissionAdapter', () => {
     ];
     const [, dataArg] = call2;
     expect(dataArg).toMatchObject({
-      transmissionId: 'dup123',
+      torrentClientId: 'dup123',
       controlStatus: 'downloading',
     });
   });
@@ -217,7 +222,7 @@ describe('TransmissionAdapter', () => {
     const repo = new RepoMock();
     const withTransId: DbTorrentItem = {
       ...baseItem,
-      transmissionId: 'abc123',
+      torrentClientId: 'abc123',
     };
     repo.findTorrentItemById.mockResolvedValueOnce(withTransId);
     const client = new TransmissionMock();
@@ -238,13 +243,13 @@ describe('TransmissionAdapter', () => {
     const [, dataArg] = call3;
     expect(dataArg).toMatchObject({
       controlStatus: 'idle',
-      transmissionId: null,
+      torrentClientId: null,
     });
     // deleteAfterDownload is false by default
     expect(client.lastRemoveArgs).toEqual({ id: 'abc123', deleteLocal: false });
   });
 
-  it('remove(): throws when no transmissionId', async () => {
+  it('remove(): throws when no torrent client id', async () => {
     vi.resetModules();
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
@@ -259,10 +264,10 @@ describe('TransmissionAdapter', () => {
       repo: repo as unknown as never,
     });
 
-    await expect(adapter.remove()).rejects.toThrow('No transmissionId');
+    await expect(adapter.remove()).rejects.toThrow('No torrent client id');
   });
 
-  it('status(): returns status when transmissionId present', async () => {
+  it('status(): returns status when torrentClientId present', async () => {
     vi.resetModules();
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
@@ -271,7 +276,7 @@ describe('TransmissionAdapter', () => {
     const repo = new RepoMock();
     const withTransId: DbTorrentItem = {
       ...baseItem,
-      transmissionId: 'abc123',
+      torrentClientId: 'abc123',
     };
     repo.findTorrentItemById.mockResolvedValueOnce(withTransId);
     const client = new TransmissionMock();
@@ -286,7 +291,7 @@ describe('TransmissionAdapter', () => {
     expect(result).toMatchObject({ id: 'abc123', name: 'some-torrent' });
   });
 
-  it('status(): throws when no transmissionId', async () => {
+  it('status(): throws when no torrent client id', async () => {
     vi.resetModules();
     const { TransmissionAdapter } = await import(
       '@server/external/adapters/transmission'
@@ -301,7 +306,7 @@ describe('TransmissionAdapter', () => {
       repo: repo as unknown as never,
     });
 
-    await expect(adapter.status()).rejects.toThrow('No transmissionId');
+    await expect(adapter.status()).rejects.toThrow('No torrent client id');
   });
 
   it('getAll(): returns list of torrents', async () => {
@@ -444,7 +449,7 @@ describe('TransmissionAdapter', () => {
     const repo = new RepoMock();
     const withTransId: DbTorrentItem = {
       ...baseItem,
-      transmissionId: 'abc123',
+      torrentClientId: 'abc123',
     };
     repo.findTorrentItemById.mockResolvedValueOnce(withTransId);
     const client = new TransmissionMock();
@@ -488,7 +493,7 @@ describe('TransmissionAdapter', () => {
     const repo = new RepoMock();
     repo.findTorrentItemById.mockResolvedValueOnce({
       ...baseItem,
-      transmissionId: 'abc123',
+      torrentClientId: 'abc123',
       trackedEpisodes: [1, 3],
     });
     const client = new TransmissionSelectMock();
@@ -534,7 +539,7 @@ describe('TransmissionAdapter', () => {
     const repo = new RepoMock();
     repo.findTorrentItemById.mockResolvedValueOnce({
       ...baseItem,
-      transmissionId: 'abc123',
+      torrentClientId: 'abc123',
       trackedEpisodes: [1],
     });
     const client = new TransmissionSelectNoopMock();
@@ -549,7 +554,7 @@ describe('TransmissionAdapter', () => {
     expect(client.setCalled).toBe(false);
   });
 
-  it('selectEpisodes(): throws when no transmissionId', async () => {
+  it('selectEpisodes(): throws when no torrent client id', async () => {
     class TransmissionSelectErrMock extends TransmissionMock {
       override async getTorrent(_id: string): Promise<Record<string, unknown>> {
         return Promise.resolve({ raw: { files: [{ name: 'S01E01' }] } });
@@ -565,7 +570,7 @@ describe('TransmissionAdapter', () => {
     );
 
     const repo = new RepoMock();
-    // No transmissionId in item
+    // No torrentClientId in item
     repo.findTorrentItemById.mockResolvedValueOnce({ ...baseItem });
     const client = new TransmissionSelectErrMock();
 
@@ -577,10 +582,10 @@ describe('TransmissionAdapter', () => {
 
     await expect(
       adapter.selectEpisodes({ raw: { files: [{ name: 'S01E01' }] } }),
-    ).rejects.toThrow('No transmissionId');
+    ).rejects.toThrow('No torrent client id');
   });
 
-  it('constructor: throws when required env vars are missing', async () => {
+  it('constructor: accepts injected client without environment settings', async () => {
     vi.resetModules();
     const old = {
       url: process.env.TRANSMISSION_BASE_URL,
@@ -605,9 +610,7 @@ describe('TransmissionAdapter', () => {
           client: client as unknown as Transmission,
           repo: repo as unknown as never,
         }),
-    ).toThrow(
-      'TRANSMISSION_BASE_URL, TRANSMISSION_USERNAME, TRANSMISSION_PASSWORD must be set in env',
-    );
+    ).not.toThrow();
 
     // Restore envs for subsequent tests
     process.env.TRANSMISSION_BASE_URL = old.url;
@@ -644,7 +647,7 @@ describe('TransmissionAdapter', () => {
     const repo = new RepoMock();
     repo.findTorrentItemById.mockResolvedValueOnce({
       ...baseItem,
-      transmissionId: 'abc123',
+      torrentClientId: 'abc123',
       trackedEpisodes: [2, 12],
     });
     const client = new TransmissionSelectAltMock();
@@ -701,7 +704,7 @@ describe('TransmissionAdapter', () => {
     const repo = new RepoMock();
     repo.findTorrentItemById.mockResolvedValueOnce({
       ...baseItem,
-      transmissionId: 'abc123',
+      torrentClientId: 'abc123',
       trackedEpisodes: [4, 5],
     });
     const client = new TransmissionSelectSeparatorMock();
