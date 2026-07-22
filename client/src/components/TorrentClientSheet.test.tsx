@@ -139,12 +139,12 @@ describe('TorrentClientSheet', () => {
     expect(getTorrentsMock).toHaveBeenCalledTimes(1);
     await act(async () => {
       await vi.waitFor(() => {
-    expect(document.body.textContent).toContain(longTorrentName);
-    expect(document.body.textContent).toContain('qBittorrent');
-    expect(document.body.textContent).toContain('Now');
-    expect(document.body.textContent).toContain('Average since added');
+        expect(document.body.textContent).toContain(longTorrentName);
+        expect(document.body.textContent).toContain('qBittorrent');
+        expect(document.body.textContent).toContain('Now');
       });
     });
+    expect(document.body.textContent).not.toContain('Average since added');
     expect(document.body.textContent).toContain('50%');
     expect(document.body.textContent).toContain('512 B of 1.0 KB (50%)');
     const torrentRow = document.body.querySelector<HTMLElement>(

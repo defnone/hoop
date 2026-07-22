@@ -49,8 +49,11 @@ export function getAverageTransferSpeeds(
 
   const completedAt = torrent.dateCompleted
     ? new Date(torrent.dateCompleted).getTime()
-    : now;
-  const downloadEnd = Number.isFinite(completedAt) ? completedAt : now;
+    : Number.NaN;
+  const downloadEnd =
+    Number.isFinite(completedAt) && completedAt > addedAt && completedAt <= now
+      ? completedAt
+      : now;
 
   return {
     download: getAverageSpeed(torrent.totalDownloaded, addedAt, downloadEnd),
@@ -62,13 +65,16 @@ export function sumAverageTransferSpeeds(
   torrents: TorrentClientItemDto[],
   now: number = Date.now(),
 ): TransferSpeeds {
-  return torrents.reduce<TransferSpeeds>((total, torrent) => {
-    const average = getAverageTransferSpeeds(torrent, now);
-    return {
-      download: total.download + average.download,
-      upload: total.upload + average.upload,
-    };
-  }, { download: 0, upload: 0 });
+  return torrents.reduce<TransferSpeeds>(
+    (total, torrent) => {
+      const average = getAverageTransferSpeeds(torrent, now);
+      return {
+        download: total.download + average.download,
+        upload: total.upload + average.upload,
+      };
+    },
+    { download: 0, upload: 0 },
+  );
 }
 
 export function sumTransferSpeeds(

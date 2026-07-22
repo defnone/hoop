@@ -72,7 +72,6 @@ import {
   getTorrentStateAppearance,
   getTorrentStateLabel,
   getTorrentTransferSummary,
-  getAverageTransferSpeeds,
   sumAverageTransferSpeeds,
   sumTransferSpeeds,
   type TorrentListFilter,
@@ -408,7 +407,6 @@ function TorrentRow({
   const progress = getTorrentProgress(torrent);
   const appearance = getTorrentStateAppearance(torrent.state);
   const isPaused = torrent.state === 'paused';
-  const averageSpeeds = getAverageTransferSpeeds(torrent);
 
   return (
     <ContextMenu modal={false}>
@@ -491,20 +489,6 @@ function TorrentRow({
                   </span>
                 </>
               ) : null}
-            </div>
-            <div
-              className='mt-1 flex items-center gap-3 text-[11px] leading-3 text-muted-foreground'
-              title='Average transfer speeds since added'
-            >
-              <span className='font-semibold'>Average since added</span>
-              <span className='flex items-center gap-1'>
-                <ArrowDown className='size-3' />
-                {formatTransferSpeed(averageSpeeds.download)}
-              </span>
-              <span className='flex items-center gap-1'>
-                <ArrowUp className='size-3' />
-                {formatTransferSpeed(averageSpeeds.upload)}
-              </span>
             </div>
           </div>
         </div>
