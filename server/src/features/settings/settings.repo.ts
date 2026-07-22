@@ -1,11 +1,13 @@
 import db from '@server/db';
 import {
+  torrentItems,
   userSettings,
   type DbUserSettings,
   type DbUserSettingsInsert,
 } from '@server/db/app/app-schema';
 import type { BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNotNull, ne } from 'drizzle-orm';
+import type { TorrentClientType } from '@server/external/adapters/torrent-client';
 
 export class SettingsRepo {
   private readonly database: BunSQLiteDatabase;
@@ -19,6 +21,22 @@ export class SettingsRepo {
       .from(userSettings)
       .where(eq(userSettings.id, 1));
     return row ?? null;
+  }
+
+  async hasActiveTorrentForOtherClient(
+    clientType: TorrentClientType,
+  ): Promise<boolean> {
+    const rows = await this.database
+      .select({ id: torrentItems.id })
+      .from(torrentItems)
+      .where(
+        and(
+          isNotNull(torrentItems.torrentClientId),
+          ne(torrentItems.torrentClientType, clientType),
+        ),
+      )
+      .limit(1);
+    return rows.length > 0;
   }
 
   async upsert(data: Omit<DbUserSettingsInsert, 'id'>) {

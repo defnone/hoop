@@ -50,6 +50,13 @@
       "when": 1784378223291,
       "tag": "0006_add_torrent_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1784451228678,
+      "tag": "0007_add_torrent_client_settings",
+      "breakpoints": true
     }
   ]
 }
