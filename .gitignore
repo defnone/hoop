@@ -52,3 +52,7 @@ server/data
 trakt-proxy/wrangler.jsonc
 trakt-proxy/.wrangler
 EVENTS-DOC.MD
+
+.brain
+.agents
+.codex
