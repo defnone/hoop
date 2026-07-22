@@ -1,9 +1,12 @@
 import db from '@server/db';
 import {
   torrentItems,
+  torrentCopyFailures,
   userSettings,
   type DbTorrentItem,
   type DbTorrentItemInsert,
+  type DbTorrentCopyFailure,
+  type DbTorrentCopyFailureInsert,
 } from '@server/db/app/app-schema';
 import { logger } from 'better-auth';
 import { eq, or } from 'drizzle-orm';
@@ -64,6 +67,33 @@ export class WorkersRepo {
       .update(torrentItems)
       .set({ controlStatus: 'idle', torrentClientId: null })
       .where(eq(torrentItems.id, id));
+  }
+
+  async findCopyFailure(
+    torrentItemId: number,
+  ): Promise<DbTorrentCopyFailure | undefined> {
+    const [row] = await this.database
+      .select()
+      .from(torrentCopyFailures)
+      .where(eq(torrentCopyFailures.torrentItemId, torrentItemId))
+      .limit(1);
+    return row;
+  }
+
+  async saveCopyFailure(data: DbTorrentCopyFailureInsert): Promise<void> {
+    await this.database
+      .insert(torrentCopyFailures)
+      .values(data)
+      .onConflictDoUpdate({
+        target: torrentCopyFailures.torrentItemId,
+        set: data,
+      });
+  }
+
+  async deleteCopyFailure(torrentItemId: number): Promise<void> {
+    await this.database
+      .delete(torrentCopyFailures)
+      .where(eq(torrentCopyFailures.torrentItemId, torrentItemId));
   }
 
   async update(

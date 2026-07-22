@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
-import type { DbTorrentItem, DbUserSettings } from '@server/db/app/app-schema';
+import type {
+  DbTorrentCopyFailure,
+  DbTorrentItem,
+  DbUserSettings,
+} from '@server/db/app/app-schema';
+import type { CopyTrackedEpisodesResult } from '@server/features/file-management/file-management.service';
 
 // Silence logs in tests
 vi.mock('@server/lib/logger', () => ({
@@ -128,6 +133,7 @@ const sendUpdate = vi.fn(
     return Promise.resolve();
   },
 );
+const sendMessage = vi.fn(async (_message: string) => Promise.resolve());
 
 vi.mock('@server/external/adapters/torrent-client', () => ({
   createTorrentClient: async () => ({
@@ -153,12 +159,17 @@ vi.mock('@server/external/adapters/telegram/telegram.adapter', () => ({
     sendUpdate(title: string, payload: Record<number, string>) {
       return sendUpdate(title, payload);
     }
+    sendMessage(message: string) {
+      return sendMessage(message);
+    }
   },
 }));
 
 const copyTrackedEpisodes = vi.fn(
-  async (_ti: DbTorrentItem, _s: DbUserSettings) =>
-    ({}) as Record<number, string>,
+  async (
+    _ti: DbTorrentItem,
+    _s: DbUserSettings,
+  ): Promise<CopyTrackedEpisodesResult> => ({ files: {}, failures: [] }),
 );
 vi.mock('@server/features/file-management/file-management.service', () => ({
   FileManagementService: class {
@@ -179,6 +190,11 @@ class RepoMock {
   public markAsCompleted = vi.fn(async (_id: number) => undefined);
   public markAsProcessing = vi.fn(async (_id: number) => undefined);
   public markAsIdle = vi.fn(async (_id: number) => undefined);
+  public findCopyFailure = vi.fn(
+    async (_id: number): Promise<DbTorrentCopyFailure | undefined> => undefined,
+  );
+  public saveCopyFailure = vi.fn(async (_data: unknown) => undefined);
+  public deleteCopyFailure = vi.fn(async (_id: number) => undefined);
   public update = vi.fn(async (_id: number, _data: unknown) => undefined);
 }
 
@@ -440,8 +456,11 @@ describe('DownloadWorker', () => {
     await worker.process();
 
     copyTrackedEpisodes.mockResolvedValueOnce({
-      1: '/media/show/S01E01.mkv',
-      2: '/media/show/S01E02.mkv',
+      files: {
+        1: '/media/show/S01E01.mkv',
+        2: '/media/show/S01E02.mkv',
+      },
+      failures: [],
     });
     await worker.processCompletedDownload({ ...item });
     expect(repo.markAsProcessing).toHaveBeenCalledWith(item.id);
@@ -595,7 +614,10 @@ describe('DownloadWorker', () => {
     repo.findAllNeedToControl.mockResolvedValueOnce([]);
     repo.findSettings.mockResolvedValueOnce(telegramSettings);
 
-    const copyResult: Record<number, string> = { 1: '/media/file1.mkv' };
+    const copyResult = {
+      files: { 1: '/media/file1.mkv' },
+      failures: [],
+    };
     copyTrackedEpisodes.mockResolvedValueOnce(copyResult);
 
     await worker.process();
@@ -606,7 +628,7 @@ describe('DownloadWorker', () => {
       files: [],
     });
 
-    expect(sendUpdate).toHaveBeenCalledWith(item.title, copyResult);
+    expect(sendUpdate).toHaveBeenCalledWith(item.title, copyResult.files);
   });
 
   it('processCompletedDownload: skips disabled Telegram updates', async () => {
@@ -658,6 +680,112 @@ describe('DownloadWorker', () => {
     ).resolves.toBeUndefined();
 
     expect(repo.markAsIdle).not.toHaveBeenCalled();
+  });
+
+  it('processCompletedDownload: retains torrent and schedules retry after copy failure', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-22T12:00:00Z'));
+    const { DownloadWorker } = await import('@server/workers/download-worker');
+    const repo = new RepoMock();
+    const eventJournal = new EventJournalMock();
+    const worker = new DownloadWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
+    repo.findSettings.mockResolvedValueOnce({
+      ...settings,
+      telegramId: 123,
+      botToken: 'token',
+      deleteAfterDownload: true,
+    });
+    await worker.process();
+    copyTrackedEpisodes.mockResolvedValueOnce({
+      files: {
+        13: '/media/show/S01E13.mkv',
+        14: '/media/show/S01E14.mkv',
+      },
+      failures: [{ episodeNumber: 13, message: 'ENOENT: downloads missing' }],
+    });
+
+    await worker.processCompletedDownload({
+      ...item,
+      trackedEpisodes: [13, 14],
+    });
+
+    expect(remove).not.toHaveBeenCalled();
+    expect(repo.update).toHaveBeenCalledWith(item.id, {
+      files: ['/media/show/S01E13.mkv', '/media/show/S01E14.mkv'],
+      trackedEpisodes: [13],
+    });
+    expect(repo.markAsCompleted).toHaveBeenCalledWith(item.id);
+    expect(repo.saveCopyFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        torrentItemId: item.id,
+        attemptCount: 1,
+        nextAttemptAt: Date.now() + 5 * 60 * 1000,
+      }),
+    );
+    expect(eventJournal.recordTorrentFileCopyFailed).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('processCompletedDownload: suppresses repeated failure notification', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-22T12:00:00Z'));
+    const { DownloadWorker } = await import('@server/workers/download-worker');
+    const repo = new RepoMock();
+    const eventJournal = new EventJournalMock();
+    const worker = new DownloadWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
+    repo.findSettings.mockResolvedValueOnce({
+      ...settings,
+      telegramId: 123,
+      botToken: 'token',
+    });
+    await worker.process();
+    repo.findCopyFailure.mockResolvedValueOnce({
+      torrentItemId: item.id,
+      attemptCount: 1,
+      nextAttemptAt: Date.now(),
+      fingerprint: '13:ENOENT: downloads missing',
+      notifiedAt: Date.now() - 60_000,
+    });
+    copyTrackedEpisodes.mockResolvedValueOnce({
+      files: {},
+      failures: [{ episodeNumber: 13, message: 'ENOENT: downloads missing' }],
+    });
+
+    await worker.processCompletedDownload({ ...item, trackedEpisodes: [13] });
+
+    expect(repo.saveCopyFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attemptCount: 2,
+        nextAttemptAt: Date.now() + 15 * 60 * 1000,
+      }),
+    );
+    expect(eventJournal.recordTorrentFileCopyFailed).not.toHaveBeenCalled();
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('processCompletedDownload: skips copy before retry time', async () => {
+    const { DownloadWorker } = await import('@server/workers/download-worker');
+    const repo = new RepoMock();
+    const worker = new DownloadWorker({ repo: repo as unknown as never });
+    repo.findCopyFailure.mockResolvedValueOnce({
+      torrentItemId: item.id,
+      attemptCount: 1,
+      nextAttemptAt: Date.now() + 60_000,
+      fingerprint: 'failure',
+      notifiedAt: Date.now(),
+    });
+
+    await worker.processCompletedDownload({ ...item });
+
+    expect(copyTrackedEpisodes).not.toHaveBeenCalled();
+    expect(repo.markAsProcessing).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
   });
 
   it('run: schedules processing and clears previous interval', async () => {

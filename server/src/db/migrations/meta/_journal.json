@@ -57,6 +57,13 @@
       "when": 1784451228678,
       "tag": "0007_add_torrent_client_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1784725497100,
+      "tag": "0008_add_torrent_copy_failures",
+      "breakpoints": true
     }
   ]
 }

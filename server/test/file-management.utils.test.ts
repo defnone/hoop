@@ -133,4 +133,25 @@ describe('file management path utilities', () => {
       'new-video',
     );
   });
+
+  it('treats an existing hardlink as a successful retry', async () => {
+    const sourcePath = path.join(sourceRoot, 'S01E01.mkv');
+    const targetPath = path.join(targetRoot, 'S01E01.mkv');
+    await fs.promises.writeFile(sourcePath, 'video');
+    await fs.promises.link(sourcePath, targetPath);
+
+    await expect(
+      safeLinkOrCopyFile({ sourceRoot, sourcePath, targetRoot, targetPath }),
+    ).resolves.toBe('linked');
+  });
+
+  it('rejects an empty copied file', async () => {
+    const sourcePath = path.join(sourceRoot, 'S01E01.mkv');
+    const targetPath = path.join(targetRoot, 'S01E01.mkv');
+    await fs.promises.writeFile(sourcePath, '');
+
+    await expect(
+      safeLinkOrCopyFile({ sourceRoot, sourcePath, targetRoot, targetPath }),
+    ).rejects.toThrowError('Copied file is missing or empty');
+  });
 });

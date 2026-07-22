@@ -43,12 +43,23 @@ export async function safeLinkOrCopyFile({
     targetPath,
   );
   await assertTargetIsNotSymbolicLink(canonicalTarget);
+  const existingTargetStats = await getFileStats(canonicalTarget);
+  if (
+    existingTargetStats &&
+    existingTargetStats.dev === sourceStats.dev &&
+    existingTargetStats.ino === sourceStats.ino
+  ) {
+    await assertCopiedFile(canonicalTarget);
+    return 'linked';
+  }
 
   try {
     await fs.promises.link(canonicalSource, canonicalTarget);
+    await assertCopiedFile(canonicalTarget);
     return 'linked';
   } catch {
     await fs.promises.copyFile(canonicalSource, canonicalTarget);
+    await assertCopiedFile(canonicalTarget);
     return 'copied';
   }
 }
@@ -105,4 +116,22 @@ function isFileNotFoundError(error: unknown): boolean {
     'code' in error &&
     (error as NodeJS.ErrnoException).code === 'ENOENT'
   );
+}
+
+async function assertCopiedFile(filePath: string): Promise<void> {
+  const stats = await fs.promises.stat(filePath);
+  if (!stats.isFile() || stats.size === 0) {
+    throw new Error('Copied file is missing or empty');
+  }
+}
+
+async function getFileStats(
+  filePath: string,
+): Promise<Awaited<ReturnType<typeof fs.promises.stat>> | null> {
+  try {
+    return await fs.promises.stat(filePath);
+  } catch (error) {
+    if (isFileNotFoundError(error)) return null;
+    throw error;
+  }
 }
