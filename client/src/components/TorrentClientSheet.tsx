@@ -21,7 +21,8 @@ import {
 import type {
   TorrentClientAction,
   TorrentClientItemDto,
-} from '@server/external/adapters/transmission';
+  TorrentClientType,
+} from '@server/external/adapters/torrent-client';
 import { rpc } from '@/lib/rpc';
 import customSonner from '@/components/CustomSonner';
 import { Button } from '@/components/ui/button';
@@ -64,16 +65,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 import {
-  filterTransmissionTorrents,
+  filterTorrentClientTorrents,
   formatPeerCount,
   formatTransferSpeed,
   getTorrentProgress,
   getTorrentStateAppearance,
   getTorrentStateLabel,
   getTorrentTransferSummary,
+  getAverageTransferSpeeds,
+  sumAverageTransferSpeeds,
   sumTransferSpeeds,
   type TorrentListFilter,
-} from '@/lib/transmission.utils';
+} from '@/lib/torrent-client.utils';
 
 type TorrentActionRequest = {
   id: string;
@@ -93,7 +96,12 @@ const filters: Array<{ value: TorrentListFilter; label: string }> = [
   { value: 'paused', label: 'Paused' },
 ];
 
-export default function TransmissionSheet() {
+export default function TorrentClientSheet({
+  clientType,
+}: {
+  clientType: TorrentClientType;
+}) {
+  const clientName = getTorrentClientName(clientType);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<TorrentListFilter>('all');
@@ -103,7 +111,7 @@ export default function TransmissionSheet() {
   const queryClient = useQueryClient();
 
   const torrentsQuery = useQuery({
-    queryKey: ['transmission-torrents'],
+    queryKey: ['torrent-client-transfers', clientType],
     enabled: open,
     refetchInterval: open ? 2000 : false,
     refetchIntervalInBackground: false,
@@ -111,7 +119,7 @@ export default function TransmissionSheet() {
       const response = await rpc.api['torrent-client'].$get();
       const payload = await response.json();
       if (!response.ok || !payload.success) {
-        throw new Error(payload.message ?? 'Failed to load Transmission');
+        throw new Error(payload.message ?? `Failed to load ${clientName}`);
       }
       return payload.data ?? [];
     },
@@ -128,14 +136,14 @@ export default function TransmissionSheet() {
       });
       const payload = await response.json();
       if (!response.ok || !payload.success) {
-        throw new Error(payload.message ?? 'Transmission action failed');
+        throw new Error(payload.message ?? `${clientName} action failed`);
       }
-      return payload.message ?? 'Transmission action completed';
+      return payload.message ?? `${clientName} action completed`;
     },
     onSuccess: (message) => {
       customSonner({ text: message });
       void queryClient.invalidateQueries({
-        queryKey: ['transmission-torrents'],
+        queryKey: ['torrent-client-transfers', clientType],
       });
     },
     onError: (error) => {
@@ -156,14 +164,14 @@ export default function TransmissionSheet() {
       if (!response.ok || !payload.success) {
         throw new Error(payload.message ?? 'Failed to remove torrent');
       }
-      return payload.message ?? 'Torrent removed from Transmission';
+      return payload.message ?? `Torrent removed from ${clientName}`;
     },
     onSuccess: (message) => {
       setRemovalRequest(null);
       customSonner({ text: message });
       void queryClient.invalidateQueries({ queryKey: ['torrents'] });
       void queryClient.invalidateQueries({
-        queryKey: ['transmission-torrents'],
+        queryKey: ['torrent-client-transfers', clientType],
       });
     },
     onError: (error) => {
@@ -172,12 +180,13 @@ export default function TransmissionSheet() {
   });
 
   const torrents = torrentsQuery.data ?? [];
-  const visibleTorrents = filterTransmissionTorrents(
+  const visibleTorrents = filterTorrentClientTorrents(
     torrents,
     deferredSearch,
     filter,
   );
   const speeds = sumTransferSpeeds(torrents);
+  const averageSpeeds = sumAverageTransferSpeeds(torrents);
 
   return (
     <>
@@ -187,8 +196,8 @@ export default function TransmissionSheet() {
             type='button'
             size='icon'
             variant='outline'
-            aria-label='Open Transmission transfers'
-            title='Transmission transfers'
+            aria-label={`Open ${clientName} transfers`}
+            title={`${clientName} transfers`}
           >
             <ArrowDownToLine />
           </Button>
@@ -200,12 +209,14 @@ export default function TransmissionSheet() {
                 <ArrowDownToLine className='size-5' strokeWidth={3} />
               </div>
               <div className='min-w-0 flex-1'>
-                <SheetTitle className='text-lg'>Transmission</SheetTitle>
+                <SheetTitle className='text-lg'>{clientName}</SheetTitle>
                 <SheetDescription>{torrents.length} torrents</SheetDescription>
               </div>
               <TransferSpeed
                 download={speeds.download}
                 upload={speeds.upload}
+                averageDownload={averageSpeeds.download}
+                averageUpload={averageSpeeds.upload}
               />
             </div>
           </SheetHeader>
@@ -219,7 +230,7 @@ export default function TransmissionSheet() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder='Filter'
-                aria-label='Filter Transmission transfers'
+                aria-label={`Filter ${clientName} transfers`}
               />
             </InputGroup>
             <ScrollArea className='w-full whitespace-nowrap mb-2'>
@@ -249,6 +260,7 @@ export default function TransmissionSheet() {
               isPending={actionMutation.isPending || removeMutation.isPending}
               onAction={(id, action) => actionMutation.mutate({ id, action })}
               onRemove={setRemovalRequest}
+              clientName={clientName}
             />
           </ScrollArea>
         </SheetContent>
@@ -263,6 +275,7 @@ export default function TransmissionSheet() {
         onConfirm={() => {
           if (removalRequest) removeMutation.mutate(removalRequest);
         }}
+        clientName={clientName}
       />
     </>
   );
@@ -271,12 +284,43 @@ export default function TransmissionSheet() {
 function TransferSpeed({
   download,
   upload,
+  averageDownload,
+  averageUpload,
 }: {
+  download: number;
+  upload: number;
+  averageDownload: number;
+  averageUpload: number;
+}) {
+  return (
+    <div className='hidden flex-col gap-1 text-xs text-muted-foreground sm:flex'>
+      <SpeedPair label='Now' download={download} upload={upload} />
+      <SpeedPair
+        label='Average'
+        download={averageDownload}
+        upload={averageUpload}
+      />
+    </div>
+  );
+}
+
+function SpeedPair({
+  label,
+  download,
+  upload,
+}: {
+  label: string;
   download: number;
   upload: number;
 }) {
   return (
-    <div className='hidden items-center gap-3 text-xs text-muted-foreground sm:flex'>
+    <span
+      className='flex items-center justify-end gap-2'
+      title={`${label} transfer speeds`}
+    >
+      <span className='w-12 text-right text-[10px] uppercase tracking-wide'>
+        {label}
+      </span>
       <span className='flex items-center gap-1'>
         <ArrowDown className='size-3.5' />
         {formatTransferSpeed(download)}
@@ -285,7 +329,7 @@ function TransferSpeed({
         <ArrowUp className='size-3.5' />
         {formatTransferSpeed(upload)}
       </span>
-    </div>
+    </span>
   );
 }
 
@@ -296,6 +340,7 @@ function TorrentList({
   isPending,
   onAction,
   onRemove,
+  clientName,
 }: {
   torrents: TorrentClientItemDto[];
   isLoading: boolean;
@@ -303,6 +348,7 @@ function TorrentList({
   isPending: boolean;
   onAction: (id: string, action: TorrentClientAction) => void;
   onRemove: (request: TorrentRemovalRequest) => void;
+  clientName: string;
 }) {
   if (isLoading) return <TorrentListSkeleton />;
 
@@ -310,7 +356,7 @@ function TorrentList({
     return (
       <div className='flex flex-col items-center gap-2 px-6 py-16 text-center'>
         <TriangleAlert className='size-8 text-destructive' />
-        <p className='font-medium'>Transmission is unavailable</p>
+        <p className='font-medium'>{clientName} is unavailable</p>
         <p className='max-w-sm text-sm text-muted-foreground'>
           {error.message}
         </p>
@@ -324,7 +370,7 @@ function TorrentList({
         <Gauge className='size-8 text-muted-foreground' />
         <p className='font-medium'>No matching transfers</p>
         <p className='text-sm text-muted-foreground'>
-          Try another filter or add a torrent to Transmission.
+          Try another filter or add a torrent to {clientName}.
         </p>
       </div>
     );
@@ -362,6 +408,7 @@ function TorrentRow({
   const progress = getTorrentProgress(torrent);
   const appearance = getTorrentStateAppearance(torrent.state);
   const isPaused = torrent.state === 'paused';
+  const averageSpeeds = getAverageTransferSpeeds(torrent);
 
   return (
     <ContextMenu modal={false}>
@@ -419,7 +466,8 @@ function TorrentRow({
             </div>
             <div className='mt-0.5 flex min-w-0 items-center gap-3 overflow-hidden text-[11px] leading-3 text-muted-foreground'>
               <span className='truncate'>{getTorrentStateLabel(torrent)}</span>
-              <span className='flex shrink-0 items-center gap-1 ml-2'>
+              <span className='shrink-0 ml-2 font-semibold'>Now</span>
+              <span className='flex shrink-0 items-center gap-1'>
                 <ArrowDown className='size-3' />
                 {formatTransferSpeed(torrent.downloadSpeed)}
               </span>
@@ -443,6 +491,20 @@ function TorrentRow({
                   </span>
                 </>
               ) : null}
+            </div>
+            <div
+              className='mt-1 flex items-center gap-3 text-[11px] leading-3 text-muted-foreground'
+              title='Average transfer speeds since added'
+            >
+              <span className='font-semibold'>Average since added</span>
+              <span className='flex items-center gap-1'>
+                <ArrowDown className='size-3' />
+                {formatTransferSpeed(averageSpeeds.download)}
+              </span>
+              <span className='flex items-center gap-1'>
+                <ArrowUp className='size-3' />
+                {formatTransferSpeed(averageSpeeds.upload)}
+              </span>
             </div>
           </div>
         </div>
@@ -617,11 +679,13 @@ export function RemoveTorrentDialog({
   isPending,
   onOpenChange,
   onConfirm,
+  clientName,
 }: {
   request: TorrentRemovalRequest | null;
   isPending: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
+  clientName: string;
 }) {
   const [lastRequest, setLastRequest] = useState<TorrentRemovalRequest | null>(
     request,
@@ -643,7 +707,7 @@ export function RemoveTorrentDialog({
           <DialogDescription>
             {activeRequest?.deleteData
               ? 'This removes the transfer and permanently deletes its downloaded data.'
-              : 'This removes the transfer from Transmission and keeps downloaded data on disk.'}
+              : `This removes the transfer from ${clientName} and keeps downloaded data on disk.`}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -668,4 +732,8 @@ export function RemoveTorrentDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function getTorrentClientName(clientType: TorrentClientType): string {
+  return clientType === 'qbittorrent' ? 'qBittorrent' : 'Transmission';
 }
