@@ -47,6 +47,12 @@ function createAuthInstance() {
       enabled: true,
       requireEmailVerification: false,
     },
+    user: {
+      changeEmail: {
+        enabled: true,
+        updateEmailWithoutVerification: true,
+      },
+    },
   });
 }
 
@@ -63,5 +69,46 @@ describe('auth integration', () => {
     });
 
     expect(firstUser.user.email).toBe('first@example.com');
+  });
+
+  it('changes an unverified email without verification delivery', async () => {
+    const auth = createAuthInstance();
+    const signUpResponse = await auth.handler(
+      new Request('http://localhost:3000/api/auth/sign-up/email', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: 'First User',
+          email: 'first@example.com',
+          password: 'password123',
+        }),
+      }),
+    );
+    const sessionCookie = signUpResponse.headers.get('set-cookie');
+
+    expect(sessionCookie).not.toBeNull();
+
+    const changeEmailResponse = await auth.handler(
+      new Request('http://localhost:3000/api/auth/change-email', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          cookie: sessionCookie ?? '',
+        },
+        body: JSON.stringify({ newEmail: 'second@example.com' }),
+      }),
+    );
+
+    expect(changeEmailResponse.status).toBe(200);
+    await expect(changeEmailResponse.json()).resolves.toEqual({ status: true });
+
+    const signInResult = await auth.api.signInEmail({
+      body: {
+        email: 'second@example.com',
+        password: 'password123',
+      },
+    });
+
+    expect(signInResult.user.email).toBe('second@example.com');
   });
 });
