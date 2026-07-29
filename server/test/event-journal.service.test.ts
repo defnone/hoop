@@ -206,4 +206,36 @@ describe('EventJournalService', () => {
       isNotification: true,
     });
   });
+
+  it('records removed Series Directory paths without a notification', async () => {
+    await service.recordSeriesDirectoryCleanupCompleted({
+      rootPath: '/media',
+      removedPaths: ['/media/Show/Season 01', '/media/Show'],
+    });
+
+    expect(repo.created[0]).toMatchObject({
+      type: 'seriesDirectoryCleanupCompleted',
+      state: 'info',
+      torrentItemId: null,
+      torrentTitle: 'Series Directory',
+      oldValue: null,
+      newValue: 'Root: /media\nRemoved:\n/media/Show/Season 01\n/media/Show',
+      isNotification: false,
+    });
+  });
+
+  it('records Series Directory cleanup failures', async () => {
+    await service.recordSeriesDirectoryCleanupFailed({
+      errorMessage: 'Permission denied',
+    });
+
+    expect(repo.created[0]).toMatchObject({
+      type: 'seriesDirectoryCleanupFailed',
+      state: 'error',
+      torrentItemId: null,
+      torrentTitle: 'Series Directory',
+      newValue: 'Permission denied',
+      isNotification: false,
+    });
+  });
 });

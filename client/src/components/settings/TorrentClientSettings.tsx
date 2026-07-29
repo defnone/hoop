@@ -11,6 +11,7 @@ import { useState } from 'react';
 export default function TorrentClientSettings({
   downloadDir,
   mediaDir,
+  cleanEmptySeriesDirectories,
   deleteAfterDownload,
   clientType,
   clientUrl,
@@ -20,6 +21,7 @@ export default function TorrentClientSettings({
 }: {
   downloadDir: string;
   mediaDir: string;
+  cleanEmptySeriesDirectories: boolean;
   deleteAfterDownload: boolean;
   clientType: 'transmission' | 'qbittorrent';
   clientUrl: string;
@@ -30,6 +32,8 @@ export default function TorrentClientSettings({
   >;
 }) {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [isTestingSeriesDirectory, setIsTestingSeriesDirectory] =
+    useState(false);
 
   const handleTestConnection = async () => {
     if (!clientUrl || !clientUsername || !clientPassword) {
@@ -64,6 +68,36 @@ export default function TorrentClientSettings({
       });
     } finally {
       setIsTestingConnection(false);
+    }
+  };
+
+  const handleTestSeriesDirectory = async () => {
+    if (!mediaDir.trim()) {
+      customSonner({
+        variant: 'error',
+        text: 'Series directory path is required',
+      });
+      return;
+    }
+
+    try {
+      setIsTestingSeriesDirectory(true);
+      const response = await rpc.api['series-directory'].verify.$post({
+        json: { path: mediaDir },
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.message ?? 'Series directory test failed');
+      }
+      customSonner({ text: 'Series directory write and delete test passed' });
+    } catch (error: unknown) {
+      customSonner({
+        variant: 'error',
+        text: 'Series directory test failed',
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setIsTestingSeriesDirectory(false);
     }
   };
 
@@ -205,8 +239,45 @@ export default function TorrentClientSettings({
                 })
               }
             />
+            <Button
+              type='button'
+              variant='secondary'
+              className='font-bold w-fit'
+              disabled={isTestingSeriesDirectory}
+              onClick={handleTestSeriesDirectory}
+            >
+              {isTestingSeriesDirectory ? (
+                <Loader2 className='w-4 h-4 animate-spin' />
+              ) : (
+                'Test Write and Delete'
+              )}
+            </Button>
+            <p className='flex flex-row gap-2 items-center mt-6'>
+              <Checkbox
+                id='clean-empty-series-directories'
+                checked={cleanEmptySeriesDirectories}
+                onCheckedChange={(checked) =>
+                  setData((data) =>
+                    data
+                      ? {
+                          ...data,
+                          cleanEmptySeriesDirectories: checked === true,
+                        }
+                      : data,
+                  )
+                }
+              />
+              <Label htmlFor='clean-empty-series-directories'>
+                Remove empty directories daily
+              </Label>
+            </p>
           </div>
-          <div className='flex flex-col w-1/2 gap-2 justify-end'></div>
+          <div className='flex flex-col w-1/2 gap-2 justify-end'>
+            <p className='text-sm text-zinc-400'>
+              Scans all nested directories once per day. The Series Directory
+              itself is never removed.
+            </p>
+          </div>
         </div>
 
         <div className='flex flex-row w-full gap-6 border-t border-zinc-800 pt-6'>

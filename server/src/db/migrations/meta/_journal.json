@@ -64,6 +64,13 @@
       "when": 1784725497100,
       "tag": "0008_add_torrent_copy_failures",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1784732033518,
+      "tag": "0009_add_series_directory_cleanup",
+      "breakpoints": true
     }
   ]
 }

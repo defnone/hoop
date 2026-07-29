@@ -6,6 +6,7 @@ type SettingsPayload = {
   botToken: string | null;
   downloadDir: string | null;
   mediaDir: string | null;
+  cleanEmptySeriesDirectories: boolean;
   deleteAfterDownload: boolean;
   syncInterval: number;
   torrentClientType: 'transmission' | 'qbittorrent';
@@ -63,6 +64,7 @@ const sampleSettings: SettingsPayload = {
   botToken: null,
   downloadDir: '/downloads',
   mediaDir: '/media',
+  cleanEmptySeriesDirectories: false,
   deleteAfterDownload: false,
   syncInterval: 30,
   torrentClientType: 'transmission',
@@ -120,6 +122,7 @@ describe('settingsRoute', () => {
       botToken: payload.botToken,
       downloadDir: payload.downloadDir,
       mediaDir: payload.mediaDir,
+      cleanEmptySeriesDirectories: payload.cleanEmptySeriesDirectories,
       deleteAfterDownload: payload.deleteAfterDownload,
       syncInterval: payload.syncInterval,
       torrentClientType: payload.torrentClientType,
