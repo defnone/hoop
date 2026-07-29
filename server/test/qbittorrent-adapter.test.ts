@@ -3,7 +3,10 @@ import { TorrentFilePriority, type QBittorrent } from '@ctrl/qbittorrent';
 import { TorrentState, type NormalizedTorrent } from '@ctrl/shared-torrent';
 import type { DbTorrentItem, DbUserSettings } from '@server/db/app/app-schema';
 import { QbittorrentAdapter } from '@server/external/adapters/qbittorrent';
-import { extractTorrentHash } from '@server/external/adapters/qbittorrent/qbittorrent.utils';
+import {
+  extractTorrentHash,
+  normalizeTorrentMagnet,
+} from '@server/external/adapters/qbittorrent/qbittorrent.utils';
 
 vi.mock('@server/external/adapters/torrent-client/torrent-client.repo', () => ({
   TorrentClientRepo: class {},
@@ -99,6 +102,27 @@ describe('QbittorrentAdapter', () => {
     });
   });
 
+  it('converts a raw SHA-1 hash to a magnet before adding', async () => {
+    const rawHashTorrentItem = {
+      ...torrentItem,
+      magnet: 'C2B13B2952C47D653A79CA5BD640784255A71885',
+      torrentClientId: null,
+    } as DbTorrentItem;
+    const adapter = createAdapter(rawHashTorrentItem);
+
+    await adapter.add();
+
+    expect(addMagnet).toHaveBeenCalledWith(
+      'magnet:?xt=urn:btih:C2B13B2952C47D653A79CA5BD640784255A71885',
+      { savepath: '/downloads' },
+    );
+    expect(updateTorrentItem).toHaveBeenCalledWith(1, {
+      controlStatus: 'downloading',
+      torrentClientId: 'c2b13b2952c47d653a79ca5bd640784255a71885',
+      torrentClientType: 'qbittorrent',
+    });
+  });
+
   it('loads files and excludes untracked episodes', async () => {
     const adapter = createAdapter();
     const loadedStatus = await adapter.status();
@@ -150,12 +174,18 @@ describe('extractTorrentHash', () => {
       extractTorrentHash(`magnet:?xt=urn:btmh:1114${'ab'.repeat(20)}`),
     ).toThrow('Magnet contains an unsupported btmh hash');
   });
+
+  it('normalizes a raw SHA-1 hash to a magnet URL', () => {
+    expect(
+      normalizeTorrentMagnet(' C2B13B2952C47D653A79CA5BD640784255A71885 '),
+    ).toBe('magnet:?xt=urn:btih:C2B13B2952C47D653A79CA5BD640784255A71885');
+  });
 });
 
-function createAdapter(): QbittorrentAdapter {
+function createAdapter(item: DbTorrentItem = torrentItem): QbittorrentAdapter {
   return new QbittorrentAdapter({
-    id: torrentItem.id,
-    torrentItem,
+    id: item.id,
+    torrentItem: item,
     client,
     repo: repo as never,
   });
