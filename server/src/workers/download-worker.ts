@@ -1,6 +1,6 @@
 import { WorkersRepo } from './workers.repo';
 import logger from '@server/lib/logger';
-import { TransmissionAdapter } from '@server/external/adapters/transmission';
+import { createTorrentClient } from '@server/external/adapters/torrent-client';
 import type { DbTorrentItem, DbUserSettings } from '@server/db/app/app-schema';
 import type { NormalizedTorrent } from '@ctrl/shared-torrent';
 import { promises as fs } from 'fs';
@@ -64,11 +64,11 @@ export class DownloadWorker {
     if (retry && retry.nextAttemptAt > Date.now()) return false;
 
     logger.info(`[DownloadWorker] Start downloading ${row.title}`);
-    const client = new TransmissionAdapter({
-      id: row.id,
-      torrentItem: row,
-    });
     try {
+      const client = await createTorrentClient({
+        id: row.id,
+        torrentItem: row,
+      });
       await client.add();
       await this.eventJournal.recordTorrentDownloadStarted({
         torrentItem: row,
@@ -100,12 +100,13 @@ export class DownloadWorker {
 
   // Poll Transmission for current status and act accordingly
   async processDownloading(row: DbTorrentItem) {
-    const client = new TransmissionAdapter({
-      id: row.id,
-      torrentItem: row,
-    });
     let status: NormalizedTorrent | undefined;
+    let client: Awaited<ReturnType<typeof createTorrentClient>>;
     try {
+      client = await createTorrentClient({
+        id: row.id,
+        torrentItem: row,
+      });
       status = await client.status();
       this.resetTransmissionAvailability();
       if (status) statusStorage.set(row.id, status);
@@ -207,15 +208,16 @@ export class DownloadWorker {
 
   // After download finishes, copy files to the media library and remove from Transmission
   async processCompletedDownload(row: DbTorrentItem) {
-    const client = new TransmissionAdapter({
-      id: row.id,
-      torrentItem: row,
-    });
+    let client: Awaited<ReturnType<typeof createTorrentClient>>;
     logger.info(
       `[DownloadWorker] Processing completed download for ${row.title}`,
     );
     await this.repo.markAsProcessing(row.id);
     try {
+      client = await createTorrentClient({
+        id: row.id,
+        torrentItem: row,
+      });
       if (!this.settings) {
         logger.error(`[DownloadWorker] Settings not found`);
         return;
@@ -276,7 +278,7 @@ export class DownloadWorker {
     }
     if (this.settings?.deleteAfterDownload) {
       await client.remove(true);
-      logger.info(`[DownloadWorker] Torrent removed from Transmission`);
+      logger.info(`[DownloadWorker] Torrent removed from client`);
     }
   }
 

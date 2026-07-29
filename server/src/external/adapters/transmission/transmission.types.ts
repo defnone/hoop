@@ -1,13 +1,19 @@
 import type { Transmission } from '@ctrl/transmission';
 import type { TransmissionClientRepo } from './transmission.repo';
-import type { DbTorrentItem } from '@server/db/app/app-schema';
+import type { DbTorrentItem, DbUserSettings } from '@server/db/app/app-schema';
 import type { TorrentState } from '@ctrl/shared-torrent';
+export {
+  torrentClientActions,
+  type TorrentClientAction,
+  type TorrentClientItemDto,
+} from '@server/external/adapters/torrent-client/torrent-client.types';
 
 export type TransmissionItemParams = {
   id: number;
-  client?: Transmission;
+  client: Transmission;
   repo?: TransmissionClientRepo;
   torrentItem?: DbTorrentItem;
+  settings?: DbUserSettings;
 };
 
 export type AddMagnetResult = {
@@ -23,20 +29,7 @@ export type EpisodeSelectionStatus = {
   };
 };
 
-export const torrentClientActions = [
-  'pause',
-  'resume',
-  'verify',
-  'reannounce',
-  'queue-top',
-  'queue-up',
-  'queue-down',
-  'queue-bottom',
-] as const;
-
-export type TorrentClientAction = (typeof torrentClientActions)[number];
-
-export type TorrentClientItemDto = {
+export type LegacyTorrentClientItemDto = {
   id: string;
   name: string;
   progress: number;

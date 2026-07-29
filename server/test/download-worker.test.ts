@@ -76,7 +76,8 @@ const item: DbTorrentItem = {
   files: null,
   createdAt: Date.now(),
   updatedAt: Date.now(),
-  transmissionId: 'abc',
+  torrentClientId: 'abc',
+  torrentClientType: 'transmission',
   controlStatus: 'idle',
   tracker: 'kinozal',
   errorMessage: null,
@@ -93,6 +94,10 @@ const settings: DbUserSettings = {
   mediaDir: '/media',
   deleteAfterDownload: false,
   syncInterval: 30,
+  torrentClientType: 'transmission',
+  torrentClientUrl: null,
+  torrentClientUsername: null,
+  torrentClientPassword: null,
   jackettApiKey: null,
   jackettUrl: null,
   kinozalUsername: null,
@@ -124,23 +129,21 @@ const sendUpdate = vi.fn(
   },
 );
 
-vi.mock('@server/external/adapters/transmission', () => ({
-  TransmissionAdapter: class {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    constructor(_: any) {}
+vi.mock('@server/external/adapters/torrent-client', () => ({
+  createTorrentClient: async () => ({
     async add() {
       return add();
-    }
+    },
     async status() {
       return status();
-    }
+    },
     async selectEpisodes(downloadStatus: NormalizedTorrent) {
       return selectEpisodes(downloadStatus);
-    }
+    },
     async remove() {
       return remove();
-    }
-  },
+    },
+  }),
 }));
 
 vi.mock('@server/external/adapters/telegram/telegram.adapter', () => ({

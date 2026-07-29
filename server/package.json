@@ -11,6 +11,7 @@
     "migrate": "bun run scripts/migrate.ts"
   },
   "dependencies": {
+    "@ctrl/qbittorrent": "9.14.0",
     "@ctrl/shared-torrent": "6.5.1",
     "@ctrl/transmission": "7.4.0",
     "@hono/standard-validator": "^0.2.2",

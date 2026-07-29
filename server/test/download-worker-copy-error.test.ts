@@ -57,23 +57,21 @@ vi.mock('@server/features/event-journal/event-journal.service', () => ({
 }));
 
 // Mock adapters and services
-vi.mock('@server/external/adapters/transmission', () => ({
-  TransmissionAdapter: class {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    constructor(_: any) {}
+vi.mock('@server/external/adapters/torrent-client', () => ({
+  createTorrentClient: async () => ({
     async add() {
       /* no-op */
-    }
+    },
     async status() {
       return { isCompleted: false, raw: { files: [] }, name: 'Test' };
-    }
+    },
     async selectEpisodes() {
       /* no-op */
-    }
+    },
     async remove() {
       /* no-op */
-    }
-  },
+    },
+  }),
 }));
 
 vi.mock('@server/external/adapters/telegram/telegram.adapter', () => ({
@@ -156,7 +154,8 @@ describe('DownloadWorker copy failure persists errorMessage', () => {
     files: [],
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    transmissionId: 'abc',
+    torrentClientId: 'abc',
+    torrentClientType: 'transmission',
     controlStatus: 'downloadCompleted',
     tracker: 'rutracker',
     errorMessage: null,
@@ -173,6 +172,10 @@ describe('DownloadWorker copy failure persists errorMessage', () => {
     mediaDir: '/tmp/media',
     deleteAfterDownload: false,
     syncInterval: 30,
+    torrentClientType: 'transmission',
+    torrentClientUrl: null,
+    torrentClientUsername: null,
+    torrentClientPassword: null,
     jackettApiKey: null,
     jackettUrl: null,
     kinozalUsername: null,

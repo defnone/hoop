@@ -92,7 +92,8 @@ function makeTorrent(override: Partial<DbTorrentItem> = {}): DbTorrentItem {
     files: [],
     createdAt: 1,
     updatedAt: 2,
-    transmissionId: null,
+    torrentClientId: null,
+    torrentClientType: 'transmission',
     controlStatus: 'idle',
     tracker: 'kinozal',
     errorMessage: null,
@@ -112,6 +113,10 @@ function makeSettings(override: Partial<DbUserSettings> = {}): DbUserSettings {
     mediaDir: '/media',
     deleteAfterDownload: false,
     syncInterval: 30,
+    torrentClientType: 'transmission',
+    torrentClientUrl: null,
+    torrentClientUsername: null,
+    torrentClientPassword: null,
     jackettApiKey: null,
     jackettUrl: null,
     kinozalUsername: null,
@@ -195,14 +200,14 @@ describe('WorkersRepo (mocked database)', () => {
     });
   });
 
-  it('resets record to idle and clears transmissionId', async () => {
+  it('resets record to idle and clears torrentClientId', async () => {
     updateReturningQueue.push(null);
 
     await repo.markAsIdle(7);
 
     expect(updateSetCalls.at(-1)).toMatchObject({
       controlStatus: 'idle',
-      transmissionId: null,
+      torrentClientId: null,
     });
   });
 

@@ -1,4 +1,4 @@
-import { Transmission, type AddTorrentOptions } from '@ctrl/transmission';
+import type { AddTorrentOptions, Transmission } from '@ctrl/transmission';
 import type {
   AddMagnetResult,
   EpisodeSelectionStatus,
@@ -10,7 +10,7 @@ import { SettingsService } from '@server/features/settings/settings.service';
 import type {
   TorrentClientAction,
   TorrentClientItemDto,
-} from './transmission.types';
+} from '@server/external/adapters/torrent-client/torrent-client.types';
 import { toTorrentClientItemDto } from './transmission.utils';
 import { normalizeTransmissionError } from './transmission-error.utils';
 import type { NormalizedTorrent } from '@ctrl/shared-torrent';
@@ -21,32 +21,26 @@ export class TransmissionAdapter {
   private tiData: DbTorrentItem | null = null;
   private uSettings: DbUserSettings | null = null;
   private readonly repo: TransmissionClientRepo;
-  constructor({ id, client, repo, torrentItem }: TransmissionItemParams) {
-    this.client =
-      client ||
-      new Transmission({
-        baseUrl: process.env.TRANSMISSION_BASE_URL,
-        username: process.env.TRANSMISSION_USERNAME,
-        password: process.env.TRANSMISSION_PASSWORD,
-      });
+  constructor({
+    id,
+    client,
+    repo,
+    torrentItem,
+    settings,
+  }: TransmissionItemParams) {
+    this.client = client;
     this.id = id;
     this.repo = repo || new TransmissionClientRepo();
     this.tiData = torrentItem || null;
-
-    if (
-      !process.env.TRANSMISSION_BASE_URL ||
-      !process.env.TRANSMISSION_USERNAME ||
-      !process.env.TRANSMISSION_PASSWORD
-    )
-      throw new Error(
-        'TRANSMISSION_BASE_URL, TRANSMISSION_USERNAME, TRANSMISSION_PASSWORD must be set in env',
-      );
+    this.uSettings = settings ?? null;
   }
 
   async loadSettings() {
     if (!this.tiData)
       this.tiData = await this.repo.findTorrentItemById(this.id);
-    this.uSettings = await new SettingsService().getSettings();
+    if (!this.uSettings) {
+      this.uSettings = await new SettingsService().getSettings();
+    }
   }
 
   async add(): Promise<void> {
@@ -69,7 +63,8 @@ export class TransmissionAdapter {
 
       await this.repo.updateTorrentItem(this.tiData.id, {
         controlStatus: 'downloading',
-        transmissionId: hash,
+        torrentClientId: hash,
+        torrentClientType: 'transmission',
       });
     } catch (e: unknown) {
       const normalizedError = normalizeTransmissionError(e);
@@ -81,19 +76,19 @@ export class TransmissionAdapter {
 
   async remove(withData: boolean = false) {
     await this.loadSettings();
-    if (!this.tiData?.transmissionId) throw new Error('No transmissionId');
-    await this.client.removeTorrent(this.tiData.transmissionId, withData);
+    if (!this.tiData?.torrentClientId) throw new Error('No torrent client id');
+    await this.client.removeTorrent(this.tiData.torrentClientId, withData);
     await this.repo.updateTorrentItem(this.tiData.id, {
       controlStatus: 'idle',
-      transmissionId: null,
+      torrentClientId: null,
     });
   }
 
   async status(): Promise<NormalizedTorrent> {
     await this.loadSettings();
-    if (!this.tiData?.transmissionId) throw new Error('No transmissionId');
+    if (!this.tiData?.torrentClientId) throw new Error('No torrent client id');
     try {
-      const status = await this.client.getTorrent(this.tiData.transmissionId);
+      const status = await this.client.getTorrent(this.tiData.torrentClientId);
       if (!status) throw new Error('Torrent not found');
       return status;
     } catch (error: unknown) {
@@ -101,7 +96,7 @@ export class TransmissionAdapter {
     }
   }
 
-  async selectEpisodes(status: EpisodeSelectionStatus) {
+  async selectEpisodes(status: NormalizedTorrent | EpisodeSelectionStatus) {
     await this.loadSettings();
     const filesFromClient = status.raw.files as Record<string, string>[];
     const trackedEpisodes = this.tiData?.trackedEpisodes as number[];
@@ -119,10 +114,9 @@ export class TransmissionAdapter {
       return arr;
     }, []);
 
-    if (!this.tiData?.transmissionId)
-      throw new Error('No transmissionId found');
+    if (!this.tiData?.torrentClientId) throw new Error('No torrent client id');
     if (forUnselect.length > 0)
-      await this.client.setTorrent(this.tiData?.transmissionId, {
+      await this.client.setTorrent(this.tiData.torrentClientId, {
         'files-unwanted': forUnselect,
       });
   }
@@ -175,13 +169,13 @@ export class TransmissionAdapter {
   ): Promise<number | null> {
     await this.client.removeTorrent(clientId, deleteData);
     const torrentItem =
-      await this.repo.findTorrentItemByTransmissionId(clientId);
+      await this.repo.findTorrentItemByTorrentClientId(clientId);
 
     if (!torrentItem) return null;
 
     await this.repo.updateTorrentItem(torrentItem.id, {
       controlStatus: 'idle',
-      transmissionId: null,
+      torrentClientId: null,
     });
     return torrentItem.id;
   }

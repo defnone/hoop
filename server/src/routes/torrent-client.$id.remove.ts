@@ -1,6 +1,6 @@
 import { Hono } from 'hono/tiny';
 import type { ApiResponse } from '@shared/types';
-import { TransmissionAdapter } from '@server/external/adapters/transmission';
+import { createTorrentClient } from '@server/external/adapters/torrent-client';
 import logger from '@server/lib/logger';
 import { z } from 'zod';
 import { sValidator } from '@hono/standard-validator';
@@ -21,17 +21,19 @@ export const torrentClientRemoveRoute = new Hono().delete(
     const { deleteData } = c.req.valid('query');
 
     try {
-      const torrentItemId = await new TransmissionAdapter({
-        id: 0,
-      }).removeClientTorrent(id, deleteData === 'true');
+      const client = await createTorrentClient({ id: 0 });
+      const torrentItemId = await client.removeClientTorrent(
+        id,
+        deleteData === 'true',
+      );
       if (torrentItemId !== null) statusStorage.delete(torrentItemId);
 
       const response: ApiResponse<null> = {
         success: true,
         message:
           deleteData === 'true'
-            ? 'Torrent and data removed from Transmission'
-            : 'Torrent removed from Transmission',
+            ? 'Torrent and data removed from client'
+            : 'Torrent removed from client',
       };
       return c.json(response);
     } catch (error) {
@@ -41,7 +43,7 @@ export const torrentClientRemoveRoute = new Hono().delete(
         message:
           error instanceof Error
             ? error.message
-            : 'Transmission removal failed',
+            : 'Torrent client removal failed',
       };
       return c.json(response, 400);
     }

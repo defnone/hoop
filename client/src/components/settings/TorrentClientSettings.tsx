@@ -1,21 +1,72 @@
+import customSonner from '@/components/CustomSonner';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DbUserSettings } from '@server/db/app/app-schema';
+import { rpc } from '@/lib/rpc';
+import type { DbUserSettings } from '@server/db/app/app-schema';
+import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
 
 export default function TorrentClientSettings({
   downloadDir,
   mediaDir,
   deleteAfterDownload,
+  clientType,
+  clientUrl,
+  clientUsername,
+  clientPassword,
   setData,
 }: {
   downloadDir: string;
   mediaDir: string;
   deleteAfterDownload: boolean;
+  clientType: 'transmission' | 'qbittorrent';
+  clientUrl: string;
+  clientUsername: string;
+  clientPassword: string;
   setData: React.Dispatch<
     React.SetStateAction<DbUserSettings | null | undefined>
   >;
 }) {
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+
+  const handleTestConnection = async () => {
+    if (!clientUrl || !clientUsername || !clientPassword) {
+      customSonner({
+        variant: 'error',
+        text: 'Torrent client connection settings are required',
+      });
+      return;
+    }
+    try {
+      setIsTestingConnection(true);
+      const response = await rpc.api['torrent-client'].verify.$post({
+        json: {
+          type: clientType,
+          url: clientUrl,
+          username: clientUsername,
+          password: clientPassword,
+        },
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.message ?? 'Torrent client connection failed');
+      }
+      customSonner({
+        text: `Torrent client connected (${payload.data?.version ?? 'unknown version'})`,
+      });
+    } catch (error: unknown) {
+      customSonner({
+        variant: 'error',
+        text: 'Torrent client connection failed',
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
   return (
     <div className='flex flex-row gap-4'>
       <div className='flex flex-col gap-2 w-1/3'>
@@ -24,6 +75,94 @@ export default function TorrentClientSettings({
 
       <div className='flex flex-col items-end gap-10 w-2/3'>
         <div className='flex flex-row w-full gap-6'>
+          <div className='flex flex-col w-1/2 gap-4'>
+            <h3 className='text-lg font-extrabold'>Torrent Client</h3>
+            <select
+              className='h-9 rounded-md border border-input bg-transparent px-3 text-sm'
+              value={clientType}
+              onChange={(event) =>
+                setData((data) =>
+                  data
+                    ? {
+                        ...data,
+                        torrentClientType: event.target.value as
+                          | 'transmission'
+                          | 'qbittorrent',
+                      }
+                    : data,
+                )
+              }
+            >
+              <option value='transmission'>Transmission</option>
+              <option value='qbittorrent'>qBittorrent</option>
+            </select>
+          </div>
+        </div>
+
+        <div className='grid grid-cols-2 w-full gap-6'>
+          <div className='flex flex-col gap-4 col-span-2'>
+            <h3 className='text-lg font-extrabold'>Connection URL</h3>
+            <Input
+              className='font-mono text-base'
+              placeholder={
+                clientType === 'transmission'
+                  ? 'http://localhost:9091/transmission/rpc'
+                  : 'http://localhost:8080'
+              }
+              value={clientUrl}
+              onChange={(event) =>
+                setData((data) =>
+                  data
+                    ? { ...data, torrentClientUrl: event.target.value }
+                    : data,
+                )
+              }
+            />
+          </div>
+          <div className='flex flex-col gap-4'>
+            <h3 className='text-lg font-extrabold'>Username</h3>
+            <Input
+              value={clientUsername}
+              autoComplete='username'
+              onChange={(event) =>
+                setData((data) =>
+                  data
+                    ? { ...data, torrentClientUsername: event.target.value }
+                    : data,
+                )
+              }
+            />
+          </div>
+          <div className='flex flex-col gap-4'>
+            <h3 className='text-lg font-extrabold'>Password</h3>
+            <Input
+              type='password'
+              value={clientPassword}
+              autoComplete='current-password'
+              onChange={(event) =>
+                setData((data) =>
+                  data
+                    ? { ...data, torrentClientPassword: event.target.value }
+                    : data,
+                )
+              }
+            />
+          </div>
+          <Button
+            variant='secondary'
+            className='font-bold w-fit'
+            disabled={isTestingConnection}
+            onClick={handleTestConnection}
+          >
+            {isTestingConnection ? (
+              <Loader2 className='w-4 h-4 animate-spin' />
+            ) : (
+              'Test Connection'
+            )}
+          </Button>
+        </div>
+
+        <div className='flex flex-row w-full gap-6 pt-4'>
           <div className='flex flex-col w-1/2 gap-4'>
             <h3 className='text-lg font-extrabold'>Download Directory</h3>
             <Input
@@ -44,7 +183,7 @@ export default function TorrentClientSettings({
           <div className='flex flex-col w-1/2 gap-2 justify-end'>
             <p className='text-sm text-zinc-400'>
               The directory path must be identical both inside the hoop Docker
-              container and for Transmission.
+              container and for selected torrent client.
             </p>
           </div>
         </div>
