@@ -137,6 +137,18 @@ export class TorrentItem implements TorrentItemPort {
     });
   }
 
+  async updateNotifications(
+    settings: Pick<
+      DbTorrentItem,
+      | 'notifyOnTitleChange'
+      | 'notifyOnMagnetChange'
+      | 'notifyOnDownloadComplete'
+    >,
+  ) {
+    if (!this.id) throw new Error('ID is not defined');
+    await this.repo.update(this.id, settings);
+  }
+
   async setAllEpisodesTracked() {
     if (!this.id) throw new Error('ID is not defined');
     await this.repo.update(this.id, {

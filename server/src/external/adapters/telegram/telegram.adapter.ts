@@ -82,4 +82,11 @@ export class TelegramAdapter {
       text,
     });
   }
+
+  public async sendMessage(text: string): Promise<TelegramMessage> {
+    return this.callApi<TelegramMessage>('sendMessage', {
+      chat_id: this.chatId,
+      text,
+    });
+  }
 }

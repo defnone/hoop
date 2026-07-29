@@ -16,6 +16,9 @@ export type TorrentItemDto = {
   trackedEpisodes: number[];
   magnet: string | null;
   errorMessage: string | null;
+  notifyOnTitleChange: boolean;
+  notifyOnMagnetChange: boolean;
+  notifyOnDownloadComplete: boolean;
   controlStatus: (typeof controlStatuses)[number];
   createdAt: number;
   updatedAt: number;
