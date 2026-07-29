@@ -52,6 +52,22 @@ describe('torrent client utilities', () => {
     ).toEqual({ download: 2, upload: 1 });
   });
 
+  it('ignores epoch completion dates for active torrents', () => {
+    const torrent = createTorrent({
+      dateAdded: '2026-07-22T10:00:00.000Z',
+      dateCompleted: '1970-01-01T00:00:00.000Z',
+      totalDownloaded: 7200,
+      totalUploaded: 3600,
+    });
+
+    expect(
+      getAverageTransferSpeeds(
+        torrent,
+        new Date('2026-07-22T11:00:00.000Z').getTime(),
+      ),
+    ).toEqual({ download: 2, upload: 1 });
+  });
+
   it('sums upload and download speeds', () => {
     const result = sumTransferSpeeds([
       createTorrent({ downloadSpeed: 100, uploadSpeed: 25 }),
