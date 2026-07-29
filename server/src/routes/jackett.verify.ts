@@ -31,19 +31,10 @@ export const jackettVerifyRoute = new Hono()
         const response = await customFetch(
           url.toString(),
           {
-            method: 'GET',
+            method: 'HEAD',
           },
           jackettTimeoutMs,
         );
-
-        if (response.status >= 500) {
-          const errorResponse: ApiResponse = {
-            success: false,
-            message: `Jackett responded with ${response.status} ${response.statusText}`,
-            code: response.status,
-          };
-          return c.json(errorResponse, 502);
-        }
 
         const successResponse: ApiResponse<{
           status: number;
@@ -75,10 +66,12 @@ export const jackettVerifyRoute = new Hono()
       const { jackettUrl, jackettApiKey } = c.req.valid('json');
 
       try {
-        const endpoint = new URL('/api/v2.0/indexers/all/results/', jackettUrl);
+        const endpoint = new URL(
+          '/api/v2.0/indexers/all/results/torznab/api',
+          jackettUrl,
+        );
         endpoint.searchParams.set('apikey', jackettApiKey);
-        endpoint.searchParams.set('Query', 'ping');
-        endpoint.searchParams.set('Category', '5000');
+        endpoint.searchParams.set('t', 'caps');
 
         const response = await customFetch(
           endpoint.toString(),
