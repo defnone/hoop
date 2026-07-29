@@ -86,7 +86,7 @@ vi.mock('@server/external/adapters/telegram/telegram.adapter', () => ({
 
 const copyTrackedEpisodes = vi.fn(
   async (_ti: DbTorrentItem, _s: DbUserSettings) =>
-    ({}) as Record<number, string>,
+    ({ files: {}, failures: [] }),
 );
 vi.mock('@server/features/file-management/file-management.service', () => ({
   FileManagementService: class {
@@ -124,6 +124,18 @@ class RepoMock {
 
   async markAsIdle(id: number): Promise<void> {
     this.idled.push(id);
+  }
+
+  async findCopyFailure(): Promise<undefined> {
+    return undefined;
+  }
+
+  async saveCopyFailure(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  async deleteCopyFailure(): Promise<void> {
+    return Promise.resolve();
   }
 
   async markAsCompleted(_id: number): Promise<void> {
@@ -202,9 +214,9 @@ describe('DownloadWorker copy failure persists errorMessage', () => {
 
     await worker.process();
 
-    // Assert flow: processing then idle on error
+    // Assert flow: processing then retained on error
     expect(repo.processed).toEqual([row.id]);
-    expect(repo.idled).toEqual([row.id]);
+    expect(repo.idled).toEqual([]);
 
     // Assert that errorMessage was persisted
     const updateWithError = repo.updates.find(

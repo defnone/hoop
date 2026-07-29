@@ -9,9 +9,18 @@ import { TelegramAdapter } from '@server/external/adapters/telegram/telegram.ada
 import { formatErrorMessage } from '@server/lib/error-message';
 import { EventJournalService } from '@server/features/event-journal/event-journal.service';
 import type { EventJournalPort } from '@server/features/event-journal/event-journal.port';
+import type { DbTorrentCopyFailure } from '@server/db/app/app-schema';
+import type { EpisodeCopyFailure } from '@server/features/file-management/file-management.service';
 
 const DOWNLOAD_START_RETRY_DELAY_MS = 5 * 60 * 1000;
 const TRANSMISSION_UNAVAILABLE_WINDOW_MS = 3 * 60 * 1000;
+const COPY_FAILURE_NOTIFICATION_WINDOW_MS = 24 * 60 * 60 * 1000;
+const COPY_RETRY_DELAYS_MS = [
+  5 * 60 * 1000,
+  15 * 60 * 1000,
+  60 * 60 * 1000,
+  6 * 60 * 60 * 1000,
+] as const;
 
 type DownloadStartRetry = {
   errorMessage: string;
@@ -209,6 +218,9 @@ export class DownloadWorker {
   // After download finishes, copy files to the media library and remove from Transmission
   async processCompletedDownload(row: DbTorrentItem) {
     let client: Awaited<ReturnType<typeof createTorrentClient>>;
+    const previousFailure = await this.repo.findCopyFailure(row.id);
+    if (previousFailure && previousFailure.nextAttemptAt > Date.now()) return;
+
     logger.info(
       `[DownloadWorker] Processing completed download for ${row.title}`,
     );
@@ -219,8 +231,7 @@ export class DownloadWorker {
         torrentItem: row,
       });
       if (!this.settings) {
-        logger.error(`[DownloadWorker] Settings not found`);
-        return;
+        throw new Error('Settings not found');
       }
       await this.eventJournal.recordTorrentFileCopyStarted({
         torrentItem: row,
@@ -230,8 +241,13 @@ export class DownloadWorker {
         row,
         this.settings,
       );
-      const episodes = Object.keys(copyResult);
-      const files = Object.values(copyResult);
+      const failedEpisodeNumbers = new Set(
+        copyResult.failures.map(({ episodeNumber }) => episodeNumber),
+      );
+      const completedEpisodes = Object.keys(copyResult.files).filter(
+        (episodeNumber) => !failedEpisodeNumbers.has(Number(episodeNumber)),
+      );
+      const files = Object.values(copyResult.files);
       const existingFiles = Array.isArray(row.files)
         ? (row.files as string[])
         : [];
@@ -240,23 +256,35 @@ export class DownloadWorker {
         files: [...newFiles, ...existingFiles],
         trackedEpisodes: [
           ...(row?.trackedEpisodes as number[]).filter(
-            (x) => !episodes.includes(x.toString()),
+            (episodeNumber) =>
+              !completedEpisodes.includes(episodeNumber.toString()),
           ),
         ],
       });
+
+      if (copyResult.failures.length > 0) {
+        await this.holdTorrentAfterCopyFailure(
+          row,
+          copyResult.failures,
+          previousFailure,
+        );
+        return;
+      }
+
       await this.eventJournal.recordTorrentFileCopyCompleted({
         torrentItem: row,
         message: formatCopiedFilesMessage(newFiles),
       });
       if (
         row.notifyOnDownloadComplete &&
+        !previousFailure &&
         this.settings?.telegramId &&
         this.settings?.botToken
       ) {
         try {
           await new TelegramAdapter(this.settings).sendUpdate(
             row.title,
-            copyResult,
+            copyResult.files,
           );
         } catch (error) {
           logger.error(
@@ -264,21 +292,104 @@ export class DownloadWorker {
           );
         }
       }
+
+      if (previousFailure) {
+        await this.sendCopyRecoveryNotification(row, previousFailure);
+        await this.repo.deleteCopyFailure(row.id);
+      }
     } catch (e) {
       logger.error(e);
-      await this.repo.markAsIdle(row.id);
       this.error =
         'DownloadWorker: Error processing completed download, ' +
         formatErrorMessage(e);
-      await this.eventJournal.recordTorrentFileCopyFailed({
-        torrentItem: row,
-        errorMessage: this.error,
-      });
+      const trackedEpisodes = Array.isArray(row.trackedEpisodes)
+        ? (row.trackedEpisodes as number[])
+        : [];
+      const failures = (trackedEpisodes.length ? trackedEpisodes : [0]).map(
+        (episodeNumber) => ({
+          episodeNumber,
+          message: formatErrorMessage(e),
+        }),
+      );
+      try {
+        await this.holdTorrentAfterCopyFailure(
+          row,
+          failures,
+          previousFailure,
+        );
+      } catch (holdError) {
+        logger.error(
+          `[DownloadWorker] Failed to persist copy retry: ${formatErrorMessage(holdError)}`,
+        );
+        await this.repo.markAsCompleted(row.id);
+      }
       return;
     }
     if (this.settings?.deleteAfterDownload) {
       await client.remove(true);
       logger.info(`[DownloadWorker] Torrent removed from client`);
+    }
+  }
+
+  private async holdTorrentAfterCopyFailure(
+    row: DbTorrentItem,
+    failures: EpisodeCopyFailure[],
+    previousFailure: DbTorrentCopyFailure | undefined,
+  ): Promise<void> {
+    const fingerprint = createCopyFailureFingerprint(failures);
+    const isSameFailure = previousFailure?.fingerprint === fingerprint;
+    const attemptCount = isSameFailure
+      ? previousFailure.attemptCount + 1
+      : 1;
+    const now = Date.now();
+    const shouldReport =
+      !isSameFailure ||
+      !previousFailure?.notifiedAt ||
+      now - previousFailure.notifiedAt >= COPY_FAILURE_NOTIFICATION_WINDOW_MS;
+    const retryDelay = getCopyRetryDelay(attemptCount);
+    const notification = formatCopyFailureNotification(
+      row,
+      failures,
+      retryDelay,
+    );
+
+    await this.repo.markAsCompleted(row.id);
+    await this.repo.saveCopyFailure({
+      torrentItemId: row.id,
+      attemptCount,
+      nextAttemptAt: now + retryDelay,
+      fingerprint,
+      notifiedAt: shouldReport ? now : previousFailure?.notifiedAt ?? null,
+    });
+
+    this.error = `DownloadWorker: Error processing completed download, ${formatCopyFailureSummary(failures)}`;
+    if (!shouldReport) return;
+
+    await this.eventJournal.recordTorrentFileCopyFailed({
+      torrentItem: row,
+      errorMessage: this.error,
+    });
+    await this.sendTelegramMessage(notification);
+  }
+
+  private async sendCopyRecoveryNotification(
+    row: DbTorrentItem,
+    previousFailure: DbTorrentCopyFailure,
+  ): Promise<void> {
+    if (!previousFailure.notifiedAt) return;
+    await this.sendTelegramMessage(
+      `File copy recovered\n\n${row.title}\nAll tracked episodes copied successfully. Torrent cleanup can continue.`,
+    );
+  }
+
+  private async sendTelegramMessage(message: string): Promise<void> {
+    if (!this.settings?.telegramId || !this.settings.botToken) return;
+    try {
+      await new TelegramAdapter(this.settings).sendMessage(message);
+    } catch (error) {
+      logger.error(
+        `[DownloadWorker] Failed to send Telegram notification: ${formatErrorMessage(error)}`,
+      );
     }
   }
 
@@ -411,4 +522,50 @@ function isTransmissionUnavailableError(error: unknown): boolean {
       'Transmission request failed without an HTTP response',
     )
   );
+}
+
+function createCopyFailureFingerprint(failures: EpisodeCopyFailure[]): string {
+  return failures
+    .map(({ episodeNumber, message }) => `${episodeNumber}:${message}`)
+    .sort()
+    .join('|');
+}
+
+function getCopyRetryDelay(attemptCount: number): number {
+  if (attemptCount <= 1) return COPY_RETRY_DELAYS_MS[0];
+  if (attemptCount === 2) return COPY_RETRY_DELAYS_MS[1];
+  if (attemptCount === 3) return COPY_RETRY_DELAYS_MS[2];
+  return COPY_RETRY_DELAYS_MS[3];
+}
+
+function formatCopyFailureSummary(failures: EpisodeCopyFailure[]): string {
+  return failures
+    .map(({ episodeNumber, message }) =>
+      episodeNumber > 0 ? `episode ${episodeNumber}: ${message}` : message,
+    )
+    .join('; ');
+}
+
+function formatCopyFailureNotification(
+  row: DbTorrentItem,
+  failures: EpisodeCopyFailure[],
+  retryDelay: number,
+): string {
+  const episodes = failures
+    .filter(({ episodeNumber }) => episodeNumber > 0)
+    .map(({ episodeNumber }) => episodeNumber)
+    .join(', ');
+  const reasons = [...new Set(failures.map(({ message }) => message))]
+    .slice(0, 3)
+    .join('\n');
+  const retryMinutes = Math.round(retryDelay / 60_000);
+  return [
+    'File copy failed',
+    '',
+    `${row.title} — Season ${row.season ?? 0}`,
+    `Episodes: ${episodes || 'unknown'}`,
+    `Reason: ${reasons}`,
+    '',
+    `Torrent retained. Next retry in ${retryMinutes} minutes.`,
+  ].join('\n');
 }
