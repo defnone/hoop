@@ -6,18 +6,17 @@ import { FileManagementService } from '@server/features/file-management/file-man
 
 let statusName = 'Torrent Folder';
 let rawFiles: { name: string }[] = [];
-vi.mock('@server/external/adapters/transmission', () => {
+vi.mock('@server/external/adapters/torrent-client', () => {
+  class TorrentClientMock {
+    async status() {
+      return { name: statusName, raw: { files: rawFiles } } as unknown as {
+        name: string;
+        raw: { files: { name: string }[] };
+      };
+    }
+  }
   return {
-    TransmissionAdapter: class {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      constructor(_: any) {}
-      async status() {
-        return { name: statusName, raw: { files: rawFiles } } as unknown as {
-          name: string;
-          raw: { files: { name: string }[] };
-        };
-      }
-    },
+    createTorrentClient: async () => new TorrentClientMock(),
   };
 });
 
@@ -48,7 +47,7 @@ function makeTorrentItem(partial: Partial<DbTorrentItem>): DbTorrentItem {
     files: [],
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    transmissionId: 'hash123',
+    torrentClientId: 'hash123',
     controlStatus: 'idle',
     tracker: 'kinozal',
     errorMessage: null,

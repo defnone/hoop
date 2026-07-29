@@ -62,7 +62,7 @@ export class WorkersRepo {
   async markAsIdle(id: number) {
     await this.database
       .update(torrentItems)
-      .set({ controlStatus: 'idle', transmissionId: null })
+      .set({ controlStatus: 'idle', torrentClientId: null })
       .where(eq(torrentItems.id, id));
   }
 

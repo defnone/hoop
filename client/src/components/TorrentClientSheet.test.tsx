@@ -3,11 +3,11 @@ import { createRoot, type Root } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TorrentState } from '@ctrl/shared-torrent';
-import type { TorrentClientItemDto } from '@server/external/adapters/transmission';
-import TransmissionSheet, {
+import type { TorrentClientItemDto } from '@server/external/adapters/torrent-client';
+import TorrentClientSheet, {
   RemoveTorrentDialog,
   type TorrentRemovalRequest,
-} from './TransmissionSheet';
+} from './TorrentClientSheet';
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean;
@@ -78,8 +78,8 @@ afterEach(async () => {
   vi.clearAllMocks();
 });
 
-describe('TransmissionSheet', () => {
-  it('loads and displays Transmission transfers when opened', async () => {
+describe('TorrentClientSheet', () => {
+  it('keeps transfer caches isolated by client type', async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -87,13 +87,48 @@ describe('TransmissionSheet', () => {
     await act(async () => {
       root.render(
         <QueryClientProvider client={queryClient}>
-          <TransmissionSheet />
+          <TorrentClientSheet clientType='qbittorrent' />
+        </QueryClientProvider>,
+      );
+    });
+
+    expect(
+      queryClient.getQueryState(['torrent-client-transfers', 'qbittorrent']),
+    ).toBeDefined();
+
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <TorrentClientSheet clientType='transmission' />
+        </QueryClientProvider>,
+      );
+    });
+
+    expect(
+      queryClient.getQueryState(['torrent-client-transfers', 'transmission']),
+    ).toBeDefined();
+    expect(
+      queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ['torrent-client-transfers'] }),
+    ).toHaveLength(2);
+  });
+
+  it('loads and displays selected client transfers when opened', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <TorrentClientSheet clientType='qbittorrent' />
         </QueryClientProvider>,
       );
     });
 
     const trigger = container.querySelector<HTMLButtonElement>(
-      '[aria-label="Open Transmission transfers"]',
+      '[aria-label="Open qBittorrent transfers"]',
     );
     expect(trigger).not.toBeNull();
 
@@ -104,7 +139,10 @@ describe('TransmissionSheet', () => {
     expect(getTorrentsMock).toHaveBeenCalledTimes(1);
     await act(async () => {
       await vi.waitFor(() => {
-        expect(document.body.textContent).toContain(longTorrentName);
+    expect(document.body.textContent).toContain(longTorrentName);
+    expect(document.body.textContent).toContain('qBittorrent');
+    expect(document.body.textContent).toContain('Now');
+    expect(document.body.textContent).toContain('Average since added');
       });
     });
     expect(document.body.textContent).toContain('50%');
@@ -173,6 +211,7 @@ describe('RemoveTorrentDialog', () => {
           isPending={false}
           onOpenChange={vi.fn()}
           onConfirm={vi.fn()}
+          clientName='qBittorrent'
         />,
       );
     });
@@ -185,6 +224,7 @@ describe('RemoveTorrentDialog', () => {
           isPending={false}
           onOpenChange={vi.fn()}
           onConfirm={vi.fn()}
+          clientName='qBittorrent'
         />,
       );
     });

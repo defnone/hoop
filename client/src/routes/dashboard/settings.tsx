@@ -89,6 +89,10 @@ export default function Settings() {
         downloadDir={data?.downloadDir ?? ''}
         mediaDir={data?.mediaDir ?? ''}
         deleteAfterDownload={data?.deleteAfterDownload ?? false}
+        clientType={data.torrentClientType}
+        clientUrl={data.torrentClientUrl ?? ''}
+        clientUsername={data.torrentClientUsername ?? ''}
+        clientPassword={data.torrentClientPassword ?? ''}
         setData={setData}
       />
       <Separator className='my-12' />

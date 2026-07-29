@@ -48,7 +48,12 @@ export const torrentItems = sqliteTable(
     updatedAt: int('updated_at')
       .default(sql`(strftime('%s', 'now') * 1000)`)
       .notNull(),
-    transmissionId: text('transmission_id').unique(),
+    torrentClientId: text('torrent_client_id').unique(),
+    torrentClientType: text('torrent_client_type', {
+      enum: ['transmission', 'qbittorrent'],
+    })
+      .default('transmission')
+      .notNull(),
     controlStatus: text('control_status', {
       enum: controlStatuses,
     })
@@ -83,6 +88,14 @@ export const userSettings = sqliteTable('user_settings', {
     mode: 'boolean',
   }).default(false),
   syncInterval: int('sync_interval').default(30).notNull(),
+  torrentClientType: text('torrent_client_type', {
+    enum: ['transmission', 'qbittorrent'],
+  })
+    .default('transmission')
+    .notNull(),
+  torrentClientUrl: text('torrent_client_url'),
+  torrentClientUsername: text('torrent_client_username'),
+  torrentClientPassword: text('torrent_client_password'),
   jackettApiKey: text('jackett_api_key'),
   jackettUrl: text('jackett_url'),
   kinozalUsername: text('kinozal_username'),

@@ -8,6 +8,10 @@ type SettingsPayload = {
   mediaDir: string | null;
   deleteAfterDownload: boolean;
   syncInterval: number;
+  torrentClientType: 'transmission' | 'qbittorrent';
+  torrentClientUrl: string | null;
+  torrentClientUsername: string | null;
+  torrentClientPassword: string | null;
   jackettApiKey: string | null;
   jackettUrl: string | null;
   kinozalUsername: string | null;
@@ -61,6 +65,10 @@ const sampleSettings: SettingsPayload = {
   mediaDir: '/media',
   deleteAfterDownload: false,
   syncInterval: 30,
+  torrentClientType: 'transmission',
+  torrentClientUrl: 'http://localhost:9091/transmission/rpc',
+  torrentClientUsername: 'user',
+  torrentClientPassword: 'password',
   jackettApiKey: null,
   jackettUrl: null,
   kinozalUsername: null,
@@ -114,6 +122,10 @@ describe('settingsRoute', () => {
       mediaDir: payload.mediaDir,
       deleteAfterDownload: payload.deleteAfterDownload,
       syncInterval: payload.syncInterval,
+      torrentClientType: payload.torrentClientType,
+      torrentClientUrl: payload.torrentClientUrl,
+      torrentClientUsername: payload.torrentClientUsername,
+      torrentClientPassword: payload.torrentClientPassword,
       jackettApiKey: payload.jackettApiKey,
       jackettUrl: payload.jackettUrl,
       kinozalUsername: payload.kinozalUsername,

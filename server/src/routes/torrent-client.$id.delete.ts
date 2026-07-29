@@ -1,6 +1,6 @@
 import { Hono } from 'hono/tiny';
 import type { ApiResponse } from 'shared/dist';
-import { TransmissionAdapter } from '@server/external/adapters/transmission';
+import { createTorrentClient } from '@server/external/adapters/torrent-client';
 import logger from '@server/lib/logger';
 import { statusStorage } from '@server/workers/download-worker';
 import { z } from 'zod';
@@ -18,9 +18,8 @@ export const torrentClientDeleteRoute = new Hono().delete(
     const { id } = c.req.valid('param');
 
     try {
-      await new TransmissionAdapter({
-        id,
-      }).remove(true);
+      const client = await createTorrentClient({ id });
+      await client.remove(true);
       statusStorage.delete(id);
       const response: ApiResponse<null> = {
         success: true,

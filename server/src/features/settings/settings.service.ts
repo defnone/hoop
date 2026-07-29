@@ -23,11 +23,30 @@ export class SettingsService {
 
   async upsert() {
     if (!this.data) throw new Error('No data provided');
+    await this.assertTorrentClientCanChange();
     return await this.repo.upsert(this.data);
   }
 
   async update() {
     if (!this.data) throw new Error('No data provided');
+    await this.assertTorrentClientCanChange();
     return await this.repo.update(this.data);
+  }
+
+  private async assertTorrentClientCanChange(): Promise<void> {
+    if (!this.data?.torrentClientType) return;
+    const current = await this.repo.findSettings();
+    if (!current || current.torrentClientType === this.data.torrentClientType) {
+      return;
+    }
+    if (
+      await this.repo.hasActiveTorrentForOtherClient(
+        this.data.torrentClientType,
+      )
+    ) {
+      throw new Error(
+        'Cannot change torrent client while downloads are active',
+      );
+    }
   }
 }

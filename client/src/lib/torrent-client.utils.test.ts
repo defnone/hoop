@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { TorrentState } from '@ctrl/shared-torrent';
-import type { TorrentClientItemDto } from '@server/external/adapters/transmission';
+import type { TorrentClientItemDto } from '@server/external/adapters/torrent-client';
 import {
-  filterTransmissionTorrents,
+  filterTorrentClientTorrents,
+  getAverageTransferSpeeds,
   formatBytes,
   formatPeerCount,
   formatTorrentEta,
@@ -12,17 +13,17 @@ import {
   getTorrentStateLabel,
   getTorrentTransferSummary,
   sumTransferSpeeds,
-} from './transmission.utils';
+} from './torrent-client.utils';
 
-describe('transmission utilities', () => {
+describe('torrent client utilities', () => {
   it('filters by title and state', () => {
     const torrents = [
       createTorrent({ name: 'Ubuntu', state: TorrentState.downloading }),
       createTorrent({ name: 'Fedora', state: TorrentState.seeding }),
     ];
 
-    expect(filterTransmissionTorrents(torrents, 'ubu', 'all')).toHaveLength(1);
-    expect(filterTransmissionTorrents(torrents, '', 'seeding')).toEqual([
+    expect(filterTorrentClientTorrents(torrents, 'ubu', 'all')).toHaveLength(1);
+    expect(filterTorrentClientTorrents(torrents, '', 'seeding')).toEqual([
       torrents[1],
     ]);
   });
@@ -31,9 +32,24 @@ describe('transmission utilities', () => {
     const active = createTorrent({ downloadSpeed: 1024 });
     const idle = createTorrent({ id: 'idle' });
 
-    expect(filterTransmissionTorrents([active, idle], '', 'active')).toEqual([
+    expect(filterTorrentClientTorrents([active, idle], '', 'active')).toEqual([
       active,
     ]);
+  });
+
+  it('calculates average speeds since torrent was added', () => {
+    const torrent = createTorrent({
+      dateAdded: '2026-07-22T10:00:00.000Z',
+      totalDownloaded: 7200,
+      totalUploaded: 3600,
+    });
+
+    expect(
+      getAverageTransferSpeeds(
+        torrent,
+        new Date('2026-07-22T11:00:00.000Z').getTime(),
+      ),
+    ).toEqual({ download: 2, upload: 1 });
   });
 
   it('sums upload and download speeds', () => {

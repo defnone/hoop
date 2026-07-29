@@ -35,8 +35,9 @@ vi.mock('@server/workers/download-worker', () => ({
   statusStorage: statusStorageMock,
 }));
 
-vi.mock('@server/external/adapters/transmission', () => ({
-  TransmissionAdapter: transmissionCtor,
+vi.mock('@server/external/adapters/torrent-client', () => ({
+  createTorrentClient: async (params: { id: number }) =>
+    transmissionCtor(params),
 }));
 
 function createStatus(): NormalizedTorrent {

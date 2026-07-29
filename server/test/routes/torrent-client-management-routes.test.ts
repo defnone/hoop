@@ -4,7 +4,7 @@ import { TorrentState, type NormalizedTorrent } from '@ctrl/shared-torrent';
 import type {
   TorrentClientAction,
   TorrentClientItemDto,
-} from '@server/external/adapters/transmission';
+} from '@server/external/adapters/torrent-client';
 import { torrentClientRoute } from '@server/routes/torrent-client';
 import { torrentClientActionRoute } from '@server/routes/torrent-client.$id.action';
 import { torrentClientRemoveRoute } from '@server/routes/torrent-client.$id.remove';
@@ -29,7 +29,9 @@ const {
     vi.fn<(id: string, action: TorrentClientAction) => Promise<void>>();
   const removeClientTorrentMock =
     vi.fn<(id: string, deleteData: boolean) => Promise<number | null>>();
-  const transmissionCtor = vi.fn(function transmissionCtor() {
+  const transmissionCtor = vi.fn(function transmissionCtor(_params?: {
+    id: number;
+  }) {
     return {
       getAllNormalized: getAllNormalizedMock,
       controlClientTorrent: controlClientTorrentMock,
@@ -49,8 +51,9 @@ const { statusStorageMock } = vi.hoisted(() => ({
   statusStorageMock: new Map<number, NormalizedTorrent | undefined>(),
 }));
 
-vi.mock('@server/external/adapters/transmission', () => ({
-  TransmissionAdapter: transmissionCtor,
+vi.mock('@server/external/adapters/torrent-client', () => ({
+  createTorrentClient: async (params: { id: number }) =>
+    transmissionCtor(params),
   torrentClientActions: [
     'pause',
     'resume',
@@ -186,7 +189,7 @@ describe('torrent client management routes', () => {
     const body = (await response.json()) as ApiResponse<null>;
     expect(response.status).toBe(200);
     expect(removeClientTorrentMock).toHaveBeenCalledWith(torrentHash, true);
-    expect(body.message).toBe('Torrent and data removed from Transmission');
+    expect(body.message).toBe('Torrent and data removed from client');
   });
 
   it('rejects Transmission selector aliases for torrent removal', async () => {
