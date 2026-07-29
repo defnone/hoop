@@ -13,7 +13,10 @@ import type {
   TorrentClientPort,
 } from '@server/external/adapters/torrent-client/torrent-client.types';
 import { toTorrentClientItemDto } from '@server/external/adapters/torrent-client/torrent-client.utils';
-import { extractTorrentHash } from './qbittorrent.utils';
+import {
+  extractTorrentHash,
+  normalizeTorrentMagnet,
+} from './qbittorrent.utils';
 
 type QbittorrentAdapterParams = {
   id: number;
@@ -47,10 +50,11 @@ export class QbittorrentAdapter implements TorrentClientPort {
   async add(): Promise<void> {
     const { client, torrentItem, downloadDir } = await this.loadContext();
     if (!torrentItem) throw new Error('Torrent item not found');
-    await client.addMagnet(torrentItem.magnet, {
+    const magnet = normalizeTorrentMagnet(torrentItem.magnet);
+    await client.addMagnet(magnet, {
       savepath: downloadDir ?? undefined,
     });
-    const hash = extractTorrentHash(torrentItem.magnet);
+    const hash = extractTorrentHash(magnet);
     await this.repo.updateTorrentItem(torrentItem.id, {
       controlStatus: 'downloading',
       torrentClientId: hash,

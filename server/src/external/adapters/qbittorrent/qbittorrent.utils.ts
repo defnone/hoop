@@ -18,6 +18,14 @@ export function extractTorrentHash(magnet: string): string {
   throw new Error('Magnet does not contain a supported torrent hash');
 }
 
+export function normalizeTorrentMagnet(value: string): string {
+  const trimmedValue = value.trim();
+  if (SHA1_HEX_PATTERN.test(trimmedValue)) {
+    return `magnet:?xt=urn:btih:${trimmedValue}`;
+  }
+  return trimmedValue;
+}
+
 function parseBtih(value: string): string {
   if (SHA1_HEX_PATTERN.test(value)) return value.toLowerCase();
   if (SHA1_BASE32_PATTERN.test(value)) return decodeBase32(value);
