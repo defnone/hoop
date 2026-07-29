@@ -168,11 +168,12 @@ describe('jackettVerifyRoute /connection', () => {
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.data?.status).toBe(200);
+    expect(fetchMock.mock.calls[0]?.[1]?.method).toBe('HEAD');
   });
 
-  it('returns 502 when Jackett responds with 5xx', async () => {
+  it('returns success when Jackett responds with a client error', async () => {
     fetchMock.mockResolvedValueOnce(
-      new Response('err', { status: 503, statusText: 'Service Unavailable' }),
+      new Response(null, { status: 400, statusText: 'Bad Request' }),
     );
 
     const response = await jackettVerifyRoute.request('/connection', {
@@ -183,10 +184,11 @@ describe('jackettVerifyRoute /connection', () => {
       },
     });
 
-    const body = (await response.json()) as ApiResponse<null>;
+    const body = (await response.json()) as ApiResponse<{ status: number }>;
 
-    expect(response.status).toBe(502);
-    expect(body.message).toBe('Jackett responded with 503 Service Unavailable');
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data?.status).toBe(400);
   });
 
   it('returns 500 on network error', async () => {
@@ -232,6 +234,9 @@ describe('jackettVerifyRoute /api-key', () => {
 
     expect(response.status).toBe(200);
     expect(body.data?.status).toBe(200);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      'http://jackett.test/api/v2.0/indexers/all/results/torznab/api?apikey=key&t=caps',
+    );
   });
 
   it('returns 401 for invalid key', async () => {
@@ -287,7 +292,7 @@ describe('jackettVerifyRoute /api-key', () => {
 
     expect(response.status).toBe(500);
     expect(body.message).toBe(
-      'Failed to validate Jackett API Key: Failed to fetch http://jackett.test/api/v2.0/indexers/all/results/?apikey=[REDACTED]&Query=ping&Category=5000 after 3 attempts: Error: network',
+      'Failed to validate Jackett API Key: Failed to fetch http://jackett.test/api/v2.0/indexers/all/results/torznab/api?apikey=[REDACTED]&t=caps after 3 attempts: Error: network',
     );
   });
 });
