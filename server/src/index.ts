@@ -33,6 +33,8 @@ import { torrentsPauseToggleRoute } from './routes/torrents.pause-toggle';
 import { eventJournalRoute } from './routes/event-journal';
 import { eventJournalReadRoute } from './routes/event-journal.$id.read';
 import { eventJournalReadAllRoute } from './routes/event-journal.read-all';
+import { seriesDirectoryVerifyRoute } from './routes/series-directory.verify';
+import { SeriesDirectoryCleanupWorker } from './workers/series-directory-cleanup-worker';
 
 export const app = new Hono<{
   Variables: {
@@ -94,6 +96,7 @@ export const routes = app
   .route('/event-journal/read-all', eventJournalReadAllRoute)
   .route('/event-journal/:id/read', eventJournalReadRoute)
   .route('/settings', settingsRoute)
+  .route('/series-directory/verify', seriesDirectoryVerifyRoute)
   .route('/files/:id/delete', deleteFileRoute)
   .route('/torrents', torrentsRoute)
   .route('/torrents/status', torrentsStatusRoute)
@@ -129,6 +132,7 @@ const port = parseInt(process.env.PORT || '3000');
 if (process.env.HONO_WORKERS !== '0') {
   updateWorker.run();
   new DownloadWorker({}).run();
+  new SeriesDirectoryCleanupWorker().run();
 }
 
 logger.info(`Database URL: ${process.env.DATABASE_URL}`);

@@ -85,8 +85,10 @@ vi.mock('@server/external/adapters/telegram/telegram.adapter', () => ({
 }));
 
 const copyTrackedEpisodes = vi.fn(
-  async (_ti: DbTorrentItem, _s: DbUserSettings) =>
-    ({ files: {}, failures: [] }),
+  async (_ti: DbTorrentItem, _s: DbUserSettings) => ({
+    files: {},
+    failures: [],
+  }),
 );
 vi.mock('@server/features/file-management/file-management.service', () => ({
   FileManagementService: class {
@@ -182,6 +184,7 @@ describe('DownloadWorker copy failure persists errorMessage', () => {
     botToken: null,
     downloadDir: '/tmp/downloads',
     mediaDir: '/tmp/media',
+    cleanEmptySeriesDirectories: false,
     deleteAfterDownload: false,
     syncInterval: 30,
     torrentClientType: 'transmission',

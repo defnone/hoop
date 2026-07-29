@@ -1,0 +1,1 @@
+ALTER TABLE `user_settings` ADD `clean_empty_series_directories` integer DEFAULT false NOT NULL;

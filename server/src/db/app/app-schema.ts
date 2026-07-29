@@ -22,6 +22,8 @@ export const eventJournalTypes = [
   'torrentFileCopyCompleted',
   'torrentFileCopyFailed',
   'transmissionUnavailable',
+  'seriesDirectoryCleanupCompleted',
+  'seriesDirectoryCleanupFailed',
 ] as const;
 
 export const eventJournalStates = ['info', 'error'] as const;
@@ -84,6 +86,11 @@ export const userSettings = sqliteTable('user_settings', {
   botToken: text('bot_token'),
   downloadDir: text('download_dir'),
   mediaDir: text('media_dir'),
+  cleanEmptySeriesDirectories: int('clean_empty_series_directories', {
+    mode: 'boolean',
+  })
+    .default(false)
+    .notNull(),
   deleteAfterDownload: int('delete_after_download', {
     mode: 'boolean',
   }).default(false),
