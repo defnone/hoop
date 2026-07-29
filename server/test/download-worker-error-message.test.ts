@@ -148,6 +148,9 @@ const baseItem: DbTorrentItem = {
   controlStatus: 'idle',
   tracker: 'kinozal',
   errorMessage: null,
+  notifyOnTitleChange: false,
+  notifyOnMagnetChange: false,
+  notifyOnDownloadComplete: true,
 };
 
 const settings: DbUserSettings = {

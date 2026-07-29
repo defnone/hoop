@@ -160,6 +160,9 @@ describe('DownloadWorker copy failure persists errorMessage', () => {
     controlStatus: 'downloadCompleted',
     tracker: 'rutracker',
     errorMessage: null,
+    notifyOnTitleChange: false,
+    notifyOnMagnetChange: false,
+    notifyOnDownloadComplete: true,
   } as const;
 
   const settings: DbUserSettings = {

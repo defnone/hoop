@@ -8,6 +8,16 @@ import type {
   TorrentItemDto,
 } from '@server/features/torrent-item/torrent-item.types';
 
+const { sendMessageMock } = vi.hoisted(() => ({
+  sendMessageMock: vi.fn<(message: string) => Promise<void>>(),
+}));
+
+vi.mock('@server/external/adapters/telegram', () => ({
+  TelegramAdapter: class {
+    public sendMessage = sendMessageMock;
+  },
+}));
+
 // Mock logger to keep tests quiet and observable
 vi.mock('@server/lib/logger', () => ({
   default: {
@@ -89,6 +99,9 @@ const baseItem: DbTorrentItem = {
   controlStatus: 'idle',
   tracker: 'kinozal',
   errorMessage: null,
+  notifyOnTitleChange: false,
+  notifyOnMagnetChange: false,
+  notifyOnDownloadComplete: true,
 };
 
 const settings: DbUserSettings = {
@@ -198,6 +211,9 @@ vi.mock('@server/features/torrent-item/torrent-item.service', () => {
         createdAt: dbItem?.createdAt ?? Date.now(),
         updatedAt: dbItem?.updatedAt ?? Date.now(),
         errorMessage: dbItem?.errorMessage ?? null,
+        notifyOnTitleChange: dbItem?.notifyOnTitleChange ?? false,
+        notifyOnMagnetChange: dbItem?.notifyOnMagnetChange ?? false,
+        notifyOnDownloadComplete: dbItem?.notifyOnDownloadComplete ?? true,
       });
     }
     async addOrUpdate() {
@@ -269,6 +285,7 @@ class EventJournalMock implements EventJournalPort {
 describe('UpdateWorker.process', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sendMessageMock.mockResolvedValue(undefined);
     lastTI = null;
     nextFetchError = null;
     fetchDataDelayMs = 0;
@@ -318,6 +335,35 @@ describe('UpdateWorker.process', () => {
     expect(lastTI?.markAsDownloadRequestedMock).toHaveBeenCalledTimes(1);
     expect(repo.findAllIdle).toHaveBeenCalled();
     expect(repo.findSettings).toHaveBeenCalled();
+  });
+
+  it('includes show and raw titles in title change notification', async () => {
+    const { UpdateWorker } = await import('@server/workers/update-worker');
+    const repo = new RepoMock();
+    repo.findSettings.mockResolvedValue({
+      ...settings,
+      telegramId: 123456,
+      botToken: 'bot-token',
+    });
+    const worker = new UpdateWorker({ repo: repo as unknown as never });
+
+    nextTrackerData = {
+      torrentId: 't-1',
+      rawTitle: 'Some Show S01E02 1080p',
+      showTitle: 'Some Show',
+      epAndSeason: { season: 1, startEp: 2, endEp: 2, totalEp: 12 },
+      magnet: 'MAG',
+    } satisfies TorrentDataResult;
+    nextDatabaseData = {
+      ...baseItem,
+      notifyOnTitleChange: true,
+    } satisfies DbTorrentItem;
+
+    await worker.process();
+
+    expect(sendMessageMock).toHaveBeenCalledWith(
+      'New release for "Some Show": Some Show S01E02 1080p',
+    );
   });
 
   it('does not update when tracker and DB titles match', async () => {

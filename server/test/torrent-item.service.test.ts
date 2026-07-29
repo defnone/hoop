@@ -103,6 +103,9 @@ function createDbTorrentItem(
     controlStatus: 'idle',
     tracker: 'kinozal',
     errorMessage: null,
+    notifyOnTitleChange: false,
+    notifyOnMagnetChange: false,
+    notifyOnDownloadComplete: true,
     ...override,
   } satisfies DbTorrentItem;
 }

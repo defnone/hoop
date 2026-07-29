@@ -246,8 +246,22 @@ export class DownloadWorker {
         torrentItem: row,
         message: formatCopiedFilesMessage(newFiles),
       });
-      if (this.settings?.telegramId && this.settings?.botToken)
-        new TelegramAdapter(this.settings).sendUpdate(row.title, copyResult);
+      if (
+        row.notifyOnDownloadComplete &&
+        this.settings?.telegramId &&
+        this.settings?.botToken
+      ) {
+        try {
+          await new TelegramAdapter(this.settings).sendUpdate(
+            row.title,
+            copyResult,
+          );
+        } catch (error) {
+          logger.error(
+            `[DownloadWorker] Failed to send Telegram notification: ${formatErrorMessage(error)}`,
+          );
+        }
+      }
     } catch (e) {
       logger.error(e);
       await this.repo.markAsIdle(row.id);

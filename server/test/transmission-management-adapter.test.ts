@@ -179,6 +179,9 @@ function createDatabaseTorrent(): DbTorrentItem {
     transmissionId: 'hash',
     controlStatus: 'downloading',
     errorMessage: null,
+    notifyOnTitleChange: false,
+    notifyOnMagnetChange: false,
+    notifyOnDownloadComplete: true,
     createdAt: 1,
     updatedAt: 1,
   };

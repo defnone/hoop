@@ -58,6 +58,17 @@ export const torrentItems = sqliteTable(
       enum: Object.keys(trackersConf) as [string, ...string[]],
     }).notNull(),
     errorMessage: text('error_message'),
+    notifyOnTitleChange: int('notify_on_title_change', { mode: 'boolean' })
+      .default(false)
+      .notNull(),
+    notifyOnMagnetChange: int('notify_on_magnet_change', { mode: 'boolean' })
+      .default(false)
+      .notNull(),
+    notifyOnDownloadComplete: int('notify_on_download_complete', {
+      mode: 'boolean',
+    })
+      .default(true)
+      .notNull(),
   },
   (t) => [index('tracker_index').on(t.tracker)],
 );
