@@ -5,17 +5,37 @@ import fs from 'fs';
 import path from 'path';
 import { safeLinkOrCopyFile } from '@server/features/file-management/file-management.utils';
 
+export type EpisodeCopyFailure = {
+  episodeNumber: number;
+  message: string;
+};
+
+export type CopyTrackedEpisodesResult = {
+  files: Record<number, string>;
+  failures: EpisodeCopyFailure[];
+};
+
 export class FileManagementService {
   async copyTrackedEpisodes(
     torrentItem: DbTorrentItem,
     settings: DbUserSettings,
-  ): Promise<Record<number, string>> {
+  ): Promise<CopyTrackedEpisodesResult> {
+    const trackedNumbers: number[] = Array.isArray(torrentItem.trackedEpisodes)
+      ? (torrentItem.trackedEpisodes as number[])
+      : [];
     if (!settings.downloadDir || !settings.mediaDir) {
       logger.error('No download or media directory found');
-      return {};
+      return {
+        files: {},
+        failures: trackedNumbers.map((episodeNumber) => ({
+          episodeNumber,
+          message: 'Download or media directory is not configured',
+        })),
+      };
     }
 
     const result: Record<number, string> = {};
+    const failures: EpisodeCopyFailure[] = [];
 
     let torrentName = '';
     type RawFile = { name: string };
@@ -34,15 +54,18 @@ export class FileManagementService {
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       logger.error(`Cannot get torrent status from client: ${msg}`);
+      return {
+        files: result,
+        failures: trackedNumbers.map((episodeNumber) => ({
+          episodeNumber,
+          message: `Cannot get torrent status from client: ${msg}`,
+        })),
+      };
     }
 
     const sanitizedTitle = FileManagementService.sanitizeFolderName(
       torrentItem.title,
     );
-
-    const trackedNumbers: number[] = Array.isArray(torrentItem.trackedEpisodes)
-      ? (torrentItem.trackedEpisodes as number[])
-      : [];
 
     const episodeFiles = filesFromClient
       .map((f) => ({
@@ -62,6 +85,10 @@ export class FileManagementService {
       const matches = episodeFiles.filter((x) => x.episode === episodeNumber);
       if (matches.length === 0) {
         logger.info(`No file found for episode ${episodeNumber}`);
+        failures.push({
+          episodeNumber,
+          message: `No file found for episode ${episodeNumber}`,
+        });
         continue;
       }
 
@@ -72,6 +99,10 @@ export class FileManagementService {
         logger.error(
           `No video file found for tracked episode ${episodeNumber}, continuing`,
         );
+        failures.push({
+          episodeNumber,
+          message: `No video file found for episode ${episodeNumber}`,
+        });
         continue;
       }
 
@@ -137,10 +168,11 @@ export class FileManagementService {
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         logger.error(`Error processing episode ${episodeNumber}: ${msg}`);
+        failures.push({ episodeNumber, message: msg });
       }
     }
 
-    return result;
+    return { files: result, failures };
   }
 
   static sanitizeFolderName(name: string): string {

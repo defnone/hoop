@@ -137,10 +137,23 @@ export const eventJournal = sqliteTable(
   ],
 );
 
+export const torrentCopyFailures = sqliteTable('torrent_copy_failures', {
+  torrentItemId: int('torrent_item_id')
+    .primaryKey()
+    .references(() => torrentItems.id, { onDelete: 'cascade' }),
+  attemptCount: int('attempt_count').notNull().default(1),
+  nextAttemptAt: int('next_attempt_at').notNull(),
+  fingerprint: text('fingerprint').notNull(),
+  notifiedAt: int('notified_at'),
+});
+
 export type DbEventJournal = typeof eventJournal.$inferSelect;
 export type DbEventJournalInsert = typeof eventJournal.$inferInsert;
 
 export type DbTorrentItem = typeof torrentItems.$inferSelect;
 export type DbTorrentItemInsert = typeof torrentItems.$inferInsert;
+export type DbTorrentCopyFailure = typeof torrentCopyFailures.$inferSelect;
+export type DbTorrentCopyFailureInsert =
+  typeof torrentCopyFailures.$inferInsert;
 export type DbUserSettings = typeof userSettings.$inferSelect;
 export type DbUserSettingsInsert = typeof userSettings.$inferInsert;

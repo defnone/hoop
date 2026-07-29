@@ -100,7 +100,8 @@ describe('FileManagementService.copyTrackedEpisodes', () => {
 
     // Assert
     const dest = path.join(dirs.media, 'Some Show', 'Season 01', 'S01E02.mkv');
-    expect(res[2]).toBe(dest);
+    expect(res.files[2]).toBe(dest);
+    expect(res.failures).toEqual([]);
     expect(fs.existsSync(dest)).toBe(true);
   });
 
@@ -126,7 +127,8 @@ describe('FileManagementService.copyTrackedEpisodes', () => {
 
     // Assert: destination directory uses sanitize(title)
     const dest = path.join(dirs.media, 'BadName', 'Season 01', 'S01E03.mp4');
-    expect(res[3]).toBe(dest);
+    expect(res.files[3]).toBe(dest);
+    expect(res.failures).toEqual([]);
     expect(fs.existsSync(dest)).toBe(true);
   });
 
@@ -148,7 +150,8 @@ describe('FileManagementService.copyTrackedEpisodes', () => {
       makeSettings(),
     );
 
-    expect(result).toEqual({});
+    expect(result.files).toEqual({});
+    expect(result.failures).toHaveLength(1);
     expect(
       fs.existsSync(
         path.join(dirs.media, 'Some Show', 'Season 01', 'S01E04.mkv'),
@@ -178,7 +181,8 @@ describe('FileManagementService.copyTrackedEpisodes', () => {
       makeSettings(),
     );
 
-    expect(result).toEqual({});
+    expect(result.files).toEqual({});
+    expect(result.failures).toHaveLength(1);
     expect(
       fs.existsSync(
         path.join(dirs.media, 'Some Show', 'Season 01', 'S01E05.mkv'),
