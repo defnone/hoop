@@ -5,13 +5,20 @@ import type { DbTorrentItem, DbUserSettings } from '@server/db/app/app-schema';
 import { FileManagementService } from '@server/features/file-management/file-management.service';
 
 let statusName = 'Torrent Folder';
+let statusSavePath = '';
+let statusContentPath: string | undefined;
 let rawFiles: { name: string }[] = [];
 vi.mock('@server/external/adapters/torrent-client', () => {
   class TorrentClientMock {
     async status() {
-      return { name: statusName, raw: { files: rawFiles } } as unknown as {
+      return {
+        name: statusName,
+        savePath: statusSavePath,
+        raw: { files: rawFiles, content_path: statusContentPath },
+      } as unknown as {
         name: string;
-        raw: { files: { name: string }[] };
+        savePath: string;
+        raw: { files: { name: string }[]; content_path?: string };
       };
     }
   }
@@ -76,6 +83,8 @@ describe('FileManagementService.copyTrackedEpisodes', () => {
   beforeEach(async () => {
     await resetTmp();
     statusName = 'Torrent Folder';
+    statusSavePath = dirs.dl;
+    statusContentPath = undefined;
     rawFiles = [];
   });
 
@@ -103,6 +112,81 @@ describe('FileManagementService.copyTrackedEpisodes', () => {
     expect(res.files[2]).toBe(dest);
     expect(res.failures).toEqual([]);
     expect(fs.existsSync(dest)).toBe(true);
+  });
+
+  it('copies only tracked episodes available in the current release', async () => {
+    const srcDir = path.join(dirs.dl, statusName);
+    await fs.promises.mkdir(srcDir, { recursive: true });
+    const srcFile = path.join(srcDir, 'Some.Show.S03E06.mkv');
+    await fs.promises.writeFile(srcFile, 'dummy');
+    rawFiles = [{ name: 'Some.Show.S03E06.mkv' }];
+
+    const torrentItem = makeTorrentItem({
+      title: 'Some Show',
+      season: 3,
+      trackedEpisodes: [6, 7, 8],
+      haveEpisodes: [1, 2, 3, 4, 5, 6],
+      totalEpisodes: 8,
+    });
+
+    const result = await new FileManagementService().copyTrackedEpisodes(
+      torrentItem,
+      makeSettings(),
+    );
+
+    const destination = path.join(
+      dirs.media,
+      'Some Show',
+      'Season 03',
+      'S03E06.mkv',
+    );
+    expect(result.files).toEqual({ 6: destination });
+    expect(result.failures).toEqual([]);
+    expect(fs.existsSync(destination)).toBe(true);
+  });
+
+  it('uses client file path when display name differs from content root', async () => {
+    statusName =
+      'Show / Season: 2 / Episodes: 1-23 (Creators) [1997-1998, Comedy,';
+    const contentRoot = path.join(dirs.dl, 'Show (1997-1998) - Season 02');
+    const sourcePath = path.join(contentRoot, '01. Pilot.mkv');
+    await fs.promises.mkdir(contentRoot, { recursive: true });
+    await fs.promises.writeFile(sourcePath, 'video');
+    rawFiles = [{ name: 'Show (1997-1998) - Season 02/01. Pilot.mkv' }];
+
+    const result = await new FileManagementService().copyTrackedEpisodes(
+      makeTorrentItem({
+        season: 2,
+        trackedEpisodes: [1],
+        haveEpisodes: [1],
+      }),
+      makeSettings(),
+    );
+
+    const destination = path.join(
+      dirs.media,
+      'Some Show',
+      'Season 02',
+      'S02E01.mkv',
+    );
+    expect(result).toEqual({ files: { 1: destination }, failures: [] });
+    expect(fs.existsSync(destination)).toBe(true);
+  });
+
+  it('does not require future tracked episodes absent from the current release', async () => {
+    rawFiles = [{ name: 'Show.Special.mkv' }];
+    const torrentItem = makeTorrentItem({
+      trackedEpisodes: [7, 8],
+      haveEpisodes: [1, 2, 3, 4, 5, 6],
+      totalEpisodes: 8,
+    });
+
+    const result = await new FileManagementService().copyTrackedEpisodes(
+      torrentItem,
+      makeSettings(),
+    );
+
+    expect(result).toEqual({ files: {}, failures: [] });
   });
 
   it('places the file under /<sanitize(title)>/Season 01/S01E03.ext and parses number from name', async () => {
@@ -189,25 +273,95 @@ describe('FileManagementService.copyTrackedEpisodes', () => {
       ),
     ).toBe(false);
   });
-});
 
-describe('FileManagementService.getEpisodeFromName', () => {
-  const getEpisodeFromName = FileManagementService['getEpisodeFromName'] as (
-    name: string,
-  ) => number | null;
+  it('includes torrent file list when episode detection fails', async () => {
+    rawFiles = [
+      { name: 'Show.Special.mkv' },
+      { name: 'Show.Behind.The.Scenes.mkv' },
+    ];
+    const torrentItem = makeTorrentItem({
+      trackedEpisodes: [1, 2],
+    });
 
-  it('returns episode number for classic SxxEyy pattern', () => {
-    expect(getEpisodeFromName('Show.S01E05.mkv')).toBe(5);
-  });
-
-  it('returns episode number when season and episode are separated', () => {
-    expect(getEpisodeFromName('Show.S01.E04.2025.WEB-DL.mkv')).toBe(4);
-    expect(getEpisodeFromName('Show.S02-E07.mkv')).toBe(7);
-  });
-
-  it('throws when episode number cannot be detected', () => {
-    expect(() => getEpisodeFromName('Show.Special.mkv')).toThrow(
-      'Cannot detect episode number from filename: Show.Special.mkv',
+    const result = await new FileManagementService().copyTrackedEpisodes(
+      torrentItem,
+      makeSettings(),
     );
+
+    const message =
+      'Cannot detect episode number from filename: Show.Special.mkv. Torrent files: Show.Special.mkv, Show.Behind.The.Scenes.mkv';
+    expect(result.files).toEqual({});
+    expect(result.failures).toEqual([
+      { episodeNumber: 1, message },
+      { episodeNumber: 2, message },
+    ]);
+  });
+
+  it('truncates a large torrent file list in episode detection errors', async () => {
+    rawFiles = Array.from({ length: 60 }, (_, index) => ({
+      name: `Special.Feature.${index + 1}.mkv`,
+    }));
+    const torrentItem = makeTorrentItem({
+      trackedEpisodes: [1],
+    });
+
+    const result = await new FileManagementService().copyTrackedEpisodes(
+      torrentItem,
+      makeSettings(),
+    );
+
+    expect(result.failures[0]?.message).toContain(
+      'Special.Feature.50.mkv, ... 10 more file(s) omitted',
+    );
+    expect(result.failures[0]?.message).not.toContain('Special.Feature.51.mkv');
+  });
+
+  it('ignores sidecar files without episode numbers', async () => {
+    const srcDir = path.join(dirs.dl, statusName);
+    await fs.promises.mkdir(srcDir, { recursive: true });
+    await fs.promises.writeFile(
+      path.join(srcDir, 'Some.Show.S01E02.mkv'),
+      'video',
+    );
+    rawFiles = [
+      { name: 'Some.Show.S01E02.mkv' },
+      { name: 'poster.jpg' },
+      { name: 'metadata.nfo' },
+      { name: 'sample.mkv' },
+    ];
+    const torrentItem = makeTorrentItem({
+      trackedEpisodes: [2],
+    });
+
+    const result = await new FileManagementService().copyTrackedEpisodes(
+      torrentItem,
+      makeSettings(),
+    );
+
+    expect(result.failures).toEqual([]);
+    expect(result.files[2]).toBe(
+      path.join(dirs.media, 'Some Show', 'Season 01', 'S01E02.mkv'),
+    );
+  });
+
+  it('copies one multi-episode video to every tracked episode', async () => {
+    const srcDir = path.join(dirs.dl, statusName);
+    await fs.promises.mkdir(srcDir, { recursive: true });
+    await fs.promises.writeFile(
+      path.join(srcDir, 'Some.Show.S01E01E02.mkv'),
+      'video',
+    );
+    rawFiles = [{ name: 'Some.Show.S01E01E02.mkv' }];
+    const torrentItem = makeTorrentItem({
+      trackedEpisodes: [1, 2],
+    });
+
+    const result = await new FileManagementService().copyTrackedEpisodes(
+      torrentItem,
+      makeSettings(),
+    );
+
+    expect(result.failures).toEqual([]);
+    expect(Object.keys(result.files)).toEqual(['1', '2']);
   });
 });

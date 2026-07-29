@@ -12,6 +12,7 @@ import type {
   TorrentClientItemDto,
   TorrentClientPort,
 } from '@server/external/adapters/torrent-client/torrent-client.types';
+import { getEpisodeNumbersFromFilePath } from '@server/external/adapters/torrent-client/episode-file.utils';
 import { toTorrentClientItemDto } from '@server/external/adapters/torrent-client/torrent-client.utils';
 import {
   extractTorrentHash,
@@ -86,13 +87,31 @@ export class QbittorrentAdapter implements TorrentClientPort {
     if (!torrentItem?.torrentClientId) throw new Error('No torrent client id');
     const files = status.raw.files as TorrentFile[];
     const trackedEpisodes = torrentItem.trackedEpisodes as number[];
-    const unwantedIds = files.reduce<string[]>((ids, file, index) => {
-      const episode = getEpisodeNumber(file.name);
-      if (episode !== null && !trackedEpisodes.includes(episode)) {
-        ids.push(index.toString());
+    const wantedIds: string[] = [];
+    const unwantedIds: string[] = [];
+
+    for (const [index, file] of files.entries()) {
+      const episodes = getEpisodeNumbersFromFilePath(file.name);
+      if (episodes.length === 0) continue;
+      const isTracked = episodes.some((episode) =>
+        trackedEpisodes.includes(episode),
+      );
+      if (isTracked) {
+        if (file.priority === TorrentFilePriority.Skip) {
+          wantedIds.push(index.toString());
+        }
+      } else {
+        unwantedIds.push(index.toString());
       }
-      return ids;
-    }, []);
+    }
+
+    if (wantedIds.length > 0) {
+      await client.setFilePriority(
+        torrentItem.torrentClientId,
+        wantedIds,
+        TorrentFilePriority.NormalPriority,
+      );
+    }
     if (unwantedIds.length > 0) {
       await client.setFilePriority(
         torrentItem.torrentClientId,
@@ -105,7 +124,14 @@ export class QbittorrentAdapter implements TorrentClientPort {
   async getAllNormalized(): Promise<TorrentClientItemDto[]> {
     const { client } = await this.loadContext();
     const data = await client.getAllData();
-    return data.torrents.map(toTorrentClientItemDto);
+    return data.torrents.map((torrent) => {
+      const item = toTorrentClientItemDto(torrent);
+      return {
+        ...item,
+        peersSendingToUs: torrent.connectedSeeds,
+        peersGettingFromUs: torrent.connectedPeers,
+      };
+    });
   }
 
   async controlClientTorrent(
@@ -173,13 +199,4 @@ export class QbittorrentAdapter implements TorrentClientPort {
       downloadDir: settings.downloadDir,
     };
   }
-}
-
-function getEpisodeNumber(fileName: string): number | null {
-  const value =
-    fileName.match(/[Ss](\d+)[.\-_–—x ]*[Ee][Pp]?(\d+)/i)?.[2] ??
-    fileName.match(/(\d+)[.\-_–—x ]+(\d+)/i)?.[2] ??
-    fileName.match(/[Ee][Pp]?(\d+)/i)?.[1] ??
-    fileName.match(/(?<![A-Za-z0-9])(\d{2,3})(?![A-Za-z0-9])/g)?.[0];
-  return value ? Number(value) : null;
 }

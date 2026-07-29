@@ -11,6 +11,7 @@ import type {
   TorrentClientAction,
   TorrentClientItemDto,
 } from '@server/external/adapters/torrent-client/torrent-client.types';
+import { getEpisodeNumbersFromFilePath } from '@server/external/adapters/torrent-client/episode-file.utils';
 import { toTorrentClientItemDto } from './transmission.utils';
 import { normalizeTransmissionError } from './transmission-error.utils';
 import type { NormalizedTorrent } from '@ctrl/shared-torrent';
@@ -100,25 +101,30 @@ export class TransmissionAdapter {
     await this.loadSettings();
     const filesFromClient = status.raw.files as Record<string, string>[];
     const trackedEpisodes = this.tiData?.trackedEpisodes as number[];
-    const forUnselect = filesFromClient.reduce((arr: number[], file, index) => {
-      if (!file || !file.name) return arr;
-      const episodeNumber =
-        file.name.match(/[Ss](\d+)[.\-_–—x ]*[Ee][Pp]?(\d+)/i)?.[2] ||
-        file.name.match(/(\d+)[.\-_–—x ]+(\d+)/i)?.[2] ||
-        file.name.match(/[Ee][Pp]?(\d+)/i)?.[1] ||
-        // Fallback: pure 2-3 digit episode token with non-alphanumeric boundaries
-        file.name.match(/(?<![A-Za-z0-9])(\d{2,3})(?![A-Za-z0-9])/g)?.[0];
-      if (episodeNumber && !trackedEpisodes.includes(Number(episodeNumber))) {
-        arr.push(index);
+    const wantedFiles: number[] = [];
+    const unwantedFiles: number[] = [];
+
+    for (const [index, file] of filesFromClient.entries()) {
+      if (!file || !file.name) continue;
+      const episodes = getEpisodeNumbersFromFilePath(file.name);
+      if (episodes.length === 0) continue;
+      const isTracked = episodes.some((episode) =>
+        trackedEpisodes.includes(episode),
+      );
+      if (isTracked) {
+        wantedFiles.push(index);
+      } else {
+        unwantedFiles.push(index);
       }
-      return arr;
-    }, []);
+    }
 
     if (!this.tiData?.torrentClientId) throw new Error('No torrent client id');
-    if (forUnselect.length > 0)
-      await this.client.setTorrent(this.tiData.torrentClientId, {
-        'files-unwanted': forUnselect,
-      });
+    const priorities: Record<string, number[]> = {};
+    if (wantedFiles.length > 0) priorities['files-wanted'] = wantedFiles;
+    if (unwantedFiles.length > 0) priorities['files-unwanted'] = unwantedFiles;
+    if (Object.keys(priorities).length > 0) {
+      await this.client.setTorrent(this.tiData.torrentClientId, priorities);
+    }
   }
 
   async getAll() {

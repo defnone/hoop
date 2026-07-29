@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import {
   assertPathInsideRoot,
+  resolveTorrentSourcePath,
   safeLinkOrCopyFile,
 } from '@server/features/file-management/file-management.utils';
 
@@ -34,6 +35,39 @@ describe('file management path utilities', () => {
     await expect(assertPathInsideRoot(sourceRoot, sourcePath)).resolves.toBe(
       await fs.promises.realpath(sourcePath),
     );
+  });
+
+  it('resolves a client-relative path before legacy display-name path', async () => {
+    const contentRoot = path.join(sourceRoot, 'Actual Content');
+    const sourcePath = path.join(contentRoot, 'S01E01.mkv');
+    await fs.promises.mkdir(contentRoot, { recursive: true });
+    await fs.promises.writeFile(sourcePath, 'video');
+
+    await expect(
+      resolveTorrentSourcePath({
+        sourceRoot,
+        savePath: sourceRoot,
+        torrentName: 'Different Display Name',
+        filePath: 'Actual Content/S01E01.mkv',
+      }),
+    ).resolves.toBe(sourcePath);
+  });
+
+  it('uses qBittorrent content path without duplicating its root name', async () => {
+    const contentRoot = path.join(sourceRoot, 'Actual Content');
+    const sourcePath = path.join(contentRoot, 'S01E01.mkv');
+    await fs.promises.mkdir(contentRoot, { recursive: true });
+    await fs.promises.writeFile(sourcePath, 'video');
+
+    await expect(
+      resolveTorrentSourcePath({
+        sourceRoot,
+        savePath: sourceRoot,
+        contentPath: contentRoot,
+        torrentName: 'Different Display Name',
+        filePath: 'Actual Content/S01E01.mkv',
+      }),
+    ).resolves.toBe(sourcePath);
   });
 
   it('rejects traversal outside root', async () => {

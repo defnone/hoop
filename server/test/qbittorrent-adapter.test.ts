@@ -64,14 +64,26 @@ const status = {
 const addMagnet = vi.fn(async () => true);
 const getTorrent = vi.fn(async () => ({ ...status }));
 const torrentFiles = vi.fn(async () => [
-  { name: 'Show.S01E01.mkv' },
-  { name: 'Show.S01E02.mkv' },
+  { name: 'Show.S01E01.mkv', priority: TorrentFilePriority.NormalPriority },
+  { name: 'Show.S01E02.mkv', priority: TorrentFilePriority.Skip },
 ]);
 const setFilePriority = vi.fn(async () => true);
 const pauseTorrent = vi.fn(async () => true);
+const getAllData = vi.fn(async () => ({
+  torrents: [
+    {
+      ...status,
+      connectedSeeds: 8,
+      connectedPeers: 0,
+    },
+  ],
+  labels: [],
+  raw: {},
+}));
 
 const client = {
   addMagnet,
+  getAllData,
   getTorrent,
   torrentFiles,
   setFilePriority,
@@ -129,17 +141,89 @@ describe('QbittorrentAdapter', () => {
     await adapter.selectEpisodes(loadedStatus);
 
     expect(loadedStatus.raw.files).toHaveLength(2);
-    expect(setFilePriority).toHaveBeenCalledWith(
+    expect(setFilePriority).toHaveBeenNthCalledWith(
+      1,
+      torrentItem.torrentClientId,
+      ['1'],
+      TorrentFilePriority.NormalPriority,
+    );
+    expect(setFilePriority).toHaveBeenNthCalledWith(
+      2,
       torrentItem.torrentClientId,
       ['0'],
       TorrentFilePriority.Skip,
     );
   });
 
+  it('selects numbered episodes without parsing numbers from parent folders', async () => {
+    torrentFiles.mockResolvedValueOnce([
+      {
+        name: 'King of the Hill (1997-1998) - 02. Season/01. Episode one.mkv',
+        priority: TorrentFilePriority.Skip,
+      },
+      {
+        name: 'King of the Hill (1997-1998) - 02. Season/02. Episode two.mkv',
+        priority: TorrentFilePriority.Skip,
+      },
+      {
+        name: 'King of the Hill (1997-1998) - 02. Season/03. Episode three.mkv',
+        priority: TorrentFilePriority.Skip,
+      },
+    ]);
+    const adapter = createAdapter({
+      ...torrentItem,
+      trackedEpisodes: [2],
+    } as DbTorrentItem);
+
+    const loadedStatus = await adapter.status();
+    await adapter.selectEpisodes(loadedStatus);
+
+    expect(setFilePriority).toHaveBeenNthCalledWith(
+      1,
+      torrentItem.torrentClientId,
+      ['1'],
+      TorrentFilePriority.NormalPriority,
+    );
+    expect(setFilePriority).toHaveBeenNthCalledWith(
+      2,
+      torrentItem.torrentClientId,
+      ['0', '2'],
+      TorrentFilePriority.Skip,
+    );
+  });
+
+  it('preserves custom priority for tracked episodes', async () => {
+    torrentFiles.mockResolvedValueOnce([
+      {
+        name: 'Show.S01E02.mkv',
+        priority: TorrentFilePriority.HighPriority,
+      },
+    ]);
+    const adapter = createAdapter();
+
+    const loadedStatus = await adapter.status();
+    await adapter.selectEpisodes(loadedStatus);
+
+    expect(setFilePriority).not.toHaveBeenCalled();
+  });
+
   it('maps pause action', async () => {
     const adapter = createAdapter();
     await adapter.controlClientTorrent(torrentItem.torrentClientId!, 'pause');
     expect(pauseTorrent).toHaveBeenCalledWith(torrentItem.torrentClientId);
+  });
+
+  it('maps qBittorrent seeds as peers sending data to us', async () => {
+    const adapter = createAdapter();
+
+    const torrents = await adapter.getAllNormalized();
+
+    expect(torrents[0]).toEqual(
+      expect.objectContaining({
+        peersSendingToUs: 8,
+        peersGettingFromUs: 0,
+      }),
+    );
   });
 });
 

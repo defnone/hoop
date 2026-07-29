@@ -517,11 +517,14 @@ describe('TransmissionAdapter', () => {
     expect(client.setCalls).toHaveLength(1);
     expect(client.setCalls[0]).toEqual({
       id: 'abc123',
-      payload: { 'files-unwanted': [1] }, // index 1 => E02 unselected
+      payload: {
+        'files-wanted': [0, 2],
+        'files-unwanted': [1],
+      },
     });
   });
 
-  it('selectEpisodes(): does nothing when all files are tracked', async () => {
+  it('selectEpisodes(): restores files when all episodes are tracked', async () => {
     class TransmissionSelectNoopMock extends TransmissionMock {
       public setCalled = false;
       override async getTorrent(_id: string): Promise<Record<string, unknown>> {
@@ -552,7 +555,63 @@ describe('TransmissionAdapter', () => {
     });
 
     await adapter.selectEpisodes({ raw: { files: [{ name: 'S01E01' }] } });
-    expect(client.setCalled).toBe(false);
+    expect(client.setCalled).toBe(true);
+  });
+
+  it('selectEpisodes(): ignores numbers from parent folders', async () => {
+    class TransmissionNestedFilesMock extends TransmissionMock {
+      public setCalls: Array<{ id: string; payload: Record<string, unknown> }> =
+        [];
+
+      async setTorrent(id: string, payload: Record<string, unknown>) {
+        this.setCalls.push({ id, payload });
+        return Promise.resolve();
+      }
+    }
+
+    vi.resetModules();
+    const { TransmissionAdapter } = await import(
+      '@server/external/adapters/transmission'
+    );
+
+    const repo = new RepoMock();
+    repo.findTorrentItemById.mockResolvedValueOnce({
+      ...baseItem,
+      torrentClientId: 'abc123',
+      trackedEpisodes: [2],
+    });
+    const client = new TransmissionNestedFilesMock();
+    const adapter = new TransmissionAdapter({
+      id: 1,
+      client: client as unknown as Transmission,
+      repo: repo as unknown as never,
+    });
+
+    await adapter.selectEpisodes({
+      raw: {
+        files: [
+          {
+            name: 'King of the Hill (1997-1998) - 02. Season/01. Episode one.mkv',
+          },
+          {
+            name: 'King of the Hill (1997-1998) - 02. Season/02. Episode two.mkv',
+          },
+          {
+            name: 'King of the Hill (1997-1998) - 02. Season/03. Episode three.mkv',
+          },
+        ],
+      },
+    });
+
+    expect(client.setCalls).toEqual([
+      {
+        id: 'abc123',
+        payload: {
+          'files-wanted': [1],
+          'files-unwanted': [0, 2],
+        },
+      },
+    ]);
   });
 
   it('selectEpisodes(): throws when no torrent client id', async () => {
@@ -672,7 +731,10 @@ describe('TransmissionAdapter', () => {
     expect(client.setCalls).toHaveLength(1);
     expect(client.setCalls[0]).toEqual({
       id: 'abc123',
-      payload: { 'files-unwanted': [2] },
+      payload: {
+        'files-wanted': [0, 1],
+        'files-unwanted': [2],
+      },
     });
   });
 
@@ -728,7 +790,10 @@ describe('TransmissionAdapter', () => {
     expect(client.setCalls).toHaveLength(1);
     expect(client.setCalls[0]).toEqual({
       id: 'abc123',
-      payload: { 'files-unwanted': [2] },
+      payload: {
+        'files-wanted': [0, 1],
+        'files-unwanted': [2],
+      },
     });
   });
 });
