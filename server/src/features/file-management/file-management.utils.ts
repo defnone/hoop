@@ -8,6 +8,63 @@ interface SafeLinkOrCopyFileParams {
   targetPath: string;
 }
 
+interface ResolveTorrentSourcePathParams {
+  sourceRoot: string;
+  savePath: string;
+  contentPath?: string;
+  torrentName: string;
+  filePath: string;
+}
+
+export async function resolveTorrentSourcePath({
+  sourceRoot,
+  savePath,
+  contentPath,
+  torrentName,
+  filePath,
+}: ResolveTorrentSourcePathParams): Promise<string> {
+  const normalizedFilePath = normalizeTorrentPath(filePath);
+  const candidates: string[] = [];
+
+  if (contentPath) {
+    const normalizedContentPath = path.normalize(contentPath);
+    const contentName = path.basename(normalizedContentPath);
+    const relativeContentPath = removeLeadingPathPart(
+      normalizedFilePath,
+      contentName,
+    );
+    candidates.push(
+      path.basename(normalizedFilePath) === contentName
+        ? normalizedContentPath
+        : path.join(normalizedContentPath, relativeContentPath),
+    );
+  }
+
+  const effectiveSavePath = savePath || sourceRoot;
+  candidates.push(path.join(effectiveSavePath, normalizedFilePath));
+
+  if (effectiveSavePath !== sourceRoot) {
+    candidates.push(path.join(sourceRoot, normalizedFilePath));
+  }
+
+  if (torrentName) {
+    candidates.push(
+      path.join(
+        sourceRoot,
+        torrentName,
+        removeLeadingPathPart(normalizedFilePath, torrentName),
+      ),
+    );
+  }
+
+  const uniqueCandidates = [...new Set(candidates)];
+  for (const candidate of uniqueCandidates) {
+    if (await pathExists(candidate)) return candidate;
+  }
+
+  return uniqueCandidates[0] ?? path.join(sourceRoot, normalizedFilePath);
+}
+
 export async function assertPathInsideRoot(
   rootPath: string,
   candidatePath: string,
@@ -132,6 +189,25 @@ async function getFileStats(
     return await fs.promises.stat(filePath);
   } catch (error) {
     if (isFileNotFoundError(error)) return null;
+    throw error;
+  }
+}
+
+function normalizeTorrentPath(filePath: string): string {
+  return filePath.replace(/[\\/]+/g, path.sep);
+}
+
+function removeLeadingPathPart(filePath: string, pathPart: string): string {
+  const parts = filePath.split(path.sep);
+  return parts[0] === pathPart ? parts.slice(1).join(path.sep) : filePath;
+}
+
+async function pathExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.promises.lstat(filePath);
+    return true;
+  } catch (error) {
+    if (isFileNotFoundError(error)) return false;
     throw error;
   }
 }

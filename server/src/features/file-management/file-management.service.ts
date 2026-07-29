@@ -1,9 +1,16 @@
 import type { DbTorrentItem, DbUserSettings } from '@server/db/app/app-schema';
 import { createTorrentClient } from '@server/external/adapters/torrent-client';
+import {
+  getEpisodeNumbersFromFilePath,
+  getFileNameFromPath,
+} from '@server/external/adapters/torrent-client/episode-file.utils';
 import logger from '@server/lib/logger';
 import fs from 'fs';
 import path from 'path';
-import { safeLinkOrCopyFile } from '@server/features/file-management/file-management.utils';
+import {
+  resolveTorrentSourcePath,
+  safeLinkOrCopyFile,
+} from '@server/features/file-management/file-management.utils';
 
 export type EpisodeCopyFailure = {
   episodeNumber: number;
@@ -15,6 +22,9 @@ export type CopyTrackedEpisodesResult = {
   failures: EpisodeCopyFailure[];
 };
 
+const MAX_ERROR_FILE_COUNT = 50;
+const MAX_ERROR_FILE_LIST_LENGTH = 2_000;
+
 export class FileManagementService {
   async copyTrackedEpisodes(
     torrentItem: DbTorrentItem,
@@ -23,11 +33,24 @@ export class FileManagementService {
     const trackedNumbers: number[] = Array.isArray(torrentItem.trackedEpisodes)
       ? (torrentItem.trackedEpisodes as number[])
       : [];
+    const availableNumbers: number[] = Array.isArray(torrentItem.haveEpisodes)
+      ? (torrentItem.haveEpisodes as number[])
+      : [];
+    const copyableNumbers =
+      availableNumbers.length > 0
+        ? trackedNumbers.filter((episodeNumber) =>
+            availableNumbers.includes(episodeNumber),
+          )
+        : trackedNumbers;
+    if (copyableNumbers.length === 0) {
+      return { files: {}, failures: [] };
+    }
+
     if (!settings.downloadDir || !settings.mediaDir) {
       logger.error('No download or media directory found');
       return {
         files: {},
-        failures: trackedNumbers.map((episodeNumber) => ({
+        failures: copyableNumbers.map((episodeNumber) => ({
           episodeNumber,
           message: 'Download or media directory is not configured',
         })),
@@ -38,7 +61,13 @@ export class FileManagementService {
     const failures: EpisodeCopyFailure[] = [];
 
     let torrentName = '';
+    let torrentSavePath = '';
+    let torrentContentPath: string | undefined;
     type RawFile = { name: string };
+    type RawStatus = {
+      files?: RawFile[];
+      content_path?: string;
+    };
     let filesFromClient: RawFile[] = [];
 
     // Resolve torrent metadata from configured client
@@ -49,14 +78,16 @@ export class FileManagementService {
       });
       const status = await client.status();
       torrentName = status.name ?? '';
-      const files = status.raw.files as RawFile[] | undefined;
-      filesFromClient = files ?? [];
+      torrentSavePath = status.savePath ?? '';
+      const rawStatus = status.raw as RawStatus;
+      torrentContentPath = rawStatus.content_path;
+      filesFromClient = rawStatus.files ?? [];
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       logger.error(`Cannot get torrent status from client: ${msg}`);
       return {
         files: result,
-        failures: trackedNumbers.map((episodeNumber) => ({
+        failures: copyableNumbers.map((episodeNumber) => ({
           episodeNumber,
           message: `Cannot get torrent status from client: ${msg}`,
         })),
@@ -67,21 +98,55 @@ export class FileManagementService {
       torrentItem.title,
     );
 
-    const episodeFiles = filesFromClient
-      .map((f) => ({
-        relPath: f.name,
-        base: path.basename(f.name),
-        episode: FileManagementService.getEpisodeFromName(
-          path.basename(f.name),
-        ),
-      }))
-      .filter((x) => x.episode !== null) as Array<{
+    const episodeFiles: Array<{
       relPath: string;
       base: string;
       episode: number;
-    }>;
+    }> = [];
+    try {
+      let firstUnrecognizedVideo: string | null = null;
+      for (const file of filesFromClient) {
+        const base = getFileNameFromPath(file.name);
+        if (FileManagementService.detectKind(base) !== 'video') continue;
+        const episodes = getEpisodeNumbersFromFilePath(file.name);
+        if (episodes.length === 0) {
+          firstUnrecognizedVideo ??= base;
+          continue;
+        }
+        for (const episode of episodes) {
+          episodeFiles.push({
+            relPath: file.name,
+            base,
+            episode,
+          });
+        }
+      }
+      const hasCopyableMatch = episodeFiles.some((file) =>
+        copyableNumbers.includes(file.episode),
+      );
+      if (!hasCopyableMatch && firstUnrecognizedVideo) {
+        throw new Error(
+          'Cannot detect episode number from filename: ' +
+            firstUnrecognizedVideo,
+        );
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      const torrentFiles = FileManagementService.formatErrorFileList(
+        filesFromClient.map((file) => file.name),
+      );
+      const detailedMessage = `${message}. Torrent files: ${torrentFiles || 'none'}`;
+      logger.error(detailedMessage);
+      return {
+        files: result,
+        failures: copyableNumbers.map((episodeNumber) => ({
+          episodeNumber,
+          message: detailedMessage,
+        })),
+      };
+    }
 
-    for (const episodeNumber of trackedNumbers) {
+    for (const episodeNumber of copyableNumbers) {
       const matches = episodeFiles.filter((x) => x.episode === episodeNumber);
       if (matches.length === 0) {
         logger.info(`No file found for episode ${episodeNumber}`);
@@ -110,26 +175,13 @@ export class FileManagementService {
 
       try {
         for (const m of videos) {
-          let relPath = m.relPath;
-          if (relPath && torrentName) {
-            const withSlash = `${torrentName}${path.sep}`;
-            const withFwd = `${torrentName}/`;
-            const withBack = `${torrentName}\\`;
-            if (relPath.startsWith(withSlash))
-              relPath = relPath.slice(withSlash.length);
-            else if (relPath.startsWith(withFwd))
-              relPath = relPath.slice(withFwd.length);
-            else if (relPath.startsWith(withBack))
-              relPath = relPath.slice(withBack.length);
-          }
-
-          if (!torrentName || !relPath) continue;
-
-          const sourcePath = path.join(
-            settings.downloadDir,
+          const sourcePath = await resolveTorrentSourcePath({
+            sourceRoot: settings.downloadDir,
+            savePath: torrentSavePath,
+            contentPath: torrentContentPath,
             torrentName,
-            relPath,
-          );
+            filePath: m.relPath,
+          });
 
           const destinationPath = FileManagementService.buildDestinationPath(
             settings.mediaDir,
@@ -208,13 +260,26 @@ export class FileManagementService {
     );
   }
 
-  private static getEpisodeFromName(name: string): number | null {
-    const e =
-      name.match(/[Ss](\d+)[.\-_–—x ]*[Ee][Pp]?(\d+)/i)?.[2] ||
-      name.match(/(\d+)[.\-_–—x ]+(\d+)/i)?.[2] ||
-      name.match(/[Ee][Pp]?(\d+)/i)?.[1];
-    if (e) return Number(e);
-    throw new Error('Cannot detect episode number from filename: ' + name);
+  private static formatErrorFileList(fileNames: string[]): string {
+    const visibleFiles: string[] = [];
+    let currentLength = 0;
+
+    for (const fileName of fileNames.slice(0, MAX_ERROR_FILE_COUNT)) {
+      const separatorLength = visibleFiles.length > 0 ? 2 : 0;
+      if (
+        currentLength + separatorLength + fileName.length >
+        MAX_ERROR_FILE_LIST_LENGTH
+      ) {
+        break;
+      }
+      visibleFiles.push(fileName);
+      currentLength += separatorLength + fileName.length;
+    }
+
+    const omittedCount = fileNames.length - visibleFiles.length;
+    const suffix =
+      omittedCount > 0 ? `, ... ${omittedCount} more file(s) omitted` : '';
+    return visibleFiles.join(', ') + suffix;
   }
 
   private static detectKind(base: string): 'video' | 'other' {
