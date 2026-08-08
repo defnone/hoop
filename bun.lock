@@ -5,7 +5,7 @@
     "": {
       "name": "hoop",
       "dependencies": {
-        "hono": "4.12.27",
+        "hono": "4.13.1",
       },
       "devDependencies": {
         "baseline-browser-mapping": "^2.10.38",
@@ -79,7 +79,7 @@
         "better-auth": "~1.6.21",
         "drizzle-orm": "~0.45.2",
         "drizzle-zod": "~0.8.3",
-        "hono": "4.12.27",
+        "hono": "4.13.1",
         "iconv-lite": "~0.7.2",
         "jschardet": "~3.1.4",
         "node-html-parser": "~8.0.3",
@@ -117,7 +117,7 @@
       "version": "0.7.2",
       "dependencies": {
         "@hono-rate-limiter/cloudflare": "^0.2.2",
-        "hono": "4.12.27",
+        "hono": "4.13.1",
         "hono-rate-limiter": "^0.5.3",
       },
       "devDependencies": {
@@ -918,7 +918,7 @@
 
     "hermes-parser": ["hermes-parser@0.25.1", "", { "dependencies": { "hermes-estree": "0.25.1" } }, "sha512-6pEjquH3rqaI6cYAXYPcz9MS4rY6R4ngRgrgfDshRptUZIc3lw0MCIJIGDj9++mfySOuPTHB4nrSW99BCvOPIA=="],
 
-    "hono": ["hono@4.12.27", "", {}, "sha512-1yrb/+w6HWQJrUCLkJ2IF5jNIPvvFkblV5RNOYl6bV+OA6p9GLcMpHFFGTosSvHvcAUibuUukRqhlYI4z32C7Q=="],
+    "hono": ["hono@4.13.1", "", {}, "sha512-kdJoFVv2xmayw6cY09H7AbMJMt8Jn5jdlEdXsP7AGBdF2DIptVlKlOLKXP41yPip4/a3yQPv9gVcJYI8YY04dw=="],
 
     "hono-rate-limiter": ["hono-rate-limiter@0.5.3", "", { "peerDependencies": { "hono": "^4.10.8", "unstorage": "^1.17.3" }, "optionalPeers": ["unstorage"] }, "sha512-M0DxbVMpPELEzLi0AJg1XyBHLGJXz7GySjsPoK+gc5YeeBsdGDGe+2RvVuCAv8ydINiwlbxqYMNxUEyYfRji/A=="],
 
