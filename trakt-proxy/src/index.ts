@@ -1,27 +1,57 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
+import type { MiddlewareHandler } from 'hono';
 import { cache } from 'hono/cache';
-import { getTraktData } from './getTraktData';
 import { cors } from 'hono/cors';
 import { cloudflareRateLimiter } from '@hono-rate-limiter/cloudflare';
+import { getTmdbData } from './getTmdbData';
+import type { TmdbEnvironment, TmdbPeriod } from './types/tmdb';
 
-interface Bindings {
-  RATE_LIMITER: RateLimit;
-  CLIENT_ID: string;
-}
+const app = new Hono<TmdbEnvironment>();
 
-interface Variables {
-  rateLimit: boolean;
-}
+app.use(
+  '*',
+  cloudflareRateLimiter<TmdbEnvironment, '*', {}>({
+    rateLimitBinding: (c) => c.env.RATE_LIMITER,
+    keyGenerator: (c) => resolveRateLimitKey(c),
+  }),
+);
 
-type AppType = {
-  Bindings: Bindings;
-  Variables: Variables;
-};
+app.use(
+  cors({
+    origin: '*',
+    allowMethods: ['GET', 'OPTIONS'],
+    allowHeaders: ['*'],
+    maxAge: 86400,
+  }) as MiddlewareHandler<TmdbEnvironment, string>,
+);
 
-const app = new Hono<AppType>();
+app.use(
+  cache({
+    cacheName: 'tmdb-proxy-cache-v2',
+    cacheControl: 'max-age=3600',
+  }) as MiddlewareHandler<TmdbEnvironment, string>,
+);
 
-const resolveRateLimitKey = (c: Context<AppType, '*', {}>): string => {
+app.get('/api/tmdb/:period', async (c) => {
+  const period = c.req.param('period');
+
+  if (!isTmdbPeriod(period)) {
+    return c.json({ error: 'Invalid period, supports daily or weekly' }, 400);
+  }
+
+  if (!c.env.TMDB_API_TOKEN) {
+    return c.json({ error: 'TMDB API token is not configured' }, 503);
+  }
+
+  const data = await getTmdbData(c, period);
+
+  return c.json(data);
+});
+
+export default app;
+
+function resolveRateLimitKey(c: Context<TmdbEnvironment>): string {
   const cfIp = c.req.header('cf-connecting-ip');
   if (cfIp) return cfIp;
 
@@ -39,48 +69,8 @@ const resolveRateLimitKey = (c: Context<AppType, '*', {}>): string => {
   const ua = c.req.header('user-agent') ?? 'unknown-ua';
   const al = c.req.header('accept-language') ?? 'unknown-lang';
   return `anon:${ua}:${al}`;
-};
+}
 
-// Initialize rate limiter middleware
-app.use(
-  '*',
-  cloudflareRateLimiter<AppType, '*', {}>({
-    rateLimitBinding: (c) => c.env.RATE_LIMITER,
-    keyGenerator: (c) => resolveRateLimitKey(c),
-  }),
-);
-
-// Initialize CORS middleware
-app.use(
-  '*',
-  cors({
-    origin: '*',
-    allowMethods: ['GET', 'OPTIONS'],
-    allowHeaders: ['*'],
-    maxAge: 86400,
-  }),
-);
-
-// Initialize cache middleware
-app.use(
-  '*',
-  cache({
-    cacheName: 'trakt-proxy-cache',
-    cacheControl: 'max-age=3600',
-  }),
-);
-
-app.get('/api/trakt/:period', async (c) => {
-  const period = c.req.param('period') as 'weekly' | 'daily';
-  const validPeriods = ['weekly', 'daily'];
-
-  if (!validPeriods.includes(period)) {
-    return c.json({ error: 'Invalid period, supports weekly or daily' }, 400);
-  }
-
-  const data = await getTraktData(c, period);
-
-  return c.json(data);
-});
-
-export default app;
+function isTmdbPeriod(value: string): value is TmdbPeriod {
+  return value === 'daily' || value === 'weekly';
+}

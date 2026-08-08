@@ -1,9 +1,11 @@
 {
-  "name": "trakt-proxy",
+  "name": "tmdb-proxy",
   "version": "0.7.2",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy --minify"
+    "dev": "wrangler dev --config wrangler.tmdb.jsonc",
+    "deploy": "wrangler deploy --minify --config wrangler.tmdb.jsonc",
+    "test": "bunx vitest --coverage",
+    "typecheck": "bunx tsc --noEmit --strict -p tsconfig.json"
   },
   "dependencies": {
     "@hono-rate-limiter/cloudflare": "^0.2.2",
