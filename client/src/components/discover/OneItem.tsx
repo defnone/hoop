@@ -1,22 +1,22 @@
-import { TraktWatchedShow } from '@/types/trakt';
+import { TmdbDiscoverItem } from '@/types/tmdb';
 import { cn } from '@/lib/utils';
-import { Heart, Search, Users } from 'lucide-react';
+import { Heart, ImageOff, Search, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../ui/button';
-import { SiTrakt } from 'react-icons/si';
+import { SiThemoviedatabase } from 'react-icons/si';
 import { FaImdb, FaYoutube } from 'react-icons/fa';
 import { useNavigate } from 'react-router';
 
-function TopButtons({ item }: { item: TraktWatchedShow }) {
+function TopButtons({ item }: { item: TmdbDiscoverItem }) {
   return (
     <div className='mb-auto z-10 flex w-full justify-between p-5'>
       <div className='flex w-fit items-center gap-2 bg-zinc-700/60 backdrop-blur-sm rounded-full px-4 py-1 font-bold'>
-        <Users size={16} />
-        {item.watcher_count}
+        <TrendingUp size={16} aria-label='Popularity' />
+        <span>{item.popularity.toFixed(1)}</span>
       </div>
       <div className='flex w-fit items-center gap-2 bg-zinc-700/60 backdrop-blur-sm rounded-full px-4 py-1 font-bold'>
         <Heart strokeWidth={3} color='#ff1a1a' size={16} />
-        {parseFloat(item.show.rating.toFixed(1))}
+        {item.rating.toFixed(1)}
       </div>
     </div>
   );
@@ -28,7 +28,7 @@ function BottomButtons({
   isBig,
   isJackettPrepared,
 }: {
-  item: TraktWatchedShow;
+  item: TmdbDiscoverItem;
   isHovering: boolean;
   isBig: boolean;
   isJackettPrepared: boolean;
@@ -45,23 +45,23 @@ function BottomButtons({
           <div className='flex flex-row items-center gap-3 mr-auto '>
             {isJackettPrepared && (
               <Button
-                onClick={() => na(`/search?query=${item.show.title}`)}
+                onClick={() => na(`/search?query=${item.title}`)}
                 variant='ghost'
                 size='default'
-                aria-label={`Search torrents for ${item.show.title}`}
+                aria-label={`Search torrents for ${item.title}`}
                 className='w-fit border-0 bg-zinc-700/60 backdrop-blur-sm hover:bg-background/70 transition-all duration-300 flex h-9'
               >
                 <Search size={20} strokeWidth={3} />
               </Button>
             )}
 
-            {item.show.trailer && (
+            {item.trailerUrl && (
               <div className='flex items-center justify-center h-10 gap-2 mr-auto'>
                 <a
-                  href={item.show.trailer}
+                  href={item.trailerUrl}
                   target='_blank'
                   rel='noreferrer'
-                  aria-label={`Watch ${item.show.title} trailer`}
+                  aria-label={`Watch ${item.title} trailer`}
                 >
                   <FaYoutube
                     size={50}
@@ -73,22 +73,24 @@ function BottomButtons({
             )}
           </div>
 
-          <a
-            href={`https://trakt.tv/shows/${item.show.ids.trakt}`}
-            target='_blank'
-            rel='noreferrer'
-            aria-label={`Open ${item.show.title} on Trakt`}
-          >
-            <div className='flex items-center justify-center gap-2'>
-              <SiTrakt size={35} color='#ff1a1a' />
-            </div>
-          </a>
-          {item.show.ids.imdb && (
+          {item.detailsUrl && (
             <a
-              href={`https://www.imdb.com/title/${item.show.ids.imdb}`}
+              href={item.detailsUrl}
               target='_blank'
               rel='noreferrer'
-              aria-label={`Open ${item.show.title} on IMDb`}
+              aria-label={`Open ${item.title} on TMDB`}
+            >
+              <div className='flex items-center justify-center gap-2'>
+                <SiThemoviedatabase size={35} color='#01b4e4' />
+              </div>
+            </a>
+          )}
+          {item.imdbId && (
+            <a
+              href={`https://www.imdb.com/title/${item.imdbId}`}
+              target='_blank'
+              rel='noreferrer'
+              aria-label={`Open ${item.title} on IMDb`}
             >
               <div className='flex items-center justify-center gap-2'>
                 <FaImdb size={35} color='#eaff2e' />
@@ -103,7 +105,7 @@ function BottomButtons({
           isBig ? 'text-3xl' : 'text-2xl',
         )}
       >
-        {item.show.title}
+        {item.title}
       </h1>
       <div
         className={cn(
@@ -122,7 +124,7 @@ export default function OneItem({
   isBig,
   isJackettPrepared,
 }: {
-  item: TraktWatchedShow;
+  item: TmdbDiscoverItem;
   isBig: boolean;
   isJackettPrepared: boolean;
 }) {
@@ -135,7 +137,9 @@ export default function OneItem({
       className={cn(
         'flex flex-col gap-2 relative rounded-md overflow-hidden ',
         isBig ? 'row-span-2 h-[400px]' : 'h-[300px]',
-        isLoading && 'animate-pulse bg-zinc-900 duration-1000',
+        isLoading &&
+          item.backdropUrl &&
+          'animate-pulse bg-zinc-900 duration-1000',
         isJackettPrepared && 'cursor-pointer',
       )}
       onMouseEnter={() => setIsHovering(true)}
@@ -144,26 +148,33 @@ export default function OneItem({
       <button
         type='button'
         disabled={!isJackettPrepared}
-        aria-label={`Search ${item.show.title}`}
+        aria-label={`Search ${item.title}`}
         className={cn(
           'absolute top-0 left-0 w-full h-full z-0 overflow-hidden transition-all duration-500 disabled:cursor-default',
           isHovering
             ? 'scale-110'
             : 'scale-100 border border-zinc-900 rounded-lg',
         )}
-        onClick={() => na(`/search?query=${item.show.title}`)}
+        onClick={() => na(`/search?query=${item.title}`)}
       >
-        <img
-          src={'https://' + item.show.images.fanart[0]}
-          alt={item.show.title}
-          onLoad={() => setIsLoading(false)}
-          className='h-full w-full object-cover'
-          sizes={
-            isBig
-              ? '(max-width: 768px) 100vw, (max-width: 1200px) 100vw'
-              : '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
-          }
-        />
+        {item.backdropUrl ? (
+          <img
+            src={item.backdropUrl}
+            alt={item.title}
+            onLoad={() => setIsLoading(false)}
+            className='h-full w-full object-cover'
+            sizes={
+              isBig
+                ? '(max-width: 768px) 100vw, (max-width: 1200px) 100vw'
+                : '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
+            }
+          />
+        ) : (
+          <div className='flex h-full w-full flex-col items-center justify-center gap-2 bg-zinc-900 text-muted-foreground'>
+            <ImageOff size={40} aria-hidden='true' />
+            <span>No backdrop available</span>
+          </div>
+        )}
       </button>
 
       <TopButtons item={item} />
