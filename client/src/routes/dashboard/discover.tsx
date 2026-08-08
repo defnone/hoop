@@ -1,32 +1,41 @@
 import { useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import OneItem from '@/components/discover/OneItem';
-import { TraktWatchedShow } from '@/types/trakt';
+import { TmdbDiscoverItem } from '@/types/tmdb';
 import { cn } from '@/lib/utils';
 import customSonner from '@/components/CustomSonner';
 import { useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import useSettings from '@/hooks/useSettings';
 import { ButtonGroup } from '@/components/ui/button-group';
+import { SiThemoviedatabase } from 'react-icons/si';
+import DiscoverSkeleton, {
+  DISCOVER_GRID_CLASS_NAME,
+} from '@/components/discover/DiscoverSkeleton';
 
 export default function Discover() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const weeklyData = 'https://hoop-api.defnone.workers.dev/api/trakt/weekly';
-  const dailyData = 'https://hoop-api.defnone.workers.dev/api/trakt/daily';
+  const weeklyData =
+    'https://hoop-tmdb-api.defnone.workers.dev/api/tmdb/weekly';
+  const dailyData = 'https://hoop-tmdb-api.defnone.workers.dev/api/tmdb/daily';
   const { settingsData } = useSettings();
   const period = searchParams.get('period') === 'daily' ? 'daily' : 'weekly';
 
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['trakt', period],
+  const { data, isPending, isError, error, refetch } = useQuery({
+    queryKey: ['tmdb', period],
     staleTime: 60 * 60 * 1000,
-    retry: 10,
+    retry: 2,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    queryFn: async () => {
-      const data = await fetch(period === 'weekly' ? weeklyData : dailyData);
-      const json = await data.json();
-      return json as TraktWatchedShow[];
+    queryFn: async (): Promise<TmdbDiscoverItem[]> => {
+      const response = await fetch(
+        period === 'weekly' ? weeklyData : dailyData,
+      );
+      if (!response.ok) {
+        throw new Error(`TMDB request failed with status ${response.status}`);
+      }
+      const json = await response.json();
+      return json as TmdbDiscoverItem[];
     },
   });
 
@@ -34,7 +43,7 @@ export default function Discover() {
     if (isError) {
       customSonner({
         variant: 'error',
-        text: 'Failed to fetch data from Trakt: ' + error,
+        text: 'Failed to fetch data from TMDB: ' + error.message,
       });
     }
   }, [isError, error]);
@@ -52,7 +61,7 @@ export default function Discover() {
         <div className='flex flex-col gap-2 pb-5'>
           <h1 className='text-2xl font-black'>Discover</h1>
           <p className='text-base text-muted-foreground'>
-            Discover new shows on Trakt that other users have most watched.
+            Discover trending TV shows from TMDB.
           </p>
         </div>
 
@@ -83,16 +92,25 @@ export default function Discover() {
           </ButtonGroup>
         </div>
 
-        {isLoading && (
-          <div className='flex justify-center items-center w-full h-[50vh]'>
-            <Loader2 className='w-10 h-10 animate-spin ' />
+        {isPending && !data ? (
+          <DiscoverSkeleton />
+        ) : isError && !data ? (
+          <div
+            role='alert'
+            className='flex min-h-[300px] w-full flex-col items-center justify-center gap-4 rounded-md bg-muted/30 text-center'
+          >
+            <p className='text-muted-foreground'>
+              Unable to load TMDB recommendations.
+            </p>
+            <Button variant='outline' onClick={() => void refetch()}>
+              Retry
+            </Button>
           </div>
-        )}
-        <div className='w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 rounded-md pb-10'>
-          {!isLoading &&
-            data?.map((item, index) => (
+        ) : (
+          <div className={DISCOVER_GRID_CLASS_NAME}>
+            {data?.map((item, index) => (
               <div
-                key={item.show.ids.trakt}
+                key={item.id}
                 className={`${
                   index === 0 || index === 1
                     ? 'md:col-span-2 lg:col-span-2'
@@ -108,7 +126,23 @@ export default function Discover() {
                 />
               </div>
             ))}
-        </div>
+          </div>
+        )}
+        <p className='flex items-center gap-2 text-sm text-muted-foreground pb-10'>
+          <SiThemoviedatabase size={28} color='#01b4e4' aria-label='TMDB' />
+          <span>
+            This product uses the TMDB API but is not endorsed or certified by
+            TMDB.{' '}
+            <a
+              href='https://www.themoviedb.org'
+              target='_blank'
+              rel='noreferrer'
+              className='underline underline-offset-2 hover:text-foreground'
+            >
+              Visit TMDB
+            </a>
+          </span>
+        </p>
       </div>
     </>
   );
