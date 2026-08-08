@@ -3,7 +3,7 @@ import {
   TorrentFilePriority,
   type TorrentFile,
 } from '@ctrl/qbittorrent';
-import type { NormalizedTorrent } from '@ctrl/shared-torrent';
+import { TorrentState, type NormalizedTorrent } from '@ctrl/shared-torrent';
 import type { DbTorrentItem, DbUserSettings } from '@server/db/app/app-schema';
 import { SettingsService } from '@server/features/settings/settings.service';
 import { TorrentClientRepo } from '@server/external/adapters/torrent-client/torrent-client.repo';
@@ -79,6 +79,7 @@ export class QbittorrentAdapter implements TorrentClientPort {
     const status = await client.getTorrent(torrentItem.torrentClientId);
     const files = await client.torrentFiles(torrentItem.torrentClientId);
     status.raw = { ...status.raw, files };
+    status.isCompleted = isQbittorrentCompleted(status);
     return status;
   }
 
@@ -125,7 +126,10 @@ export class QbittorrentAdapter implements TorrentClientPort {
     const { client } = await this.loadContext();
     const data = await client.getAllData();
     return data.torrents.map((torrent) => {
-      const item = toTorrentClientItemDto(torrent);
+      const item = toTorrentClientItemDto({
+        ...torrent,
+        isCompleted: isQbittorrentCompleted(torrent),
+      });
       return {
         ...item,
         peersSendingToUs: torrent.connectedSeeds,
@@ -199,4 +203,8 @@ export class QbittorrentAdapter implements TorrentClientPort {
       downloadDir: settings.downloadDir,
     };
   }
+}
+
+function isQbittorrentCompleted(status: NormalizedTorrent): boolean {
+  return status.isCompleted && status.state === TorrentState.seeding;
 }
