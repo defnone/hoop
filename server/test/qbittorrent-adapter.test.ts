@@ -36,7 +36,7 @@ const torrentItem = {
   trackedEpisodes: [2],
 } as DbTorrentItem;
 
-const status = {
+const status: NormalizedTorrent = {
   id: torrentItem.torrentClientId!,
   name: 'Show',
   progress: 50,
@@ -59,7 +59,7 @@ const status = {
   totalUploaded: 0,
   totalDownloaded: 0,
   raw: {},
-} satisfies NormalizedTorrent;
+};
 
 const addMagnet = vi.fn(async () => true);
 const getTorrent = vi.fn(async () => ({ ...status }));
@@ -224,6 +224,41 @@ describe('QbittorrentAdapter', () => {
         peersGettingFromUs: 0,
       }),
     );
+  });
+
+  it.each([
+    ['moving', TorrentState.checking],
+    ['checkingUP', TorrentState.queued],
+    ['checkingResumeData', TorrentState.checking],
+  ])(
+    'does not report a torrent as completed while qBittorrent is %s',
+    async (rawState, normalizedState) => {
+      getTorrent.mockResolvedValueOnce({
+        ...status,
+        progress: 1,
+        isCompleted: true,
+        state: normalizedState,
+        raw: { state: rawState },
+      } as NormalizedTorrent);
+
+      const loadedStatus = await createAdapter().status();
+
+      expect(loadedStatus.isCompleted).toBe(false);
+    },
+  );
+
+  it('reports a completed torrent after qBittorrent enters seeding', async () => {
+    getTorrent.mockResolvedValueOnce({
+      ...status,
+      progress: 1,
+      isCompleted: true,
+      state: TorrentState.seeding,
+      raw: { state: 'uploading' },
+    } as NormalizedTorrent);
+
+    const loadedStatus = await createAdapter().status();
+
+    expect(loadedStatus.isCompleted).toBe(true);
   });
 });
 
