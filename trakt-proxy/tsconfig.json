@@ -5,8 +5,17 @@
     "moduleResolution": "Bundler",
     "strict": true,
     "skipLibCheck": true,
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "hono": ["../node_modules/hono"],
+      "hono/cache": [
+        "../node_modules/hono/dist/types/middleware/cache/index.d.ts"
+      ],
+      "hono/cors": [
+        "../node_modules/hono/dist/types/middleware/cors/index.d.ts"
+      ],
+      "hono/*": ["../node_modules/hono/*"]
     },
     "lib": ["ESNext"],
     "types": ["@cloudflare/workers-types/2023-07-01"],

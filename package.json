@@ -14,7 +14,7 @@
     "dev:client": "cd client && bun run dev",
     "dev:server": "cd server && bun run dev",
     "dev:shared": "cd shared && bun run dev",
-    "dev:trakt": "cd trakt-proxy && bun run dev",
+    "dev:tmdb": "cd trakt-proxy && bun run dev",
     "dev": "overmind start",
     "build:client": "cd client && bun run build",
     "build:shared": "cd shared && bun run build",
@@ -24,11 +24,12 @@
     "build:single": "bun run build && bun build ./server/src/index.ts --target=bun --production --minify --outfile=./build/server.js && bun run copy:static",
     "start:single": "cd build && NODE_ENV=production bun server.js",
     "postinstall": "bun run build:shared && bun run build:server",
-    "lint": "sh -c 'cd client && bun run lint && cd ../server && bun run lint && cd ../shared && bun run lint'",
+    "lint": "sh -c 'cd client && bun run lint && cd ../server && bun run lint && cd ../shared && bun run lint && cd ../trakt-proxy && bun run typecheck'",
     "test:server": "cd server && bunx vitest --coverage",
     "test:client": "cd client && bunx vitest --coverage",
     "test:shared": "cd shared && bunx vitest --coverage",
-    "test": "bun run test:server && bun run test:client && bun run test:shared"
+    "test:tmdb": "cd trakt-proxy && bunx vitest --coverage",
+    "test": "bun run test:server && bun run test:client && bun run test:shared && bun run test:tmdb"
   },
   "keywords": [
     "bun",
