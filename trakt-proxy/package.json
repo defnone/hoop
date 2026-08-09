@@ -1,6 +1,6 @@
 {
   "name": "tmdb-proxy",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "scripts": {
     "dev": "wrangler dev --config wrangler.tmdb.jsonc",
     "deploy": "wrangler deploy --minify --config wrangler.tmdb.jsonc",

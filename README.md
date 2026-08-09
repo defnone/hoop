@@ -13,13 +13,13 @@ Sonarr - отличный медиа-менеджер, но не для отсл
 
 - 📺 Отслеживание (только одиночных) сезонов и конкретных серий
 - 🔍 Поиск через Jackett API
-- 🎯 Автоматическая загрузка через Transmission
+- 🎯 Automatic downloads through Transmission or qBittorrent
 - 🔔 Уведомления о загрузках в телеграм
 
 ## Требования
 
 - Jackett с настроенным rutracker / nnm-club / kinozal (опционально)
-- Transmission для загрузки торрентов
+- Transmission or qBittorrent for torrent downloads
 - Telegram бот для уведомлений
 
 ## Настройка
@@ -29,6 +29,12 @@ Sonarr - отличный медиа-менеджер, но не для отсл
 3. Запустите `docker compose up -d`.
 
 Обновление через `docker compose down && docker compose up -d --pull always` загрузит новый образ и перезапустит контейнер.
+
+### Torrent client
+
+Select Transmission or qBittorrent in Settings → Download Settings. qBittorrent requires a connection URL, username, and password; use Test Connection before saving. The default URL examples are `http://localhost:9091/transmission/rpc` for Transmission and `http://localhost:8080` for qBittorrent.
+
+The Download Directory path must be identical inside the HOOP container and the selected torrent client. Existing Transmission deployments can keep using `TRANSMISSION_BASE_URL`, `TRANSMISSION_USERNAME`, and `TRANSMISSION_PASSWORD` when no connection values are saved in HOOP. Do not switch client type while torrents remain attached to another client.
 
 ### Discover и TMDB
 

@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.8.0 - 2026-08-09
+
+### Added
+
+- Client: add qBittorrent as a selectable torrent client alongside Transmission, with saved connection settings, connection testing, transfer search/filtering, torrent controls, and optional data deletion on removal (97f8ed8).
+- Client: add per-torrent Telegram notification controls for title changes, magnet changes, and completed downloads (d9cde59).
+- Client: add opt-in daily removal of empty nested Series Directory folders, a write/delete permission test, and Event Journal reporting (a2ddb97).
+- File management: persist failed episode copies, retry them with backoff while retaining the torrent, and send Telegram recovery notifications after a successful retry (86148f7).
+- Discover: replace Trakt with TMDB daily/weekly trending TV data, popularity-sorted top 10 cards, ratings, backdrops, TMDB/IMDb links, official trailers, loading/error/retry states, and TMDB attribution (695f046, 5ceaa5c).
+
+### Changed
+
+- Auth: apply email changes without email verification (3ff748c).
+- Torrent transfers: remove per-torrent “Average since added” details from transfer rows (1d47b6e).
+
+### Fixed
+
+- File management: do not treat tracked episodes absent from the current release as copy failures; continue copying available episodes (e1c45c0).
+- Torrent selection and file management: handle nested paths and multi-episode releases correctly, copying only tracked episodes and avoiding unrelated files for existing torrent clients (e1c45c0).
+- Jackett: verify the Torznab API endpoint with a lightweight HEAD request (c8bb0e0).
+
+### Notes
+
+- Startup migrations 0006–0009 add notification preferences, torrent-client settings, persistent copy-failure retries, and Series Directory cleanup state; existing Transmission IDs migrate to generic torrent-client IDs.
+- Discover API changed from `/api/trakt/{daily|weekly}` to `/api/tmdb/{daily|weekly}`. Deploy the TMDB Cloudflare Worker with the `TMDB_API_TOKEN` secret and its `RATE_LIMITER` binding; use `bun run dev:tmdb` locally. The `trakt-proxy/` directory remains a legacy path. TMDB attribution is required; commercial use needs a separate agreement and key.
+- Existing Transmission deployments keep environment fallback through `TRANSMISSION_BASE_URL`, `TRANSMISSION_USERNAME`, and `TRANSMISSION_PASSWORD`. Do not switch client type while torrents remain attached to another client; qBittorrent requires a URL, username, and password.
+
 ## 0.7.2 - 2026-07-19
 
 ### Fixed
