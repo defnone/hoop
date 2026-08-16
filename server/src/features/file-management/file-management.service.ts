@@ -60,15 +60,15 @@ export class FileManagementService {
     const result: Record<number, string> = {};
     const failures: EpisodeCopyFailure[] = [];
 
-    let torrentName = '';
-    let torrentSavePath = '';
+    let torrentName: string;
+    let torrentSavePath: string;
     let torrentContentPath: string | undefined;
     type RawFile = { name: string };
     type RawStatus = {
       files?: RawFile[];
       content_path?: string;
     };
-    let filesFromClient: RawFile[] = [];
+    let filesFromClient: RawFile[];
 
     // Resolve torrent metadata from configured client
     try {

@@ -34,7 +34,9 @@ export class TrackerAuth {
       if (!this.cookies) throw new Error('No cookies found');
       return this.cookies;
     } catch (e) {
-      throw new Error(`Failed to authenticate ${this.tracker} with ${e}`);
+      throw new Error(`Failed to authenticate ${this.tracker} with ${e}`, {
+        cause: e,
+      });
     }
   }
 }

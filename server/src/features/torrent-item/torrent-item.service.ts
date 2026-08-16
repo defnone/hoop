@@ -184,7 +184,7 @@ export class TorrentItem implements TorrentItemPort {
           ),
         });
       } catch (e) {
-        throw new Error(`Failed to delete file: ${e}`);
+        throw new Error(`Failed to delete file: ${e}`, { cause: e });
       }
     }
   }

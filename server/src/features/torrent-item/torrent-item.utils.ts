@@ -5,7 +5,7 @@ export function extractHostFromUrl(url: string): string {
     const host = new URL(url).host.replace(/www\./, '').toLowerCase();
     return host;
   } catch (e) {
-    throw new Error(`Invalid URL: ${url}. ${e}`);
+    throw new Error(`Invalid URL: ${url}. ${e}`, { cause: e });
   }
 }
 

@@ -32,6 +32,7 @@ export function normalizeBaseUrl(hostOrUrl: string): string {
     const detail = error instanceof Error ? error.message : String(error);
     throw new Error(
       `Failed to normalize base URL from ${hostOrUrl}: ${detail}`,
+      { cause: error },
     );
   }
 }

@@ -34,6 +34,7 @@ export async function customFetch(
       if (i === attempts - 1) {
         throw new Error(
           `Failed to fetch ${redactedUrl} after ${attempts} attempts: ${errorMessage}`,
+          { cause: e },
         );
       }
     }

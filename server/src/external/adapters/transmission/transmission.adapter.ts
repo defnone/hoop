@@ -70,7 +70,7 @@ export class TransmissionAdapter {
     } catch (e: unknown) {
       const normalizedError = normalizeTransmissionError(e);
       throw new Error(`Failed to add torrent: ${normalizedError.message}`, {
-        cause: normalizedError,
+        cause: e,
       });
     }
   }
