@@ -1,4 +1,7 @@
-import type { TorrentClientItemDto } from '@server/external/adapters/torrent-client';
+import type {
+  TorrentClientItemDto,
+  TorrentClientType,
+} from '@server/external/adapters/torrent-client';
 
 export type TorrentListFilter =
   | 'all'
@@ -16,6 +19,10 @@ export type TorrentStateAppearance = {
   titleClassName: string;
   indicatorClassName: string;
 };
+
+export function getTorrentClientName(clientType: TorrentClientType): string {
+  return clientType === 'qbittorrent' ? 'qBittorrent' : 'Transmission';
+}
 
 export function filterTorrentClientTorrents(
   torrents: TorrentClientItemDto[],

@@ -8,6 +8,7 @@ import {
   formatPeerCount,
   formatTorrentEta,
   formatTransferSpeed,
+  getTorrentClientName,
   getTorrentProgress,
   getTorrentStateAppearance,
   getTorrentStateLabel,
@@ -16,6 +17,11 @@ import {
 } from './torrent-client.utils';
 
 describe('torrent client utilities', () => {
+  it('uses configured torrent client display names', () => {
+    expect(getTorrentClientName('transmission')).toBe('Transmission');
+    expect(getTorrentClientName('qbittorrent')).toBe('qBittorrent');
+  });
+
   it('filters by title and state', () => {
     const torrents = [
       createTorrent({ name: 'Ubuntu', state: TorrentState.downloading }),

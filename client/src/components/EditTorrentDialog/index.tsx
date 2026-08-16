@@ -13,10 +13,12 @@ import { Loader2, Pause, Play, Trash2 } from 'lucide-react';
 import DataTabs from './Tabs';
 import FileList from './FileList';
 import ConfirmDelete from './ConfirmDelete';
-import { SiTransmission } from 'react-icons/si';
+import { SiQbittorrent, SiTransmission } from 'react-icons/si';
 import { TorrentItemDto } from '@server/features/torrent-item/torrent-item.types';
+import type { TorrentClientType } from '@server/external/adapters/torrent-client';
 import { useTorrentStore } from '@/stores/torrentStore';
 import { rpc } from '@/lib/rpc';
+import { getTorrentClientName } from '@/lib/torrent-client.utils';
 import customSonner from '@/components/CustomSonner';
 import { useNavigate } from 'react-router';
 import useSettings from '@/hooks/useSettings';
@@ -46,6 +48,9 @@ export default function EditTorrentDialog({
   const [isRemovingFromClient, setIsRemovingFromClient] = useState(false);
   const navigate = useNavigate();
   const { settingsData } = useSettings(dialogOpen);
+  const clientType: TorrentClientType =
+    settingsData?.torrentClientType ?? 'transmission';
+  const clientName = getTorrentClientName(clientType);
 
   const setOpenId = useTorrentStore((state) => state.setOpenId);
   const setStartFetch = useTorrentStore((state) => state.setStartFetch);
@@ -220,12 +225,15 @@ export default function EditTorrentDialog({
                   <AddToClientButton
                     isPending={isAddingToClient}
                     isDisabled={data.trackedEpisodes.length === 0}
+                    clientName={clientName}
+                    clientType={clientType}
                     onClick={handleAddToClient}
                   />
                 ) : data.controlStatus === 'downloading' ||
                   data.controlStatus === 'downloadCompleted' ? (
                   <RemoveFromClientButton
                     isPending={isRemovingFromClient}
+                    clientName={clientName}
                     onClick={handleRmFromClient}
                   />
                 ) : null
@@ -449,10 +457,14 @@ function DialogFooterContent({
 function AddToClientButton({
   isPending,
   isDisabled,
+  clientName,
+  clientType,
   onClick,
 }: {
   isPending: boolean;
   isDisabled: boolean;
+  clientName: string;
+  clientType: TorrentClientType;
   onClick: () => Promise<void>;
 }) {
   return (
@@ -467,7 +479,12 @@ function AddToClientButton({
         <Loader2 className='w-4 h-4 animate-spin' />
       ) : (
         <>
-          <SiTransmission className='w-4 h-4' /> Add to Transmission
+          {clientType === 'qbittorrent' ? (
+            <SiQbittorrent className='w-4 h-4' />
+          ) : (
+            <SiTransmission className='w-4 h-4' />
+          )}{' '}
+          Add to {clientName}
         </>
       )}
     </Button>
@@ -476,9 +493,11 @@ function AddToClientButton({
 
 function RemoveFromClientButton({
   isPending,
+  clientName,
   onClick,
 }: {
   isPending: boolean;
+  clientName: string;
   onClick: () => Promise<void>;
 }) {
   return (
@@ -493,7 +512,7 @@ function RemoveFromClientButton({
         <Loader2 className='w-4 h-4 animate-spin' />
       ) : (
         <>
-          <Trash2 className='w-4 h-4' /> Remove from Transmission
+          <Trash2 className='w-4 h-4' /> Remove from {clientName}
         </>
       )}
     </Button>

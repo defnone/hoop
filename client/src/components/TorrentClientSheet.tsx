@@ -69,6 +69,7 @@ import {
   formatPeerCount,
   formatTransferSpeed,
   getTorrentProgress,
+  getTorrentClientName,
   getTorrentStateAppearance,
   getTorrentStateLabel,
   getTorrentTransferSummary,
@@ -716,8 +717,4 @@ export function RemoveTorrentDialog({
       </DialogContent>
     </Dialog>
   );
-}
-
-function getTorrentClientName(clientType: TorrentClientType): string {
-  return clientType === 'qbittorrent' ? 'qBittorrent' : 'Transmission';
 }
