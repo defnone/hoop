@@ -75,7 +75,7 @@ describe('getTmdbData', () => {
     );
   });
 
-  it('sorts by popularity before limiting detail requests to ten shows', async () => {
+  it('preserves provider order for the first ten shows after enrichment', async () => {
     const popularity = [17, 91, 4, 73, 28, 66, 55, 102, 39, 84, 12, 47];
     const trendingShows = popularity.map((value, index) => ({
       id: index + 1,
@@ -84,12 +84,7 @@ describe('getTmdbData', () => {
       vote_average: value / 10,
       backdrop_path: null,
     }));
-    const expectedShows = [...trendingShows]
-      .sort((left, right) => right.popularity - left.popularity)
-      .slice(0, 10);
-    const expectedItems = [...expectedShows].sort(
-      (left, right) => left.id - right.id,
-    );
+    const expectedShows = trendingShows.slice(0, 10);
     const fetchMock = vi.fn<typeof fetch>();
     fetchMock.mockImplementationOnce(async () =>
       jsonResponse({ results: trendingShows }),
@@ -104,7 +99,7 @@ describe('getTmdbData', () => {
       return jsonResponse({
         id: show.id,
         name: `Detailed ${show.name}`,
-        popularity: 1000 - show.id,
+        popularity: show.id * 10,
         vote_average: show.vote_average,
         backdrop_path: null,
         external_ids: { imdb_id: null },
@@ -117,15 +112,10 @@ describe('getTmdbData', () => {
 
     expect(data).toHaveLength(10);
     expect(data.map((item) => item.id)).toEqual(
-      expectedItems.map((show) => show.id),
+      expectedShows.map((show) => show.id),
     );
     expect(data.map((item) => item.popularity)).toEqual(
-      expectedItems.map((show) => 1000 - show.id),
-    );
-    expect(data.map((item) => item.popularity)).toEqual(
-      [...data.map((item) => item.popularity)].sort(
-        (left, right) => right - left,
-      ),
+      expectedShows.map((show) => show.id * 10),
     );
     expect(fetchMock).toHaveBeenCalledTimes(11);
     expect(

@@ -28,7 +28,7 @@ app.use(
 
 app.use(
   cache({
-    cacheName: 'tmdb-proxy-cache-v2',
+    cacheName: 'tmdb-proxy-cache-v3',
     cacheControl: 'max-age=3600',
   }) as MiddlewareHandler<TmdbEnvironment, string>,
 );

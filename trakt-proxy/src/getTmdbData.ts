@@ -27,16 +27,12 @@ export async function getTmdbData(
   const trendingData =
     await readTmdbResponse<TmdbTrendingTvResponse>(trendingResponse);
 
-  const topShows = [...trendingData.results]
-    .sort((left, right) => right.popularity - left.popularity)
-    .slice(0, 10);
+  const topShows = trendingData.results.slice(0, 10);
   const enrichedShows = await Promise.all(
     topShows.map((show) => buildDiscoverItem(c, show)),
   );
 
-  return enrichedShows.sort(
-    (left, right) => right.popularity - left.popularity,
-  );
+  return enrichedShows;
 }
 
 // --- Helpers ---------------------------------------------------------------
