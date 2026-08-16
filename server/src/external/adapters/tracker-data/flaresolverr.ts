@@ -146,9 +146,18 @@ export async function verifyFlareSolverr(params: {
   }
 }
 
-export function buildCookieHeader(cookies: FlareSolverrCookie[]): string {
+export function buildCookieHeader(
+  cookies: FlareSolverrCookie[],
+  targetUrl?: string,
+  defaultHost?: string,
+): string {
+  const target = targetUrl ? new URL(targetUrl) : null;
+  const now = Date.now();
+
   return cookies
     .filter((cookie) => cookie.name && cookie.value)
+    .filter((cookie) => isCookieNotExpired(cookie, now))
+    .filter((cookie) => isCookieApplicable(cookie, target, defaultHost))
     .map((cookie) => `${cookie.name}=${cookie.value}`)
     .join('; ');
 }
@@ -204,4 +213,59 @@ function parseCookieHeader(cookieHeader: string): FlareSolverrCookie[] {
       };
     })
     .filter((cookie): cookie is FlareSolverrCookie => cookie !== null);
+}
+
+function isCookieNotExpired(cookie: FlareSolverrCookie, now: number): boolean {
+  if (cookie.expires === undefined || !Number.isFinite(cookie.expires)) {
+    return true;
+  }
+
+  if (cookie.expires <= 0) {
+    return true;
+  }
+
+  const expiresAt =
+    cookie.expires > 10_000_000_000 ? cookie.expires : cookie.expires * 1000;
+  return expiresAt > now;
+}
+
+function isCookieApplicable(
+  cookie: FlareSolverrCookie,
+  target: URL | null,
+  defaultHost: string | undefined,
+): boolean {
+  if (!target) {
+    return true;
+  }
+
+  if (cookie.secure && target.protocol !== 'https:') {
+    return false;
+  }
+
+  const cookieDomain = cookie.domain?.replace(/^\./, '').toLowerCase();
+  const targetHost = target.hostname.toLowerCase();
+  const domain = cookieDomain || defaultHost?.toLowerCase();
+
+  if (domain && !isDomainMatch(targetHost, domain)) {
+    return false;
+  }
+
+  const cookiePath = cookie.path || '/';
+  return isPathMatch(target.pathname, cookiePath);
+}
+
+function isDomainMatch(targetHost: string, cookieDomain: string): boolean {
+  return targetHost === cookieDomain || targetHost.endsWith(`.${cookieDomain}`);
+}
+
+function isPathMatch(targetPath: string, cookiePath: string): boolean {
+  if (targetPath === cookiePath) {
+    return true;
+  }
+
+  if (!targetPath.startsWith(cookiePath)) {
+    return false;
+  }
+
+  return cookiePath.endsWith('/') || targetPath[cookiePath.length] === '/';
 }

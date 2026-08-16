@@ -50,6 +50,7 @@ vi.mock('@server/shared/custom-fetch', () => ({
 import { TrackerDataAdapter } from '@server/external/adapters/tracker-data';
 import { customFetch } from '@server/shared/custom-fetch';
 import { TrackerAuth } from '@server/external/adapters/tracker-data/tracker-data.auth';
+import { clearFlareSolverrCache } from '@server/external/adapters/tracker-data/flaresolverr-cache';
 
 const toResponse = (html: string): Response =>
   new Response(html, {
@@ -59,6 +60,7 @@ const toResponse = (html: string): Response =>
 describe('TrackerData.collect', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearFlareSolverrCache();
     settingsMock.kinozalUsername = null;
     settingsMock.kinozalPassword = null;
     settingsMock.flaresolverrEnabled = false;
@@ -66,6 +68,7 @@ describe('TrackerData.collect', () => {
   });
 
   afterEach(() => {
+    clearFlareSolverrCache();
     vi.restoreAllMocks();
   });
 
@@ -216,6 +219,81 @@ describe('TrackerData.collect', () => {
 
     expect(result.torrentId).toBe('1734651');
     expect(result.magnet).toBe('magnet:?xt=urn:btih:ABCDEF1234567890');
+  });
+
+  it('reuses unexpired FlareSolverr cookies for next tracker request', async () => {
+    settingsMock.flaresolverrEnabled = true;
+    settingsMock.flaresolverrUrl = 'http://localhost:8191';
+
+    const cfHtml = `
+      <html>
+        <head><title>Just a moment...</title></head>
+        <body><span class="challenge-error-text">Checking your browser...</span></body>
+      </html>`;
+    const solvedHtml = `
+      <html>
+        <body>
+          <div class="maintitle">
+            Cached title / extra (Сезон: 1 / Серии: 2 из 2)
+          </div>
+          <div class="attach_link"><a href="magnet:?xt=urn:btih:CACHED1234567890">magnet</a></div>
+        </body>
+      </html>`;
+    const expires = Math.floor(Date.now() / 1000) + 3_600;
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(
+        new Response(cfHtml, {
+          status: 403,
+          headers: { 'content-type': 'text/html; charset=utf-8' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            status: 'ok',
+            solution: {
+              status: 200,
+              response: solvedHtml,
+              cookies: [
+                {
+                  name: 'cf_clearance',
+                  value: 'cached-token',
+                  domain: '.rutracker.org',
+                  path: '/',
+                  expires,
+                  secure: true,
+                },
+              ],
+              userAgent: 'Mozilla/5.0 Cached Agent',
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(toResponse(solvedHtml));
+
+    const first = await new TrackerDataAdapter({
+      url: 'https://rutracker.org/forum/viewtopic.php?t=1201',
+      tracker: 'rutracker',
+    }).collect();
+    const second = await new TrackerDataAdapter({
+      url: 'https://rutracker.org/forum/viewtopic.php?t=1202',
+      tracker: 'rutracker',
+    }).collect();
+
+    expect(first.magnet).toBe('magnet:?xt=urn:btih:CACHED1234567890');
+    expect(second.magnet).toBe('magnet:?xt=urn:btih:CACHED1234567890');
+    expect(mockedFetch).toHaveBeenCalledTimes(3);
+    expect(mockedFetch.mock.calls[2]?.[1]).toEqual({
+      headers: {
+        Cookie: 'cf_clearance=cached-token',
+        'User-Agent': 'Mozilla/5.0 Cached Agent',
+      },
+    });
   });
 
   it('throws with 403 cause when 403 page does not indicate challenge', async () => {

@@ -13,19 +13,22 @@ import type { TrackerConf } from '@server/shared/types';
 import { SettingsService } from '@server/features/settings/settings.service';
 import logger from '@server/lib/logger';
 import { CloudflareChallengeError, isCloudflareChallenge } from './utils';
+import { buildCookieHeader } from './flaresolverr';
 import {
-  buildCookieHeader,
-  fetchWithFlareSolverr,
-  type FlareSolverrSolution,
-} from './flaresolverr';
+  clearCachedFlareSolverrSession,
+  getCachedFlareSolverrSession,
+  isFlareSolverrSessionUsable,
+  resolveFlareSolverrSession,
+  type FlareSolverrSession,
+  type FlareSolverrSessionResult,
+} from './flaresolverr-cache';
 
 const DEFAULT_FLARESOLVERR_TIMEOUT_SECONDS = 60;
 
 export class TrackerDataAdapter {
   private timeout: number;
   private domRoot: HTMLElement | null = null;
-  private cloudflareCookies: string = '';
-  private cloudflareUserAgent: string = '';
+  private cloudflareSession: FlareSolverrSession | null = null;
   private rawTitle: string = '';
   private showTitle: string = '';
   private rawUrl: string;
@@ -56,17 +59,12 @@ export class TrackerDataAdapter {
     tryAlternativeDomains = true,
   ): Promise<void> {
     try {
-      const headers = this.buildRequestHeaders(cookies);
-      const resp = await customFetch(url, { headers }, this.timeout);
-      const buffer = await resp.arrayBuffer();
-      const detectedEncoding =
-        jschardet.detect(Buffer.from(buffer)).encoding || 'utf-8';
-      const decodedContent = iconv.decode(
-        Buffer.from(buffer),
-        detectedEncoding,
+      const session = this.getFlareSolverrSession(url);
+      const { response: resp, root } = await this.fetchPage(
+        url,
+        cookies,
+        session,
       );
-      const root = parse(decodedContent);
-      if (!root) throw new Error('No dom found');
 
       if (resp.status === 403 || isCloudflareChallenge(root)) {
         logger.warn('Tracker page requires Cloudflare bypass', {
@@ -74,10 +72,10 @@ export class TrackerDataAdapter {
           tracker: this.tracker,
           status: resp.status,
           cloudflareChallenge: isCloudflareChallenge(root),
-          flaresolverrCookiesAvailable: Boolean(this.cloudflareCookies),
-          flaresolverrUserAgentAvailable: Boolean(this.cloudflareUserAgent),
+          flaresolverrCookiesAvailable: Boolean(session?.cookies.length),
+          flaresolverrUserAgentAvailable: Boolean(session?.userAgent),
         });
-        await this.handleForbiddenResponse(url, cookies, root);
+        await this.handleForbiddenResponse(url, cookies, root, session);
         this.activeUrl = url;
         return;
       }
@@ -124,6 +122,7 @@ export class TrackerDataAdapter {
     url: string,
     cookies: string,
     root: HTMLElement,
+    sessionUsed: FlareSolverrSession | null,
   ): Promise<void> {
     if (!isCloudflareChallenge(root)) {
       throw new Error('Server responded with 403');
@@ -147,15 +146,51 @@ export class TrackerDataAdapter {
       throw new Error('FlareSolverr URL is not configured');
     }
 
-    let solution: FlareSolverrSolution;
+    if (!sessionUsed) {
+      const cachedSession = getCachedFlareSolverrSession(this.tracker, url);
+
+      if (cachedSession) {
+        this.cloudflareSession = cachedSession;
+        const cachedResponse = await this.fetchPage(
+          url,
+          cookies,
+          cachedSession,
+        );
+
+        if (
+          cachedResponse.response.status === 403 &&
+          !isCloudflareChallenge(cachedResponse.root)
+        ) {
+          throw new Error('Server responded with 403');
+        }
+
+        if (
+          cachedResponse.response.status !== 403 &&
+          !isCloudflareChallenge(cachedResponse.root)
+        ) {
+          this.domRoot = cachedResponse.root;
+          this.activeUrl = url;
+          return;
+        }
+
+        clearCachedFlareSolverrSession(this.tracker, url, cachedSession);
+        this.cloudflareSession = null;
+      }
+    } else {
+      clearCachedFlareSolverrSession(this.tracker, url, sessionUsed);
+      this.cloudflareSession = null;
+    }
+
+    let sessionResult: FlareSolverrSessionResult;
     try {
-      solution = await fetchWithFlareSolverr({
+      sessionResult = await resolveFlareSolverrSession({
+        tracker: this.tracker,
         serverUrl: settings.flaresolverrUrl,
         targetUrl: url,
         timeout: this.getFlareSolverrTimeout(
           settings.flaresolverrTimeoutSeconds,
         ),
-        cookies: this.mergeCookieHeaders(cookies),
+        cookies: this.mergeCookieHeaders(url, cookies, null),
       });
     } catch (error) {
       logger.error('FlareSolverr tracker page request failed', {
@@ -167,16 +202,58 @@ export class TrackerDataAdapter {
       throw error;
     }
 
-    this.cloudflareCookies = buildCookieHeader(solution.cookies);
-    this.cloudflareUserAgent = solution.userAgent;
-    this.domRoot = parse(solution.response);
+    this.cloudflareSession = sessionResult.session;
+
+    if (sessionResult.response !== null) {
+      this.domRoot = parse(sessionResult.response);
+    } else {
+      const retriedResponse = await this.fetchPage(
+        url,
+        cookies,
+        sessionResult.session,
+      );
+
+      if (
+        retriedResponse.response.status === 403 ||
+        isCloudflareChallenge(retriedResponse.root)
+      ) {
+        clearCachedFlareSolverrSession(
+          this.tracker,
+          url,
+          sessionResult.session,
+        );
+        throw new CloudflareChallengeError(
+          'Cloudflare Challenge detected after applying FlareSolverr cookies',
+        );
+      }
+
+      this.domRoot = retriedResponse.root;
+    }
+
     logger.info('FlareSolverr tracker page request succeeded', {
       url,
       tracker: this.tracker,
-      status: solution.status,
-      cookiesCount: solution.cookies.length,
-      userAgentAvailable: Boolean(solution.userAgent),
+      status: sessionResult.status,
+      cookiesCount: sessionResult.session.cookies.length,
+      userAgentAvailable: Boolean(sessionResult.session.userAgent),
     });
+  }
+
+  private async fetchPage(
+    url: string,
+    cookies: string,
+    session: FlareSolverrSession | null,
+  ): Promise<{ response: Response; root: HTMLElement }> {
+    const headers = this.buildRequestHeaders(url, cookies, session);
+    const response = await customFetch(url, { headers }, this.timeout);
+    const buffer = await response.arrayBuffer();
+    const detectedEncoding =
+      jschardet.detect(Buffer.from(buffer)).encoding || 'utf-8';
+    const decodedContent = iconv.decode(Buffer.from(buffer), detectedEncoding);
+    const root = parse(decodedContent);
+    if (!root) throw new Error('No dom found');
+
+    return { response, root };
   }
 
   private async getAuth() {
@@ -343,23 +420,51 @@ export class TrackerDataAdapter {
     };
   }
 
-  private buildRequestHeaders(cookies: string): HeadersInit {
+  private buildRequestHeaders(
+    url: string,
+    cookies: string,
+    session: FlareSolverrSession | null,
+  ): HeadersInit {
     const headers: Record<string, string> = {};
-    const mergedCookies = this.mergeCookieHeaders(cookies);
+    const mergedCookies = this.mergeCookieHeaders(url, cookies, session);
 
     if (mergedCookies) {
       headers.Cookie = mergedCookies;
     }
 
-    if (this.cloudflareUserAgent) {
-      headers['User-Agent'] = this.cloudflareUserAgent;
+    if (session?.userAgent) {
+      headers['User-Agent'] = session.userAgent;
     }
 
     return headers;
   }
 
-  private mergeCookieHeaders(cookies: string): string {
-    return [cookies, this.cloudflareCookies].filter(Boolean).join('; ');
+  private mergeCookieHeaders(
+    url: string,
+    cookies: string,
+    session: FlareSolverrSession | null,
+  ): string {
+    const cloudflareCookies = session
+      ? buildCookieHeader(session.cookies, url, session.host)
+      : '';
+    return [cookies, cloudflareCookies].filter(Boolean).join('; ');
+  }
+
+  private getFlareSolverrSession(url: string): FlareSolverrSession | null {
+    const cachedSession = getCachedFlareSolverrSession(this.tracker, url);
+    if (cachedSession) {
+      return cachedSession;
+    }
+
+    if (
+      this.cloudflareSession &&
+      isFlareSolverrSessionUsable(this.cloudflareSession, url)
+    ) {
+      return this.cloudflareSession;
+    }
+
+    this.cloudflareSession = null;
+    return null;
   }
 
   private getFlareSolverrTimeout(timeoutSeconds: number | null): number {
