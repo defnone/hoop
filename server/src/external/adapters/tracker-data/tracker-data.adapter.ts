@@ -8,7 +8,7 @@ import type {
   TrackerDataParams,
 } from './tracker-data.types';
 import { customFetch } from '@server/shared/custom-fetch';
-import { TrackerAuth } from './tracker-data.auth';
+import { TrackerAuth, TrackerAuthError } from './tracker-data.auth';
 import type { TrackerConf } from '@server/shared/types';
 import { SettingsService } from '@server/features/settings/settings.service';
 import logger from '@server/lib/logger';
@@ -22,8 +22,18 @@ import {
   type FlareSolverrSession,
   type FlareSolverrSessionResult,
 } from './flaresolverr-cache';
+import {
+  normalizeTrackerOrigin,
+  trackerAuthCookieCache,
+  type TrackerAuthCookieResult,
+} from './tracker-data.auth-cache';
 
 const DEFAULT_FLARESOLVERR_TIMEOUT_SECONDS = 60;
+
+type TrackerAuthRequest = TrackerAuthCookieResult & {
+  url: string;
+  origin: string;
+};
 
 export class TrackerDataAdapter {
   private timeout: number;
@@ -37,7 +47,11 @@ export class TrackerDataAdapter {
   private magnet: string = '';
   private epAndSeason: EpAndSeason | null = null;
   private tConf: TrackerConf;
-  private trackerAuth: TrackerAuth | null;
+  private injectedTrackerAuth: TrackerAuth | null;
+  private injectedAuthCookiesByOrigin = new Map<string, string>();
+  private injectedAuthPendingByOrigin = new Map<string, Promise<string>>();
+  private lastAuthRequest: TrackerAuthRequest | null = null;
+  private authRefreshAttemptedUrls = new Set<string>();
   private tracker: keyof typeof trackersConf;
   constructor({ url, tracker, trackerAuth, timeout }: TrackerDataParams) {
     const tConf = trackersConf[tracker];
@@ -48,7 +62,7 @@ export class TrackerDataAdapter {
     this.activeUrl = url;
     this.tConf = tConf;
     this.trackerTorrentId = trackerTorrentId;
-    this.trackerAuth = trackerAuth || null;
+    this.injectedTrackerAuth = trackerAuth || null;
     this.timeout = timeout || 10_000;
     this.tracker = tracker;
   }
@@ -58,13 +72,45 @@ export class TrackerDataAdapter {
     cookies: string = '',
     tryAlternativeDomains = true,
   ): Promise<void> {
+    let authAttemptFailed = false;
     try {
+      let requestCookies = cookies;
+      let authRequest: TrackerAuthRequest | null = null;
+      if (this.tConf.isAuthRequired) {
+        authAttemptFailed = true;
+        const authResult = await this.getAuthCookies(url);
+        requestCookies = authResult.cookies;
+        authRequest = {
+          ...authResult,
+          url,
+          origin: normalizeTrackerOrigin(url),
+        };
+        authAttemptFailed = false;
+      }
+
       const session = this.getFlareSolverrSession(url);
       const { response: resp, root } = await this.fetchPage(
         url,
-        cookies,
+        requestCookies,
         session,
       );
+      this.lastAuthRequest = authRequest;
+
+      if (
+        authRequest?.source === 'cache' &&
+        isInvalidTrackerAuthResponse(resp.status, root)
+      ) {
+        if (this.authRefreshAttemptedUrls.has(url)) {
+          throw new Error('Tracker authentication cookie rejected');
+        }
+
+        this.authRefreshAttemptedUrls.add(url);
+        authAttemptFailed = true;
+        await this.refreshAuthCookies(url, authRequest.cookies);
+        await this.fetchDom(url, '', false);
+        authAttemptFailed = false;
+        return;
+      }
 
       if (resp.status === 403 || isCloudflareChallenge(root)) {
         logger.warn('Tracker page requires Cloudflare bypass', {
@@ -75,7 +121,7 @@ export class TrackerDataAdapter {
           flaresolverrCookiesAvailable: Boolean(session?.cookies.length),
           flaresolverrUserAgentAvailable: Boolean(session?.userAgent),
         });
-        await this.handleForbiddenResponse(url, cookies, root, session);
+        await this.handleForbiddenResponse(url, requestCookies, root, session);
         this.activeUrl = url;
         return;
       }
@@ -83,7 +129,12 @@ export class TrackerDataAdapter {
       this.domRoot = root;
       this.activeUrl = url;
     } catch (e) {
-      if (tryAlternativeDomains && isFetchTimeout(e)) {
+      const retryableAuthFailure =
+        authAttemptFailed && e instanceof TrackerAuthError && e.retryable;
+      if (
+        tryAlternativeDomains &&
+        (isFetchTimeout(e) || retryableAuthFailure)
+      ) {
         for (const alternativeUrl of getAlternativeTrackerUrls(
           url,
           this.tConf.urls,
@@ -95,7 +146,8 @@ export class TrackerDataAdapter {
           });
 
           try {
-            await this.fetchDom(alternativeUrl, cookies, false);
+            const alternativeCookies = this.tConf.isAuthRequired ? '' : cookies;
+            await this.fetchDom(alternativeUrl, alternativeCookies, false);
             return;
           } catch (alternativeError) {
             logger.warn('Alternative tracker domain request failed', {
@@ -256,27 +308,105 @@ export class TrackerDataAdapter {
     return { response, root };
   }
 
-  private async getAuth() {
+  private async getAuth(url: string): Promise<TrackerAuth> {
     const settings = await new SettingsService().getSettings();
 
-    if (!settings) throw new Error('No settings found');
+    if (!settings) {
+      throw new TrackerAuthError('No settings found', 'configuration');
+    }
     const dbCredentials = this.tConf.dbCredentials;
-    if (!dbCredentials?.username || !dbCredentials?.password)
-      throw new Error('No db credentials pattern found');
+    if (!dbCredentials?.username || !dbCredentials?.password) {
+      throw new TrackerAuthError(
+        'No db credentials pattern found',
+        'configuration',
+      );
+    }
 
     const login = settings?.[dbCredentials?.username];
     const password = settings?.[dbCredentials?.password];
 
-    if (!login || !password)
-      throw new Error('No auth credentials found for ' + this.tracker);
+    if (!login || !password) {
+      throw new TrackerAuthError(
+        'No auth credentials found for ' + this.tracker,
+        'credentials',
+      );
+    }
 
-    const baseUrl = new URL(this.activeUrl).origin;
-    this.trackerAuth = new TrackerAuth({
+    const baseUrl = new URL(url).origin;
+    return new TrackerAuth({
       login: String(login),
       password: String(password),
       baseUrl,
       tracker: this.tracker,
     });
+  }
+
+  private async getAuthCookies(url: string): Promise<TrackerAuthCookieResult> {
+    if (!this.tConf.isAuthRequired) {
+      return { cookies: '', source: 'auth' };
+    }
+
+    const origin = normalizeTrackerOrigin(url);
+    const injectedAuth = this.getInjectedTrackerAuth(origin);
+    if (injectedAuth) {
+      return this.getInjectedAuthCookies(origin, injectedAuth);
+    }
+
+    return trackerAuthCookieCache.getOrCreate(this.tracker, origin, () =>
+      this.getAuth(url).then((auth) => auth.getCookies()),
+    );
+  }
+
+  private async getInjectedAuthCookies(
+    origin: string,
+    auth: TrackerAuth,
+  ): Promise<TrackerAuthCookieResult> {
+    const cachedCookies = this.injectedAuthCookiesByOrigin.get(origin);
+    if (cachedCookies) {
+      return { cookies: cachedCookies, source: 'cache' };
+    }
+
+    const pendingAuth = this.injectedAuthPendingByOrigin.get(origin);
+    if (pendingAuth) {
+      return { cookies: await pendingAuth, source: 'auth' };
+    }
+
+    const authPromise = auth.getCookies();
+    this.injectedAuthPendingByOrigin.set(origin, authPromise);
+    try {
+      const cookies = await authPromise;
+      if (!cookies) {
+        throw new TrackerAuthError('No cookies found', 'credentials');
+      }
+      this.injectedAuthCookiesByOrigin.set(origin, cookies);
+      return { cookies, source: 'auth' };
+    } finally {
+      if (this.injectedAuthPendingByOrigin.get(origin) === authPromise) {
+        this.injectedAuthPendingByOrigin.delete(origin);
+      }
+    }
+  }
+
+  private getInjectedTrackerAuth(origin: string): TrackerAuth | null {
+    return this.injectedTrackerAuth?.origin === origin
+      ? this.injectedTrackerAuth
+      : null;
+  }
+
+  private async refreshAuthCookies(
+    url: string,
+    staleCookies: string,
+  ): Promise<TrackerAuthCookieResult> {
+    const origin = normalizeTrackerOrigin(url);
+    const injectedAuth = this.getInjectedTrackerAuth(origin);
+    if (injectedAuth) {
+      if (this.injectedAuthCookiesByOrigin.get(origin) === staleCookies) {
+        this.injectedAuthCookiesByOrigin.delete(origin);
+      }
+    } else {
+      trackerAuthCookieCache.invalidate(this.tracker, origin, staleCookies);
+    }
+    return this.getAuthCookies(url);
   }
 
   private extractRawTitle() {
@@ -299,6 +429,18 @@ export class TrackerDataAdapter {
       this.extractShowTitle();
       return;
     } catch (error) {
+      try {
+        if (await this.refreshInvalidCachedAuthPage()) {
+          this.extractRawTitle();
+          this.extractShowTitle();
+          return;
+        }
+      } catch (refreshError) {
+        if (isNonRetryableAuthError(refreshError)) {
+          throw refreshError;
+        }
+      }
+
       for (const alternativeUrl of getAlternativeTrackerUrls(
         this.activeUrl,
         this.tConf.urls,
@@ -312,9 +454,24 @@ export class TrackerDataAdapter {
 
         try {
           await this.fetchDom(alternativeUrl, '', false);
-          this.extractRawTitle();
-          this.extractShowTitle();
-          return;
+          try {
+            this.extractRawTitle();
+            this.extractShowTitle();
+            return;
+          } catch (alternativeError) {
+            try {
+              if (await this.refreshInvalidCachedAuthPage()) {
+                this.extractRawTitle();
+                this.extractShowTitle();
+                return;
+              }
+            } catch (refreshError) {
+              if (isNonRetryableAuthError(refreshError)) {
+                throw refreshError;
+              }
+            }
+            throw alternativeError;
+          }
         } catch (alternativeError) {
           logger.warn('Alternative tracker page is invalid', {
             url: alternativeUrl,
@@ -326,6 +483,22 @@ export class TrackerDataAdapter {
 
       throw error;
     }
+  }
+
+  private async refreshInvalidCachedAuthPage(): Promise<boolean> {
+    const authRequest = this.lastAuthRequest;
+    if (
+      !authRequest ||
+      authRequest.source !== 'cache' ||
+      this.authRefreshAttemptedUrls.has(authRequest.url)
+    ) {
+      return false;
+    }
+
+    this.authRefreshAttemptedUrls.add(authRequest.url);
+    await this.refreshAuthCookies(authRequest.url, authRequest.cookies);
+    await this.fetchDom(authRequest.url, '', false);
+    return true;
   }
 
   private extractEpsAndSeason() {
@@ -358,20 +531,31 @@ export class TrackerDataAdapter {
 
     if (this.tConf.isDifferentMagnetUrl) {
       if (!this.tConf.magnetUrl) throw new Error('No magnet url found');
-      if (this.tConf.isAuthRequired && !this.trackerAuth) await this.getAuth();
-
-      const cookies = this.tConf.isAuthRequired
-        ? await this.trackerAuth?.getCookies()
-        : '';
 
       const url = this.tConf.magnetUrl(
         newUrl.protocol,
         newUrl.host,
         this.trackerTorrentId,
       );
-      await this.fetchDom(url.href, cookies);
+      await this.fetchDom(url.href);
+
+      try {
+        this.extractMagnetFromCurrentDom();
+        return;
+      } catch (error) {
+        const refreshed = await this.refreshInvalidCachedAuthPage();
+        if (!refreshed) {
+          throw error;
+        }
+        this.extractMagnetFromCurrentDom();
+        return;
+      }
     }
 
+    this.extractMagnetFromCurrentDom();
+  }
+
+  private extractMagnetFromCurrentDom(): void {
     const currentRoot = this.domRoot;
 
     if (!currentRoot) {
@@ -407,7 +591,7 @@ export class TrackerDataAdapter {
   }
 
   public async collect(): Promise<TorrentDataResult> {
-    await this.fetchDom();
+    await this.fetchDom(this.rawUrl);
     await this.extractTitlesWithDomainFallback();
     this.extractEpsAndSeason();
     await this.extractMagnet();
@@ -513,6 +697,17 @@ function isFetchTimeout(error: unknown): boolean {
     error instanceof Error &&
     error.message.endsWith('after 3 attempts: Timeout error')
   );
+}
+
+function isInvalidTrackerAuthResponse(
+  status: number,
+  root: HTMLElement,
+): boolean {
+  return !isCloudflareChallenge(root) && (status === 401 || status === 403);
+}
+
+function isNonRetryableAuthError(error: unknown): boolean {
+  return error instanceof TrackerAuthError && !error.retryable;
 }
 
 function getAlternativeTrackerUrls(url: string, domains: string[]): string[] {

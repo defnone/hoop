@@ -51,16 +51,26 @@ import { TrackerDataAdapter } from '@server/external/adapters/tracker-data';
 import { customFetch } from '@server/shared/custom-fetch';
 import { TrackerAuth } from '@server/external/adapters/tracker-data/tracker-data.auth';
 import { clearFlareSolverrCache } from '@server/external/adapters/tracker-data/flaresolverr-cache';
+import { clearTrackerAuthCookieCache } from '@server/external/adapters/tracker-data/tracker-data.auth-cache';
 
 const toResponse = (html: string): Response =>
   new Response(html, {
     headers: { 'content-type': 'text/html; charset=utf-8' },
   });
 
+const toAuthResponse = (cookie: string): Response => {
+  const response = new Response(null);
+  Object.defineProperty(response.headers, 'getSetCookie', {
+    value: () => [cookie],
+  });
+  return response;
+};
+
 describe('TrackerData.collect', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearFlareSolverrCache();
+    clearTrackerAuthCookieCache();
     settingsMock.kinozalUsername = null;
     settingsMock.kinozalPassword = null;
     settingsMock.flaresolverrEnabled = false;
@@ -69,6 +79,7 @@ describe('TrackerData.collect', () => {
 
   afterEach(() => {
     clearFlareSolverrCache();
+    clearTrackerAuthCookieCache();
     vi.restoreAllMocks();
   });
 
@@ -489,6 +500,304 @@ describe('TrackerData.collect', () => {
       totalEp: 10,
     });
     expect(result.magnet).toBe('DEADBEEF1234');
+    expect(mockedFetch.mock.calls[0]?.[1]).toEqual({
+      headers: { Cookie: 'sid=abc' },
+    });
+    expect(mockedFetch.mock.calls[1]?.[1]).toEqual({
+      headers: { Cookie: 'sid=abc' },
+    });
+  });
+
+  it('kinozal: reuses cached cookies across adapters on the same origin', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+
+    const pageHtml = `
+      <html><body>
+        <h1>Series / Cached show (1 сезон: 1-2 серии из 2)</h1>
+      </body></html>`;
+    const magnetHtml =
+      '<html><body><ul><li>Инфо хеш: CACHED123456</li></ul></body></html>';
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(toAuthResponse('sid=cached'))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml));
+
+    const first = await new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=788',
+      tracker: 'kinozal',
+    }).collect();
+    const second = await new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=789',
+      tracker: 'kinozal',
+    }).collect();
+
+    expect(first.magnet).toBe('CACHED123456');
+    expect(second.magnet).toBe('CACHED123456');
+    expect(mockedFetch).toHaveBeenCalledTimes(5);
+    expect(mockedFetch.mock.calls[3]?.[1]).toEqual({
+      headers: { Cookie: 'sid=cached' },
+    });
+    expect(mockedFetch.mock.calls[4]?.[1]).toEqual({
+      headers: { Cookie: 'sid=cached' },
+    });
+  });
+
+  it('kinozal: refreshes an invalid cached cookie and retries the same details URL', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+
+    const firstPageHtml = `
+      <html><body>
+        <h1>Series / Initial show (1 сезон: 1-2 серии из 2)</h1>
+      </body></html>`;
+    const refreshedPageHtml = `
+      <html><body>
+        <h1>Series / Refreshed show (1 сезон: 1-2 серии из 2)</h1>
+      </body></html>`;
+    const magnetHtml =
+      '<html><body><ul><li>Инфо хеш: REFRESHED123456</li></ul></body></html>';
+    const loginPageHtml =
+      '<html><body><form class="login"><input name="username"></form></body></html>';
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(toAuthResponse('sid=old'))
+      .mockResolvedValueOnce(toResponse(firstPageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml))
+      .mockResolvedValueOnce(toResponse(loginPageHtml))
+      .mockResolvedValueOnce(toAuthResponse('sid=new'))
+      .mockResolvedValueOnce(toResponse(refreshedPageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml));
+
+    await new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=790',
+      tracker: 'kinozal',
+    }).collect();
+    const result = await new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=791',
+      tracker: 'kinozal',
+    }).collect();
+
+    expect(result.showTitle).toBe('Refreshed show (1 сезон: 1-2 серии из 2)');
+    expect(result.magnet).toBe('REFRESHED123456');
+    expect(
+      mockedFetch.mock.calls.map(([requestedUrl]) => requestedUrl),
+    ).toEqual([
+      'https://kinozal.tv/takelogin.php',
+      'https://kinozal.tv/details.php?id=790',
+      'https://kinozal.tv/get_srv_details.php?action=2&id=790',
+      'https://kinozal.tv/details.php?id=791',
+      'https://kinozal.tv/takelogin.php',
+      'https://kinozal.tv/details.php?id=791',
+      'https://kinozal.tv/get_srv_details.php?action=2&id=791',
+    ]);
+    expect(mockedFetch.mock.calls[3]?.[1]).toEqual({
+      headers: { Cookie: 'sid=old' },
+    });
+    expect(mockedFetch.mock.calls[5]?.[1]).toEqual({
+      headers: { Cookie: 'sid=new' },
+    });
+    expect(mockedFetch.mock.calls[6]?.[1]).toEqual({
+      headers: { Cookie: 'sid=new' },
+    });
+  });
+
+  it('kinozal: keeps a 401 Cloudflare challenge out of auth refresh', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+
+    const pageHtml = `
+      <html><body>
+        <h1>Series / Cloudflare status (1 сезон: 1-2 серии из 2)</h1>
+      </body></html>`;
+    const magnetHtml =
+      '<html><body><ul><li>Инфо хеш: CFSTATUS123456</li></ul></body></html>';
+    const challengeHtml = `
+      <html><head><title>Just a moment...</title></head>
+      <body><span class="challenge-error-text">Checking your browser...</span></body></html>`;
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(toAuthResponse('sid=old'))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml))
+      .mockResolvedValueOnce(new Response(challengeHtml, { status: 401 }));
+
+    await new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=802',
+      tracker: 'kinozal',
+    }).collect();
+    await expect(
+      new TrackerDataAdapter({
+        url: 'https://kinozal.tv/details.php?id=803',
+        tracker: 'kinozal',
+      }).collect(),
+    ).rejects.toThrow(/Cloudflare Challenge/);
+
+    expect(
+      mockedFetch.mock.calls.map(([requestedUrl]) => requestedUrl),
+    ).toEqual([
+      'https://kinozal.tv/takelogin.php',
+      'https://kinozal.tv/details.php?id=802',
+      'https://kinozal.tv/get_srv_details.php?action=2&id=802',
+      'https://kinozal.tv/details.php?id=803',
+    ]);
+  });
+
+  it('kinozal: refreshes a cached cookie after an explicit auth status', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+
+    const pageHtml = `
+      <html><body>
+        <h1>Series / Status refreshed (1 сезон: 1-2 серии из 2)</h1>
+      </body></html>`;
+    const magnetHtml =
+      '<html><body><ul><li>Инфо хеш: STATUS123456</li></ul></body></html>';
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(toAuthResponse('sid=old'))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml))
+      .mockResolvedValueOnce(
+        new Response('<html><body>Unauthorized</body></html>', { status: 401 }),
+      )
+      .mockResolvedValueOnce(toAuthResponse('sid=new'))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml));
+
+    await new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=792',
+      tracker: 'kinozal',
+    }).collect();
+    const result = await new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=793',
+      tracker: 'kinozal',
+    }).collect();
+
+    expect(result.magnet).toBe('STATUS123456');
+    expect(mockedFetch).toHaveBeenCalledTimes(7);
+    expect(mockedFetch.mock.calls[3]?.[1]).toEqual({
+      headers: { Cookie: 'sid=old' },
+    });
+    expect(mockedFetch.mock.calls[5]?.[1]).toEqual({
+      headers: { Cookie: 'sid=new' },
+    });
+  });
+
+  it('kinozal: refreshes an invalid cached cookie on the magnet URL', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+
+    const pageHtml = `
+      <html><body>
+        <h1>Series / Magnet refresh (1 сезон: 1-2 серии из 2)</h1>
+      </body></html>`;
+    const magnetHtml =
+      '<html><body><ul><li>Инфо хеш: MAGNET123456</li></ul></body></html>';
+    const loginPageHtml =
+      '<html><body><form class="login"><input name="username"></form></body></html>';
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(toAuthResponse('sid=old'))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(loginPageHtml))
+      .mockResolvedValueOnce(toAuthResponse('sid=new'))
+      .mockResolvedValueOnce(toResponse(magnetHtml));
+
+    await new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=800',
+      tracker: 'kinozal',
+    }).collect();
+    const result = await new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=801',
+      tracker: 'kinozal',
+    }).collect();
+
+    expect(result.magnet).toBe('MAGNET123456');
+    expect(
+      mockedFetch.mock.calls.map(([requestedUrl]) => requestedUrl),
+    ).toEqual([
+      'https://kinozal.tv/takelogin.php',
+      'https://kinozal.tv/details.php?id=800',
+      'https://kinozal.tv/get_srv_details.php?action=2&id=800',
+      'https://kinozal.tv/details.php?id=801',
+      'https://kinozal.tv/get_srv_details.php?action=2&id=801',
+      'https://kinozal.tv/takelogin.php',
+      'https://kinozal.tv/get_srv_details.php?action=2&id=801',
+    ]);
+    expect(mockedFetch.mock.calls[4]?.[1]).toEqual({
+      headers: { Cookie: 'sid=old' },
+    });
+    expect(mockedFetch.mock.calls[6]?.[1]).toEqual({
+      headers: { Cookie: 'sid=new' },
+    });
+  });
+
+  it('kinozal: shares one refresh login between concurrent adapters', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+
+    const pageHtml = `
+      <html><body>
+        <h1>Series / Concurrent refresh (1 сезон: 1-2 серии из 2)</h1>
+      </body></html>`;
+    const loginPageHtml =
+      '<html><body><form class="login"><input name="username"></form></body></html>';
+    const magnetHtml =
+      '<html><body><ul><li>Инфо хеш: CONCURRENT123456</li></ul></body></html>';
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(toAuthResponse('sid=old'))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml));
+    await new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=794',
+      tracker: 'kinozal',
+    }).collect();
+
+    let releaseAuth: () => void = () => undefined;
+    const authGate = new Promise<void>((resolve) => {
+      releaseAuth = resolve;
+    });
+    let refreshAuthCalls = 0;
+    mockedFetch.mockImplementation(
+      async (requestedUrl: string, options: RequestInit = {}) => {
+        if (requestedUrl.endsWith('/takelogin.php')) {
+          refreshAuthCalls += 1;
+          await authGate;
+          return toAuthResponse('sid=new');
+        }
+        if (requestedUrl.includes('/get_srv_details.php')) {
+          return toResponse(magnetHtml);
+        }
+        const cookie = new Headers(options.headers).get('Cookie');
+        return cookie === 'sid=old'
+          ? toResponse(loginPageHtml)
+          : toResponse(pageHtml);
+      },
+    );
+
+    const firstPromise = new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=795',
+      tracker: 'kinozal',
+    }).collect();
+    const secondPromise = new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=796',
+      tracker: 'kinozal',
+    }).collect();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(refreshAuthCalls).toBe(1);
+    releaseAuth();
+
+    const [first, second] = await Promise.all([firstPromise, secondPromise]);
+    expect(first.magnet).toBe('CONCURRENT123456');
+    expect(second.magnet).toBe('CONCURRENT123456');
+    expect(refreshAuthCalls).toBe(1);
   });
 
   it('kinozal: uses the successful alternative domain for auth and magnet', async () => {
@@ -517,9 +826,10 @@ describe('TrackerData.collect', () => {
     } as unknown as Response;
     const mockedFetch = vi.mocked(customFetch);
     mockedFetch
-      .mockRejectedValueOnce(timeoutError)
-      .mockResolvedValueOnce(toResponse(pageHtml))
       .mockResolvedValueOnce(authResponse)
+      .mockRejectedValueOnce(timeoutError)
+      .mockResolvedValueOnce(authResponse)
+      .mockResolvedValueOnce(toResponse(pageHtml))
       .mockResolvedValueOnce(toResponse(magnetHtml));
 
     const td = new TrackerDataAdapter({
@@ -532,19 +842,103 @@ describe('TrackerData.collect', () => {
     expect(
       mockedFetch.mock.calls.map(([requestedUrl]) => requestedUrl),
     ).toEqual([
+      'https://kinozal.tv/takelogin.php',
       'https://kinozal.tv/details.php?id=780',
-      'https://kinozal.me/details.php?id=780',
       'https://kinozal.me/takelogin.php',
+      'https://kinozal.me/details.php?id=780',
       'https://kinozal.me/get_srv_details.php?action=2&id=780',
     ]);
+    expect(mockedFetch.mock.calls[1]?.[1]).toEqual({
+      headers: { Cookie: 'sid=abc' },
+    });
+    expect(mockedFetch.mock.calls[3]?.[1]).toEqual({
+      headers: { Cookie: 'sid=abc' },
+    });
+    expect(mockedFetch.mock.calls[4]?.[1]).toEqual({
+      headers: { Cookie: 'sid=abc' },
+    });
+  });
+
+  it('kinozal: retries another domain when authentication fails before details', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+
+    const pageHtml = `
+      <html>
+        <body>
+          <h1>Series / Auth fallback (1 \u0441\u0435\u0437\u043e\u043d: 1-2 \u0441\u0435\u0440\u0438\u0438 \u0438\u0437 2)</h1>
+        </body>
+      </html>`;
+    const magnetHtml = `
+      <html>
+        <body>
+          <ul><li>\u0418\u043d\u0444\u043e \u0445\u0435\u0448: ABCDEF123456</li></ul>
+        </body>
+      </html>`;
+    const authError = new Error('source login failed');
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockRejectedValueOnce(authError)
+      .mockResolvedValueOnce(toAuthResponse('sid=alternative'))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml));
+
+    const td = new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=782',
+      tracker: 'kinozal',
+    });
+    const result = await td.collect();
+
+    expect(result.magnet).toBe('ABCDEF123456');
+    expect(
+      mockedFetch.mock.calls.map(([requestedUrl]) => requestedUrl),
+    ).toEqual([
+      'https://kinozal.tv/takelogin.php',
+      'https://kinozal.me/takelogin.php',
+      'https://kinozal.me/details.php?id=782',
+      'https://kinozal.me/get_srv_details.php?action=2&id=782',
+    ]);
+    expect(mockedFetch.mock.calls[2]?.[1]).toEqual({
+      headers: { Cookie: 'sid=alternative' },
+    });
+    expect(mockedFetch.mock.calls[3]?.[1]).toEqual({
+      headers: { Cookie: 'sid=alternative' },
+    });
+  });
+
+  it('kinozal: does not retry domains for missing credentials', async () => {
+    const td = new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=786',
+      tracker: 'kinozal',
+    });
+
+    await expect(td.collect()).rejects.toThrow(/No auth credentials found/);
+    expect(customFetch).not.toHaveBeenCalled();
+  });
+
+  it('kinozal: does not retry domains when auth returns no cookies', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch.mockResolvedValueOnce(toAuthResponse(''));
+
+    const td = new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=787',
+      tracker: 'kinozal',
+    });
+
+    await expect(td.collect()).rejects.toThrow(/No cookies found/);
+    expect(
+      mockedFetch.mock.calls.map(([requestedUrl]) => requestedUrl),
+    ).toEqual(['https://kinozal.tv/takelogin.php']);
   });
 
   it('kinozal: retries an alternative domain when the page has no title', async () => {
     settingsMock.kinozalUsername = 'login';
     settingsMock.kinozalPassword = 'password';
 
-    const unavailablePageHtml =
-      '<html><body><h1>Domain unavailable</h1></body></html>';
+    const loginPageHtml =
+      '<html><body><form class="login"><input name="username"></form></body></html>';
     const pageHtml = `
       <html>
         <body>
@@ -557,16 +951,14 @@ describe('TrackerData.collect', () => {
           <ul><li>\u0418\u043d\u0444\u043e \u0445\u0435\u0448: DEADBEEF1234</li></ul>
         </body>
       </html>`;
-    const authResponse = {
-      headers: {
-        getSetCookie: vi.fn(() => ['sid=abc']),
-      },
-    } as unknown as Response;
+    const sourceAuthResponse = toAuthResponse('sid=source');
+    const alternativeAuthResponse = toAuthResponse('sid=alternative');
     const mockedFetch = vi.mocked(customFetch);
     mockedFetch
-      .mockResolvedValueOnce(toResponse(unavailablePageHtml))
+      .mockResolvedValueOnce(sourceAuthResponse)
+      .mockResolvedValueOnce(toResponse(loginPageHtml))
+      .mockResolvedValueOnce(alternativeAuthResponse)
       .mockResolvedValueOnce(toResponse(pageHtml))
-      .mockResolvedValueOnce(authResponse)
       .mockResolvedValueOnce(toResponse(magnetHtml));
 
     const td = new TrackerDataAdapter({
@@ -582,11 +974,284 @@ describe('TrackerData.collect', () => {
     expect(
       mockedFetch.mock.calls.map(([requestedUrl]) => requestedUrl),
     ).toEqual([
+      'https://kinozal.tv/takelogin.php',
       'https://kinozal.tv/details.php?id=781',
-      'https://kinozal.me/details.php?id=781',
       'https://kinozal.me/takelogin.php',
+      'https://kinozal.me/details.php?id=781',
       'https://kinozal.me/get_srv_details.php?action=2&id=781',
     ]);
+    expect(mockedFetch.mock.calls[1]?.[1]).toEqual({
+      headers: { Cookie: 'sid=source' },
+    });
+    expect(mockedFetch.mock.calls[3]?.[1]).toEqual({
+      headers: { Cookie: 'sid=alternative' },
+    });
+    expect(mockedFetch.mock.calls[4]?.[1]).toEqual({
+      headers: { Cookie: 'sid=alternative' },
+    });
+    expect(mockedFetch.mock.calls[3]?.[1]).not.toEqual({
+      headers: { Cookie: 'sid=source' },
+    });
+  });
+
+  it('kinozal: keeps injected auth on original origin only', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+
+    const loginPageHtml =
+      '<html><body><form class="login"><input name="username"></form></body></html>';
+    const pageHtml = `
+      <html>
+        <body>
+          <h1>Series / Injected fallback (1 \u0441\u0435\u0437\u043e\u043d: 1-2 \u0441\u0435\u0440\u0438\u0438 \u0438\u0437 2)</h1>
+        </body>
+      </html>`;
+    const magnetHtml =
+      '<html><body><ul><li>\u0418\u043d\u0444\u043e \u0445\u0435\u0448: INJECTED123456</li></ul></body></html>';
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(toResponse(loginPageHtml))
+      .mockResolvedValueOnce(toAuthResponse('sid=generated'))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml));
+
+    class InjectedAuth extends TrackerAuth {
+      public async getCookies(): Promise<string> {
+        return 'sid=injected';
+      }
+    }
+
+    const td = new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=784',
+      tracker: 'kinozal',
+      trackerAuth: new InjectedAuth({
+        login: 'login',
+        password: 'password',
+        baseUrl: 'https://kinozal.tv',
+        tracker: 'kinozal',
+      }),
+    });
+    const result = await td.collect();
+
+    expect(result.magnet).toBe('INJECTED123456');
+    expect(
+      mockedFetch.mock.calls.map(([requestedUrl]) => requestedUrl),
+    ).toEqual([
+      'https://kinozal.tv/details.php?id=784',
+      'https://kinozal.me/takelogin.php',
+      'https://kinozal.me/details.php?id=784',
+      'https://kinozal.me/get_srv_details.php?action=2&id=784',
+    ]);
+    expect(mockedFetch.mock.calls[0]?.[1]).toEqual({
+      headers: { Cookie: 'sid=injected' },
+    });
+    expect(mockedFetch.mock.calls[2]?.[1]).toEqual({
+      headers: { Cookie: 'sid=generated' },
+    });
+    expect(mockedFetch.mock.calls[3]?.[1]).toEqual({
+      headers: { Cookie: 'sid=generated' },
+    });
+  });
+
+  it('kinozal: isolates injected auth from the process cache on the same origin', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+
+    const pageHtml = `
+      <html><body>
+        <h1>Series / Scoped auth (1 сезон: 1-2 серии из 2)</h1>
+      </body></html>`;
+    const magnetHtml =
+      '<html><body><ul><li>Инфо хеш: SCOPED123456</li></ul></body></html>';
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(toAuthResponse('sid=global'))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml));
+
+    await new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=797',
+      tracker: 'kinozal',
+    }).collect();
+
+    let injectedAuthCalls = 0;
+    class ScopedInjectedAuth extends TrackerAuth {
+      public async getCookies(): Promise<string> {
+        injectedAuthCalls += 1;
+        return 'sid=injected';
+      }
+    }
+
+    await new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=798',
+      tracker: 'kinozal',
+      trackerAuth: new ScopedInjectedAuth({
+        login: 'login',
+        password: 'password',
+        baseUrl: 'https://kinozal.tv',
+        tracker: 'kinozal',
+      }),
+    }).collect();
+    await new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=799',
+      tracker: 'kinozal',
+    }).collect();
+
+    expect(injectedAuthCalls).toBe(1);
+    expect(mockedFetch).toHaveBeenCalledTimes(7);
+    expect(mockedFetch.mock.calls[3]?.[1]).toEqual({
+      headers: { Cookie: 'sid=injected' },
+    });
+    expect(mockedFetch.mock.calls[4]?.[1]).toEqual({
+      headers: { Cookie: 'sid=injected' },
+    });
+    expect(mockedFetch.mock.calls[5]?.[1]).toEqual({
+      headers: { Cookie: 'sid=global' },
+    });
+  });
+
+  it('kinozal: replaces injected auth when its origin mismatches source URL', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+
+    const pageHtml = `
+      <html>
+        <body>
+          <h1>Series / Origin mismatch (1 \u0441\u0435\u0437\u043e\u043d: 1-2 \u0441\u0435\u0440\u0438\u0438 \u0438\u0437 2)</h1>
+        </body>
+      </html>`;
+    const magnetHtml =
+      '<html><body><ul><li>\u0418\u043d\u0444\u043e \u0445\u0435\u0448: ORIGIN123456</li></ul></body></html>';
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(toAuthResponse('sid=generated'))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml));
+
+    class MismatchedAuth extends TrackerAuth {
+      public async getCookies(): Promise<string> {
+        throw new Error('Injected auth must not be used');
+      }
+    }
+
+    const td = new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=785',
+      tracker: 'kinozal',
+      trackerAuth: new MismatchedAuth({
+        login: 'login',
+        password: 'password',
+        baseUrl: 'https://kinozal.guru',
+        tracker: 'kinozal',
+      }),
+    });
+    const result = await td.collect();
+
+    expect(result.magnet).toBe('ORIGIN123456');
+    expect(
+      mockedFetch.mock.calls.map(([requestedUrl]) => requestedUrl),
+    ).toEqual([
+      'https://kinozal.tv/takelogin.php',
+      'https://kinozal.tv/details.php?id=785',
+      'https://kinozal.tv/get_srv_details.php?action=2&id=785',
+    ]);
+    expect(mockedFetch.mock.calls[1]?.[1]).toEqual({
+      headers: { Cookie: 'sid=generated' },
+    });
+  });
+
+  it('kinozal: uses auth, FlareSolverr, and active domain for magnet', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+    settingsMock.flaresolverrEnabled = true;
+    settingsMock.flaresolverrUrl = 'http://localhost:8191';
+
+    const loginPageHtml =
+      '<html><body><form class="login"><input name="username"></form></body></html>';
+    const cfHtml = `
+      <html>
+        <head><title>Just a moment...</title></head>
+        <body><span class="challenge-error-text">Checking your browser...</span></body>
+      </html>`;
+    const solvedPageHtml = `
+      <html>
+        <body>
+          <h1>Series / Solved fallback (1 \u0441\u0435\u0437\u043e\u043d: 1-2 \u0441\u0435\u0440\u0438\u0438 \u0438\u0437 2)</h1>
+        </body>
+      </html>`;
+    const magnetHtml = `
+      <html>
+        <body>
+          <ul><li>\u0418\u043d\u0444\u043e \u0445\u0435\u0448: FEDCBA654321</li></ul>
+        </body>
+      </html>`;
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(toAuthResponse('sid=source'))
+      .mockResolvedValueOnce(toResponse(loginPageHtml))
+      .mockResolvedValueOnce(toAuthResponse('sid=alternative'))
+      .mockResolvedValueOnce(toResponse(cfHtml))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            status: 'ok',
+            solution: {
+              status: 200,
+              response: solvedPageHtml,
+              cookies: [{ name: 'cf_clearance', value: 'alternative-cf' }],
+              userAgent: 'Mozilla/5.0 FlareSolverr',
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(toResponse(magnetHtml));
+
+    const td = new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=783',
+      tracker: 'kinozal',
+    });
+    const result = await td.collect();
+
+    expect(result.magnet).toBe('FEDCBA654321');
+    expect(
+      mockedFetch.mock.calls.map(([requestedUrl]) => requestedUrl),
+    ).toEqual([
+      'https://kinozal.tv/takelogin.php',
+      'https://kinozal.tv/details.php?id=783',
+      'https://kinozal.me/takelogin.php',
+      'https://kinozal.me/details.php?id=783',
+      'http://localhost:8191/v1',
+      'https://kinozal.me/get_srv_details.php?action=2&id=783',
+    ]);
+    expect(mockedFetch.mock.calls[1]?.[1]).toEqual({
+      headers: { Cookie: 'sid=source' },
+    });
+    expect(mockedFetch.mock.calls[3]?.[1]).toEqual({
+      headers: { Cookie: 'sid=alternative' },
+    });
+    const solverOptions = mockedFetch.mock.calls[4]?.[1];
+    const solverBody =
+      typeof solverOptions?.body === 'string'
+        ? (JSON.parse(solverOptions.body) as {
+            cookies?: Array<{ name: string; value: string }>;
+          })
+        : null;
+    expect(solverBody?.cookies).toEqual([
+      { name: 'sid', value: 'alternative' },
+    ]);
+    expect(mockedFetch.mock.calls[5]?.[1]).toEqual({
+      headers: {
+        Cookie: 'sid=alternative; cf_clearance=alternative-cf',
+        'User-Agent': 'Mozilla/5.0 FlareSolverr',
+      },
+    });
   });
 
   it('kinozal: parses single episode with plural word', async () => {
