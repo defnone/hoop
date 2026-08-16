@@ -1307,6 +1307,52 @@ describe('TrackerData.collect', () => {
     expect(result.magnet).toBe('FEEDFACE5678');
   });
 
+  it('kinozal: parses episode range with whitespace after separator', async () => {
+    const pageHtml = `
+      <html>
+        <body>
+          <h1>Джек Ричер (Ричер) (4 сезон: 1- 3 серии из 8) / Reacher (Jack Reacher) / 2026 / 3 x ПМ, СТ / WEB-DL (1080p)</h1>
+        </body>
+      </html>`;
+
+    const magnetHtml = `
+      <html>
+        <body>
+          <ul><li>Инфо хеш: C0FFEE123456</li></ul>
+        </body>
+      </html>`;
+
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml));
+
+    class MockTrackerAuth extends TrackerAuth {
+      public async getCookies(): Promise<string> {
+        return 'sid=abc';
+      }
+    }
+
+    const td = new TrackerDataAdapter({
+      url: 'https://kinozal.me/details.php?id=2150491',
+      tracker: 'kinozal',
+      trackerAuth: new MockTrackerAuth({
+        login: 'login',
+        password: 'pass',
+        baseUrl: 'https://kinozal.me',
+        tracker: 'kinozal',
+      }),
+    });
+    const result = await td.collect();
+
+    expect(result.epAndSeason).toEqual({
+      season: 4,
+      startEp: 1,
+      endEp: 3,
+      totalEp: 8,
+    });
+  });
+
   it('kinozal: parses episodes label without season colon', async () => {
     const pageHtml = `
       <html>
