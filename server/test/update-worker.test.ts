@@ -11,6 +11,11 @@ import type {
 const { sendMessageMock } = vi.hoisted(() => ({
   sendMessageMock: vi.fn<(message: string) => Promise<void>>(),
 }));
+const { bunGcMock } = vi.hoisted(() => ({
+  bunGcMock: vi.fn<(sync?: boolean) => void>(),
+}));
+
+vi.stubGlobal('Bun', { gc: bunGcMock });
 
 vi.mock('@server/external/adapters/telegram', () => ({
   TelegramAdapter: class {
@@ -24,6 +29,7 @@ vi.mock('@server/lib/logger', () => ({
     info: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
+    warn: vi.fn(),
   },
 }));
 
@@ -137,9 +143,11 @@ let lastTI:
 let nextTrackerData: TorrentDataResult | null = null;
 let nextDatabaseData: DbTorrentItem | null = null;
 let nextFetchError: Error | null = null;
+let fetchErrorIds = new Set<number>();
 let fetchDataDelayMs = 0;
 let activeFetches = 0;
 let maxActiveFetches = 0;
+let processOrder: string[] = [];
 const originalUpdateBatchSize = process.env.HOOP_UPDATE_WORKER_BATCH_SIZE;
 
 // Mock implementation of TorrentItem service
@@ -165,7 +173,10 @@ vi.mock('@server/features/torrent-item/torrent-item.service', () => {
           await sleep(fetchDataDelayMs);
         }
 
-        if (nextFetchError) {
+        if (
+          nextFetchError &&
+          (fetchErrorIds.size === 0 || fetchErrorIds.has(this.id))
+        ) {
           throw nextFetchError;
         }
 
@@ -173,6 +184,7 @@ vi.mock('@server/features/torrent-item/torrent-item.service', () => {
         this.trackerData = nextTrackerData;
       } finally {
         activeFetches -= 1;
+        processOrder.push('row');
       }
     }
     async getAll(
@@ -294,9 +306,13 @@ describe('UpdateWorker.process', () => {
     sendMessageMock.mockResolvedValue(undefined);
     lastTI = null;
     nextFetchError = null;
+    fetchErrorIds = new Set<number>();
     fetchDataDelayMs = 0;
     activeFetches = 0;
     maxActiveFetches = 0;
+    processOrder = [];
+    bunGcMock.mockReset();
+    bunGcMock.mockImplementation(() => undefined);
     delete process.env.HOOP_UPDATE_WORKER_BATCH_SIZE;
   });
 
@@ -490,6 +506,77 @@ describe('UpdateWorker.process', () => {
       torrentItem: expect.objectContaining({ id: 1, title: 'Some Show' }),
       errorMessage: 'UpdateWorker: Error on fetch data, tracker timeout',
     });
+    expect(bunGcMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs one GC after all batches, including partial row failures', async () => {
+    process.env.HOOP_UPDATE_WORKER_BATCH_SIZE = '1';
+
+    const { UpdateWorker } = await import('@server/workers/update-worker');
+    const repo = new RepoMock();
+    repo.findAllIdle.mockResolvedValue([
+      { ...baseItem, id: 1 },
+      { ...baseItem, id: 2 },
+    ]);
+    const eventJournal = new EventJournalMock();
+    const worker = new UpdateWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
+
+    nextTrackerData = {
+      torrentId: 't-1',
+      rawTitle: 'Same Raw',
+      showTitle: 'Some Show',
+      epAndSeason: null,
+      magnet: 'MAG',
+    } satisfies TorrentDataResult;
+    nextDatabaseData = {
+      ...baseItem,
+      rawTitle: 'Same Raw',
+      magnet: 'MAG',
+    } satisfies DbTorrentItem;
+    nextFetchError = new Error('tracker timeout');
+    fetchErrorIds = new Set([2]);
+
+    await worker.process();
+
+    expect(bunGcMock).toHaveBeenCalledTimes(1);
+    expect(eventJournal.recordTorrentSyncFailed).toHaveBeenCalledTimes(1);
+    expect(processOrder).toHaveLength(2);
+  });
+
+  it('does not force GC when there is no work', async () => {
+    const { UpdateWorker } = await import('@server/workers/update-worker');
+    const repo = new RepoMock();
+    repo.findAllIdle.mockResolvedValue([]);
+    const worker = new UpdateWorker({ repo: repo as unknown as never });
+
+    await worker.process();
+
+    expect(bunGcMock).not.toHaveBeenCalled();
+  });
+
+  it('preserves row failure when GC itself throws', async () => {
+    const { UpdateWorker } = await import('@server/workers/update-worker');
+    const repo = new RepoMock();
+    const eventJournal = new EventJournalMock();
+    eventJournal.recordTorrentSyncFailed.mockRejectedValue(
+      new Error('journal failed'),
+    );
+    const worker = new UpdateWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
+
+    nextDatabaseData = { ...baseItem } satisfies DbTorrentItem;
+    nextFetchError = new Error('tracker timeout');
+    bunGcMock.mockImplementation(() => {
+      throw new Error('gc failed');
+    });
+
+    await expect(worker.process()).rejects.toThrow('journal failed');
+    expect(bunGcMock).toHaveBeenCalledTimes(1);
   });
 
   it('skips item when tracker rawTitle is missing', async () => {
@@ -536,12 +623,19 @@ describe('UpdateWorker.process', () => {
       magnet: 'MAG',
     } satisfies DbTorrentItem;
     fetchDataDelayMs = 10;
+    bunGcMock.mockImplementation(() => {
+      processOrder.push('gc');
+    });
 
     const worker = new UpdateWorker({ repo: repo as unknown as never });
 
     await worker.process();
 
     expect(maxActiveFetches).toBe(3);
+    expect(bunGcMock).toHaveBeenCalledTimes(1);
+    expect(bunGcMock).toHaveBeenCalledWith(true);
+    expect(processOrder.at(-1)).toBe('gc');
+    expect(processOrder.filter((item) => item === 'row')).toHaveLength(8);
   });
 
   it('does not start a manual sync while another sync is running', async () => {

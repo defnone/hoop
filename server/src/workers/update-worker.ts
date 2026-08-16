@@ -57,16 +57,22 @@ export class UpdateWorker {
     await this.getSetting();
     const allRows = await this.repo.findAllIdle();
 
-    for (const batch of chunkRows(allRows, this.batchSize)) {
-      const results = await Promise.allSettled(
-        batch.map((row) => this.processRow(row)),
-      );
-      const rejectedResult = results.find(
-        (result): result is PromiseRejectedResult =>
-          result.status === 'rejected',
-      );
-      if (rejectedResult) {
-        throw rejectedResult.reason;
+    if (allRows.length > 0) {
+      try {
+        for (const batch of chunkRows(allRows, this.batchSize)) {
+          const results = await Promise.allSettled(
+            batch.map((row) => this.processRow(row)),
+          );
+          const rejectedResult = results.find(
+            (result): result is PromiseRejectedResult =>
+              result.status === 'rejected',
+          );
+          if (rejectedResult) {
+            throw rejectedResult.reason;
+          }
+        }
+      } finally {
+        forceGarbageCollection();
       }
     }
     // Record this sync and log the next planned moment for observability
@@ -264,6 +270,18 @@ export class UpdateWorker {
         `[UpdateWorker] Failed to send Telegram notification: ${formatErrorMessage(error)}`,
       );
     }
+  }
+}
+
+function forceGarbageCollection(): void {
+  if (typeof Bun === 'undefined') return;
+
+  try {
+    Bun.gc(true);
+  } catch (error) {
+    logger.warn(
+      `[UpdateWorker] Failed to force garbage collection: ${formatErrorMessage(error)}`,
+    );
   }
 }
 
