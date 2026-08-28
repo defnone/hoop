@@ -35,6 +35,7 @@ import { eventJournalReadRoute } from './routes/event-journal.$id.read';
 import { eventJournalReadAllRoute } from './routes/event-journal.read-all';
 import { seriesDirectoryVerifyRoute } from './routes/series-directory.verify';
 import { SeriesDirectoryCleanupWorker } from './workers/series-directory-cleanup-worker';
+import { fileManagerRoute } from './routes/file-manager';
 
 export const app = new Hono<{
   Variables: {
@@ -96,6 +97,7 @@ export const routes = app
   .route('/event-journal/read-all', eventJournalReadAllRoute)
   .route('/event-journal/:id/read', eventJournalReadRoute)
   .route('/settings', settingsRoute)
+  .route('/file-manager', fileManagerRoute)
   .route('/series-directory/verify', seriesDirectoryVerifyRoute)
   .route('/files/:id/delete', deleteFileRoute)
   .route('/torrents', torrentsRoute)
