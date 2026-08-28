@@ -7,6 +7,7 @@ import { lazy } from 'react';
 const Dashboard = lazy(() => import('./routes/dashboard'));
 const Discover = lazy(() => import('./routes/dashboard/discover'));
 const Search = lazy(() => import('./routes/dashboard/search'));
+const FileManager = lazy(() => import('./routes/dashboard/files'));
 const SettingsEventJournal = lazy(() => import('./routes/dashboard/journal'));
 const Settings = lazy(() => import('./routes/dashboard/settings'));
 const SignUp = lazy(() => import('./routes/sign-up'));
@@ -34,6 +35,10 @@ export const routes = [
     meta: { title: 'Search', description: '' },
   },
   {
+    path: '/files',
+    meta: { title: 'Files', description: '' },
+  },
+  {
     path: '/settings',
     meta: { title: 'Settings', description: '' },
   },
@@ -59,6 +64,7 @@ export default function Router() {
           <Route index element={<Dashboard />} />
           <Route path='/discover' element={<Discover />} />
           <Route path='/search' element={<Search />} />
+          <Route path='/files' element={<FileManager />} />
           <Route path='/settings' element={<Settings />} />
           <Route
             path='/settings/event-journal'

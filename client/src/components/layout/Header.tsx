@@ -1,6 +1,13 @@
 import { signOut } from '@/lib/auth-client';
 import { Button } from '../ui/button';
-import { Binoculars, Cog, LogOutIcon, RefreshCw, Search } from 'lucide-react';
+import {
+  Binoculars,
+  Cog,
+  FolderKanban,
+  LogOutIcon,
+  RefreshCw,
+  Search,
+} from 'lucide-react';
 import customSonner from '@/components/CustomSonner';
 import { Separator } from '../ui/separator';
 import { cn } from '@/lib/utils';
@@ -134,6 +141,19 @@ export default function Header() {
           />
 
           <Separator orientation='vertical' className='h-4 mx-1' />
+
+          <Button
+            size='icon'
+            variant='outline'
+            aria-label='Open file manager'
+            title='File manager'
+            onClick={() => navigate('/files')}
+            className={cn(
+              pathname === '/files' && 'bg-secondary text-secondary-foreground',
+            )}
+          >
+            <FolderKanban strokeWidth={2} size={16} />
+          </Button>
 
           <Button
             onClick={() => navigate('/discover?period=weekly')}
