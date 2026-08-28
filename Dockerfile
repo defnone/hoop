@@ -1,7 +1,7 @@
 ###########
 # Builder #
 ###########
-FROM oven/bun:1.3 AS builder
+FROM oven/bun:1.4 AS builder
 WORKDIR /app
 ENV NODE_ENV=production
 
@@ -25,7 +25,7 @@ RUN bun run build:single
 ############
 # Runtime  #
 ############
-FROM oven/bun:1.3 AS runner
+FROM oven/bun:1.4 AS runner
 ENV NODE_ENV=production
 ENV DATABASE_URL=data/sqlite.db
 ENV BETTER_AUTH_TELEMETRY=0
