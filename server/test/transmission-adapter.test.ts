@@ -81,6 +81,10 @@ class TransmissionMock {
     magnet: string;
     options: Record<string, unknown>;
   } | null = null;
+  public lastAddTorrentArgs: {
+    content: Uint8Array<ArrayBuffer>;
+    options: Record<string, unknown>;
+  } | null = null;
   public lastRemoveArgs: { id: string; deleteLocal: boolean } | null = null;
 
   async addMagnet(
@@ -91,6 +95,14 @@ class TransmissionMock {
     return Promise.resolve({
       arguments: { 'torrent-added': { hashString: 'abc123' } },
     });
+  }
+
+  async addTorrent(
+    content: Uint8Array<ArrayBuffer>,
+    options: Record<string, unknown>,
+  ): Promise<{ result: 'success'; arguments: Record<string, never> }> {
+    this.lastAddTorrentArgs = { content, options };
+    return Promise.resolve({ result: 'success', arguments: {} });
   }
 
   async removeTorrent(
@@ -163,6 +175,34 @@ describe('TransmissionAdapter', () => {
     expect(dataArg).toMatchObject({
       controlStatus: 'downloading',
       torrentClientId: 'abc123',
+    });
+  });
+
+  it('addTorrent(): adds a file with a custom download directory', async () => {
+    vi.resetModules();
+    const { TransmissionAdapter } = await import(
+      '@server/external/adapters/transmission'
+    );
+
+    const repo = new RepoMock();
+    const client = new TransmissionMock();
+    const content = new Uint8Array([1, 2, 3]) as Uint8Array<ArrayBuffer>;
+    const adapter = new TransmissionAdapter({
+      id: 1,
+      client: client as unknown as Transmission,
+      repo: repo as unknown as never,
+    });
+
+    await adapter.addTorrent({
+      source: 'file',
+      content,
+      filename: 'linux.torrent',
+      downloadDir: '/custom-downloads',
+    });
+
+    expect(client.lastAddTorrentArgs).toEqual({
+      content,
+      options: { 'download-dir': '/custom-downloads' },
     });
   });
 

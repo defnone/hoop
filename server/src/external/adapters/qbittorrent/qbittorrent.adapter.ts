@@ -9,6 +9,7 @@ import { SettingsService } from '@server/features/settings/settings.service';
 import { TorrentClientRepo } from '@server/external/adapters/torrent-client/torrent-client.repo';
 import type {
   TorrentClientAction,
+  TorrentClientAddRequest,
   TorrentClientItemDto,
   TorrentClientPort,
 } from '@server/external/adapters/torrent-client/torrent-client.types';
@@ -60,6 +61,27 @@ export class QbittorrentAdapter implements TorrentClientPort {
       controlStatus: 'downloading',
       torrentClientId: hash,
       torrentClientType: 'qbittorrent',
+    });
+  }
+
+  async addTorrent(request: TorrentClientAddRequest): Promise<void> {
+    const { client, downloadDir: configuredDownloadDir } =
+      await this.loadContext();
+    const downloadDir = resolveDownloadDir(
+      request.downloadDir,
+      configuredDownloadDir,
+    );
+
+    if (request.source === 'magnet') {
+      await client.addMagnet(normalizeTorrentMagnet(request.magnet), {
+        savepath: downloadDir,
+      });
+      return;
+    }
+
+    await client.addTorrent(request.content, {
+      filename: request.filename,
+      savepath: downloadDir,
     });
   }
 
@@ -207,4 +229,14 @@ export class QbittorrentAdapter implements TorrentClientPort {
 
 function isQbittorrentCompleted(status: NormalizedTorrent): boolean {
   return status.isCompleted && status.state === TorrentState.seeding;
+}
+
+function resolveDownloadDir(
+  requestedDownloadDir: string | undefined,
+  configuredDownloadDir: string | null,
+): string {
+  const downloadDir =
+    requestedDownloadDir?.trim() || configuredDownloadDir?.trim();
+  if (!downloadDir) throw new Error('Download directory is not configured');
+  return downloadDir;
 }

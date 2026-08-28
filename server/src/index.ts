@@ -15,6 +15,7 @@ import { torrentsRoute } from './routes/torrents';
 import { torrentsSaveTrackedEpRoute } from './routes/torrents.save-tracked-ep';
 import { torrentsSaveNotificationsRoute } from './routes/torrents.save-notifications';
 import { torrentClientAddRoute } from './routes/torrent-client.$id.add';
+import { torrentClientManualAddRoute } from './routes/torrent-client.add';
 import { torrentClientDeleteRoute } from './routes/torrent-client.$id.delete';
 import { torrentClientRoute } from './routes/torrent-client';
 import { torrentClientActionRoute } from './routes/torrent-client.$id.action';
@@ -109,6 +110,7 @@ export const routes = app
   .route('/torrents/:id/save-notifications', torrentsSaveNotificationsRoute)
   .route('/torrents/:id/pause-toggle', torrentsPauseToggleRoute)
   .route('/torrent-client', torrentClientRoute)
+  .route('/torrent-client/add', torrentClientManualAddRoute)
   .route('/torrent-client/verify', torrentClientVerifyRoute)
   .route('/torrent-client/:id/action', torrentClientActionRoute)
   .route('/torrent-client/:id/remove', torrentClientRemoveRoute)

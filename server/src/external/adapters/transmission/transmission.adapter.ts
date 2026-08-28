@@ -1,4 +1,8 @@
-import type { AddTorrentOptions, Transmission } from '@ctrl/transmission';
+import type {
+  AddTorrentOptions,
+  AddTorrentResponse,
+  Transmission,
+} from '@ctrl/transmission';
 import type {
   AddMagnetResult,
   EpisodeSelectionStatus,
@@ -9,6 +13,7 @@ import type { DbTorrentItem, DbUserSettings } from '@server/db/app/app-schema';
 import { SettingsService } from '@server/features/settings/settings.service';
 import type {
   TorrentClientAction,
+  TorrentClientAddRequest,
   TorrentClientItemDto,
 } from '@server/external/adapters/torrent-client/torrent-client.types';
 import { getEpisodeNumbersFromFilePath } from '@server/external/adapters/torrent-client/episode-file.utils';
@@ -71,6 +76,32 @@ export class TransmissionAdapter {
       const normalizedError = normalizeTransmissionError(e);
       throw new Error(`Failed to add torrent: ${normalizedError.message}`, {
         cause: e,
+      });
+    }
+  }
+
+  async addTorrent(request: TorrentClientAddRequest): Promise<void> {
+    await this.loadSettings();
+    const downloadDir = resolveDownloadDir(
+      request.downloadDir,
+      this.uSettings?.downloadDir,
+    );
+    const options: Partial<AddTorrentOptions> = {
+      'download-dir': downloadDir,
+    };
+
+    try {
+      const result: AddTorrentResponse =
+        request.source === 'magnet'
+          ? await this.client.addMagnet(request.magnet, options)
+          : await this.client.addTorrent(request.content, options);
+      if (result.result !== 'success') {
+        throw new Error(result.result);
+      }
+    } catch (error) {
+      const normalizedError = normalizeTransmissionError(error);
+      throw new Error(`Failed to add torrent: ${normalizedError.message}`, {
+        cause: error,
       });
     }
   }
@@ -185,4 +216,14 @@ export class TransmissionAdapter {
     });
     return torrentItem.id;
   }
+}
+
+function resolveDownloadDir(
+  requestedDownloadDir: string | undefined,
+  configuredDownloadDir: string | null | undefined,
+): string {
+  const downloadDir =
+    requestedDownloadDir?.trim() || configuredDownloadDir?.trim();
+  if (!downloadDir) throw new Error('Download directory is not configured');
+  return downloadDir;
 }

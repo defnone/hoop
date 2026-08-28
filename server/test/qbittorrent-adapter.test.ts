@@ -62,6 +62,7 @@ const status: NormalizedTorrent = {
 };
 
 const addMagnet = vi.fn(async () => true);
+const addTorrent = vi.fn(async () => true);
 const getTorrent = vi.fn(async () => ({ ...status }));
 const torrentFiles = vi.fn(async () => [
   { name: 'Show.S01E01.mkv', priority: TorrentFilePriority.NormalPriority },
@@ -83,6 +84,7 @@ const getAllData = vi.fn(async () => ({
 
 const client = {
   addMagnet,
+  addTorrent,
   getAllData,
   getTorrent,
   torrentFiles,
@@ -111,6 +113,36 @@ describe('QbittorrentAdapter', () => {
       controlStatus: 'downloading',
       torrentClientId: torrentItem.torrentClientId,
       torrentClientType: 'qbittorrent',
+    });
+  });
+
+  it('adds a torrent file with a custom download directory', async () => {
+    const content = new Uint8Array([1, 2, 3]) as Uint8Array<ArrayBuffer>;
+    const adapter = createAdapter();
+
+    await adapter.addTorrent({
+      source: 'file',
+      content,
+      filename: 'linux.torrent',
+      downloadDir: '/custom-downloads',
+    });
+
+    expect(addTorrent).toHaveBeenCalledWith(content, {
+      filename: 'linux.torrent',
+      savepath: '/custom-downloads',
+    });
+  });
+
+  it('adds a magnet with the configured download directory', async () => {
+    const adapter = createAdapter();
+
+    await adapter.addTorrent({
+      source: 'magnet',
+      magnet: torrentItem.magnet,
+    });
+
+    expect(addMagnet).toHaveBeenCalledWith(torrentItem.magnet, {
+      savepath: '/downloads',
     });
   });
 

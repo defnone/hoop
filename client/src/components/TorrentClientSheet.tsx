@@ -1,4 +1,4 @@
-import { useDeferredValue, useState } from 'react';
+import { useDeferredValue, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowDown,
@@ -12,6 +12,7 @@ import {
   Gauge,
   Pause,
   Play,
+  Plus,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -25,6 +26,8 @@ import type {
 } from '@server/external/adapters/torrent-client';
 import { rpc } from '@/lib/rpc';
 import customSonner from '@/components/CustomSonner';
+import AddDownloadDialog from '@/components/AddDownloadDialog';
+import useSettings from '@/hooks/useSettings';
 import { Button } from '@/components/ui/button';
 import {
   ContextMenu,
@@ -107,8 +110,11 @@ export default function TorrentClientSheet({
   const [filter, setFilter] = useState<TorrentListFilter>('all');
   const [removalRequest, setRemovalRequest] =
     useState<TorrentRemovalRequest | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const addButtonRef = useRef<HTMLButtonElement>(null);
   const deferredSearch = useDeferredValue(search);
   const queryClient = useQueryClient();
+  const { settingsData } = useSettings(addDialogOpen);
 
   const torrentsQuery = useQuery({
     queryKey: ['torrent-client-transfers', clientType],
@@ -209,7 +215,23 @@ export default function TorrentClientSheet({
                 <ArrowDownToLine className='size-5' strokeWidth={3} />
               </div>
               <div className='min-w-0 flex-1'>
-                <SheetTitle className='text-lg'>{clientName}</SheetTitle>
+                <div className='inline-flex w-fit max-w-full min-w-0 items-center gap-2'>
+                  <SheetTitle className='min-w-0 max-w-full truncate text-lg'>
+                    {clientName}
+                  </SheetTitle>
+                  <Button
+                    ref={addButtonRef}
+                    type='button'
+                    size='icon-sm'
+                    variant='outline'
+                    className='shrink-0'
+                    aria-label={`Add download to ${clientName}`}
+                    title='Add download'
+                    onClick={() => setAddDialogOpen(true)}
+                  >
+                    <Plus />
+                  </Button>
+                </div>
                 <SheetDescription>{torrents.length} torrents</SheetDescription>
               </div>
               <TransferSpeed
@@ -263,6 +285,21 @@ export default function TorrentClientSheet({
               clientName={clientName}
             />
           </ScrollArea>
+
+          {addDialogOpen ? (
+            <AddDownloadDialog
+              open
+              onOpenChange={setAddDialogOpen}
+              defaultDownloadDir={settingsData?.downloadDir ?? ''}
+              clientName={clientName}
+              restoreFocusRef={addButtonRef}
+              onAdded={() => {
+                void queryClient.invalidateQueries({
+                  queryKey: ['torrent-client-transfers', clientType],
+                });
+              }}
+            />
+          ) : null}
         </SheetContent>
       </Sheet>
 

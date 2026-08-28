@@ -16,6 +16,19 @@ export const torrentClientActions = [
 
 export type TorrentClientAction = (typeof torrentClientActions)[number];
 
+export type TorrentClientAddRequest =
+  | {
+      source: 'magnet';
+      magnet: string;
+      downloadDir?: string;
+    }
+  | {
+      source: 'file';
+      content: Uint8Array<ArrayBuffer>;
+      filename: string;
+      downloadDir?: string;
+    };
+
 export type TorrentClientItemDto = {
   id: string;
   name: string;
@@ -45,6 +58,7 @@ export type TorrentClientItemDto = {
 
 export interface TorrentClientPort {
   add(): Promise<void>;
+  addTorrent(request: TorrentClientAddRequest): Promise<void>;
   remove(withData?: boolean): Promise<void>;
   status(): Promise<NormalizedTorrent>;
   selectEpisodes(status: NormalizedTorrent): Promise<void>;
