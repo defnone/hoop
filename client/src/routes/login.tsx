@@ -34,12 +34,19 @@ export default function Login() {
   }, [auth?.session, isPending, navigate]);
 
   useEffect(() => {
+    if (isPending || auth?.session) return;
+
+    let cancelled = false;
     getHealth().then((data) => {
-      if (data.message === 'First run') {
+      if (!cancelled && data.message === 'First run') {
         navigate('/sign-up');
       }
     });
-  }, [navigate]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth?.session, isPending, navigate]);
 
   return (
     <div className='flex flex-col items-center justify-center min-h-screen'>
