@@ -7,6 +7,7 @@ import { EventJournalService } from '@server/features/event-journal/event-journa
 import type { EventJournalPort } from '@server/features/event-journal/event-journal.port';
 import type { DbTorrentItem, DbUserSettings } from '@server/db/app/app-schema';
 import { TelegramAdapter } from '@server/external/adapters/telegram';
+import { areMagnetsEquivalent } from '@server/shared/magnet.utils';
 
 export class UpdateWorker {
   // Repository used to read settings and torrent items from DB
@@ -208,7 +209,7 @@ export class UpdateWorker {
         );
       }
       if (
-        trackerData.magnet !== databaseData.magnet &&
+        !areMagnetsEquivalent(trackerData.magnet, databaseData.magnet) &&
         databaseData.notifyOnMagnetChange
       ) {
         await this.sendNotification(
@@ -234,7 +235,7 @@ export class UpdateWorker {
           }
         }
       }
-    } else if (trackerData.magnet !== databaseData.magnet) {
+    } else if (!areMagnetsEquivalent(trackerData.magnet, databaseData.magnet)) {
       logger.info(
         `[UpdateWorker] Magnet changed for ${databaseData.title}. Updating.`,
       );

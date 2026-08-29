@@ -7,6 +7,10 @@ import type {
   PagedResult,
   TorrentItemDto,
 } from '@server/features/torrent-item/torrent-item.types';
+import {
+  areMagnetsEquivalent,
+  extractTorrentIdentities,
+} from '@server/shared/magnet.utils';
 
 const { sendMessageMock } = vi.hoisted(() => ({
   sendMessageMock: vi.fn<(message: string) => Promise<void>>(),
@@ -488,6 +492,180 @@ describe('UpdateWorker.process', () => {
     expect(eventJournal.recordTorrentSyncFailed).not.toHaveBeenCalled();
   });
 
+  it('ignores dn, tr, encoding, and query order changes for the same btih', async () => {
+    const { UpdateWorker } = await import('@server/workers/update-worker');
+    const repo = new RepoMock();
+    const eventJournal = new EventJournalMock();
+    const worker = new UpdateWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
+    const hash = 'AEC0B47493B390966ABB915E7C2C85A4E78E08CB';
+    const oldMagnet =
+      `magnet:?xt=urn:btih:${hash}` +
+      '&tr=http%3A%2F%2Fbt3.t-ru.org%2Fann%3Fmagnet';
+    const newMagnet =
+      `magnet:?dn=Some+Show+S01E01&tr=http%3A%2F%2Fbt3.t-ru.org%2Fann%3Fmagnet` +
+      `&xt=urn%3Abtih%3A${hash.toLowerCase()}`;
+
+    nextTrackerData = {
+      torrentId: 't-1',
+      rawTitle: 'Same Raw',
+      showTitle: 'Some Show',
+      epAndSeason: null,
+      magnet: newMagnet,
+    } satisfies TorrentDataResult;
+    nextDatabaseData = {
+      ...baseItem,
+      rawTitle: 'Same Raw',
+      magnet: oldMagnet,
+    } satisfies DbTorrentItem;
+
+    await worker.process();
+
+    expect(lastTI?.addOrUpdateMock).not.toHaveBeenCalled();
+    expect(eventJournal.recordTorrentMagnetChanged).not.toHaveBeenCalled();
+    expect(eventJournal.recordTorrentTitleChanged).not.toHaveBeenCalled();
+  });
+
+  it('updates item when a real btih hash change occurs', async () => {
+    const { UpdateWorker } = await import('@server/workers/update-worker');
+    const repo = new RepoMock();
+    const eventJournal = new EventJournalMock();
+    const worker = new UpdateWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
+    const oldMagnet =
+      'magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567' +
+      '&dn=Some+Show';
+    const newMagnet =
+      'magnet:?dn=Some+Show&xt=urn%3Abtih%3Afedcba9876543210fedcba9876543210fedcba98';
+
+    nextTrackerData = {
+      torrentId: 't-1',
+      rawTitle: 'Same Raw',
+      showTitle: 'Some Show',
+      epAndSeason: null,
+      magnet: newMagnet,
+    } satisfies TorrentDataResult;
+    nextDatabaseData = {
+      ...baseItem,
+      rawTitle: 'Same Raw',
+      magnet: oldMagnet,
+    } satisfies DbTorrentItem;
+
+    await worker.process();
+
+    expect(lastTI?.addOrUpdateMock).toHaveBeenCalledTimes(1);
+    expect(eventJournal.recordTorrentMagnetChanged).toHaveBeenCalledWith({
+      torrentItem: expect.objectContaining({ id: 1, title: 'Some Show' }),
+      oldValue: oldMagnet,
+      newValue: newMagnet,
+    });
+  });
+
+  it('matches raw SHA-1 info hash with an equivalent magnet URL', async () => {
+    const { UpdateWorker } = await import('@server/workers/update-worker');
+    const repo = new RepoMock();
+    const eventJournal = new EventJournalMock();
+    const worker = new UpdateWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
+    const hash = 'C2B13B2952C47D653A79CA5BD640784255A71885';
+
+    nextTrackerData = {
+      torrentId: 't-1',
+      rawTitle: 'Same Raw',
+      showTitle: 'Some Show',
+      epAndSeason: null,
+      magnet: `magnet:?dn=Some+Show&xt=urn%3Abtih%3A${hash.toLowerCase()}`,
+    } satisfies TorrentDataResult;
+    nextDatabaseData = {
+      ...baseItem,
+      rawTitle: 'Same Raw',
+      magnet: hash,
+    } satisfies DbTorrentItem;
+
+    await worker.process();
+
+    expect(lastTI?.addOrUpdateMock).not.toHaveBeenCalled();
+    expect(eventJournal.recordTorrentMagnetChanged).not.toHaveBeenCalled();
+  });
+
+  it('does not report a magnet change in the title branch for equal identity', async () => {
+    const { UpdateWorker } = await import('@server/workers/update-worker');
+    const repo = new RepoMock();
+    repo.findSettings.mockResolvedValue({
+      ...settings,
+      telegramId: 123456,
+      botToken: 'bot-token',
+    });
+    const eventJournal = new EventJournalMock();
+    const worker = new UpdateWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
+    const hash = '0123456789abcdef0123456789abcdef01234567';
+
+    nextTrackerData = {
+      torrentId: 't-1',
+      rawTitle: 'New Raw',
+      showTitle: 'Some Show',
+      epAndSeason: null,
+      magnet: `magnet:?dn=New+Name&xt=urn%3Abtih%3A${hash}`,
+    } satisfies TorrentDataResult;
+    nextDatabaseData = {
+      ...baseItem,
+      rawTitle: 'Old Raw',
+      magnet: `magnet:?xt=urn:btih:${hash}&tr=udp%3A%2F%2Ftracker.example`,
+      notifyOnMagnetChange: true,
+      notifyOnTitleChange: false,
+    } satisfies DbTorrentItem;
+
+    await worker.process();
+
+    expect(lastTI?.addOrUpdateMock).toHaveBeenCalledTimes(1);
+    expect(eventJournal.recordTorrentTitleChanged).toHaveBeenCalledTimes(1);
+    expect(eventJournal.recordTorrentMagnetChanged).not.toHaveBeenCalled();
+    expect(sendMessageMock).not.toHaveBeenCalled();
+  });
+
+  it('updates when a hybrid magnet changes its second identity hash', async () => {
+    const { UpdateWorker } = await import('@server/workers/update-worker');
+    const repo = new RepoMock();
+    const eventJournal = new EventJournalMock();
+    const worker = new UpdateWorker({
+      repo: repo as unknown as never,
+      eventJournal,
+    });
+    const btih = '0123456789abcdef0123456789abcdef01234567';
+    const oldBtmh = `1220${'a'.repeat(64)}`;
+    const newBtmh = `1220${'b'.repeat(64)}`;
+    const oldMagnet =
+      `magnet:?xt=urn:btih:${btih}&xt=urn:btmh:${oldBtmh}` + '&dn=Some+Show';
+    const newMagnet = `magnet:?dn=Some+Show&xt=urn:btmh:${newBtmh}&xt=urn:btih:${btih}`;
+
+    nextTrackerData = {
+      torrentId: 't-1',
+      rawTitle: 'Same Raw',
+      showTitle: 'Some Show',
+      epAndSeason: null,
+      magnet: newMagnet,
+    } satisfies TorrentDataResult;
+    nextDatabaseData = {
+      ...baseItem,
+      rawTitle: 'Same Raw',
+      magnet: oldMagnet,
+    } satisfies DbTorrentItem;
+
+    await worker.process();
+
+    expect(lastTI?.addOrUpdateMock).toHaveBeenCalledTimes(1);
+    expect(eventJournal.recordTorrentMagnetChanged).toHaveBeenCalledTimes(1);
+  });
+
   it('records sync failed event when fetch data fails', async () => {
     const { UpdateWorker } = await import('@server/workers/update-worker');
     const repo = new RepoMock();
@@ -661,6 +839,46 @@ describe('UpdateWorker.process', () => {
     expect(worker.startNow()).toBe(false);
 
     await sleep(20);
+  });
+});
+
+describe('magnet identity helpers', () => {
+  it('ignores unsupported exact topics when a supported identity exists', () => {
+    const hash = '0123456789abcdef0123456789abcdef01234567';
+    const original = `magnet:?xt=urn:btih:${hash}&dn=Some+Show`;
+    const withUnknownTopic =
+      `magnet:?dn=Updated+name&xt=urn:btih:${hash}` +
+      '&xt=urn:ed2k:0123456789abcdef&tr=udp%3A%2F%2Ftracker.example';
+
+    expect(areMagnetsEquivalent(original, withUnknownTopic)).toBe(true);
+  });
+
+  it('uses strict string fallback when a supported exact topic is malformed', () => {
+    const hash = '0123456789abcdef0123456789abcdef01234567';
+    const valid = `magnet:?xt=urn:btih:${hash}&dn=Some+Show`;
+    const malformed = `magnet:?xt=urn:btih:${hash}&xt=urn:btih:bad&dn=Some+Show`;
+
+    expect(areMagnetsEquivalent(valid, malformed)).toBe(false);
+  });
+
+  it('sorts and deduplicates supported hybrid identities', () => {
+    const btih = '0123456789abcdef0123456789abcdef01234567';
+    const btmh = `1220${'a'.repeat(64)}`;
+    const magnet =
+      `magnet:?xt=urn:btmh:${btmh}&xt=urn:btih:${btih}` +
+      `&xt=urn:btih:${btih}`;
+
+    expect(extractTorrentIdentities(magnet)).toEqual([
+      `btih:${btih}`,
+      `btmh:${'a'.repeat(64)}`,
+    ]);
+  });
+
+  it('uses strict string fallback when either magnet cannot be parsed', () => {
+    expect(areMagnetsEquivalent('magnet:?xt=urn:btih:bad', 'MAGNET')).toBe(
+      false,
+    );
+    expect(areMagnetsEquivalent('MAGNET', 'MAGNET')).toBe(true);
   });
 });
 
