@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.9.0 - 2026-09-22
+
+### Added
+
+- File manager: add an authenticated web interface and sandboxed Hono RPC for browsing configured Media and Downloads roots, viewing directory sizes, and creating, renaming, batch-renaming, copying, moving, and deleting entries without overwriting existing destinations (6d0a564, 4d569a0).
+- Torrent clients: add manual `.torrent` file and magnet-link submissions to the configured Transmission or qBittorrent client (bb4b399).
+
+### Changed
+
+- Tracker access: cache origin-scoped FlareSolverr clearance and Kinozal authentication sessions, share concurrent refreshes, and invalidate rejected sessions without unbounded retries (13764b1, dc8835e).
+- Torrent synchronization: compare canonical BTIH/BTMH identities so metadata-only magnet changes do not create database updates, journal entries, or notifications (31e74ec).
+- Update worker: reclaim memory once after each non-empty synchronization run (8b57a06).
+- Discover: preserve TMDB Trending provider order and refresh the edge-cache namespace (0450d68).
+- Torrent dialogs: display the configured torrent client name instead of a fixed provider label (71cace9).
+- Tooling: update ESLint packages and use Bun 1.4 in the production Docker image (30c8ed6, d105931).
+
+### Fixed
+
+- Kinozal: detect Cloudflare challenges during login, solve them through configured FlareSolverr, and retry authentication with the returned cookies and exact user agent (8083f7e).
+- Authentication: keep the login screen stable while the session health check is still pending (2b0185b).
+- Tracker parsing: accept whitespace around episode ranges (21b7c81).
+- Error reporting: preserve error causes in normalized messages (f809842).
+
+### Notes
+
+- No database migration or new required environment variable is introduced.
+- File manager access remains restricted to configured Media and Downloads roots. Kinozal challenge recovery requires the existing FlareSolverr integration to be enabled and configured.
+
 ## 0.8.0 - 2026-08-09
 
 ### Added

@@ -108,12 +108,14 @@ describe('FileContent', () => {
       const unselectedItem = container.querySelector<HTMLButtonElement>(
         'button[aria-label="Unselected episode.mkv"]',
       );
+      const selectedHoverClass =
+        viewMode === 'grid' ? 'hover:bg-sky-500/20' : 'hover:bg-blue-500/20';
 
       expect(selectedItem?.className).toContain('bg-blue-500/10');
-      expect(selectedItem?.className).toContain('hover:bg-sky-500/20');
+      expect(selectedItem?.className).toContain(selectedHoverClass);
       expect(selectedItem?.className).not.toContain('hover:bg-white/[0.035]');
       expect(unselectedItem?.className).toContain('hover:bg-white/[0.035]');
-      expect(unselectedItem?.className).not.toContain('hover:bg-sky-500/20');
+      expect(unselectedItem?.className).not.toContain(selectedHoverClass);
     },
   );
 
