@@ -91,4 +91,52 @@ describe('authFns.kinozal', () => {
       ),
     ).rejects.toThrow('No cookies found');
   });
+
+  it('passes challenge cookies and user agent to the login request', async () => {
+    const response = {
+      headers: {
+        getSetCookie: vi.fn(() => ['sid=abc']),
+      },
+    } as unknown as Response;
+
+    mockedFetch.mockResolvedValueOnce(response);
+
+    await authFns.kinozal(
+      baseArgs.login,
+      baseArgs.password,
+      baseArgs.baseUrl,
+      baseArgs.authPath,
+      {
+        cookies: 'cf_clearance=token',
+        userAgent: 'Mozilla/5.0 FlareSolverr',
+      },
+    );
+
+    expect(mockedFetch.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Cookie: 'cf_clearance=token',
+          'User-Agent': 'Mozilla/5.0 FlareSolverr',
+        }),
+      }),
+    );
+  });
+
+  it('classifies a Cloudflare challenge response', async () => {
+    mockedFetch.mockResolvedValueOnce(
+      new Response('<html>challenge</html>', {
+        status: 403,
+        headers: { 'cf-mitigated': 'challenge' },
+      }),
+    );
+
+    await expect(
+      authFns.kinozal(
+        baseArgs.login,
+        baseArgs.password,
+        baseArgs.baseUrl,
+        baseArgs.authPath,
+      ),
+    ).rejects.toMatchObject({ name: 'CloudflareChallengeError' });
+  });
 });

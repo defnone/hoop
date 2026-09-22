@@ -23,6 +23,11 @@ export type TrackerAuthParams = {
   tracker: keyof typeof trackersConf;
 };
 
+export type TrackerAuthRequestOptions = {
+  cookies?: string;
+  userAgent?: string;
+};
+
 export type TrackerDataParams = {
   url: string;
   tracker: keyof typeof trackersConf;

@@ -906,6 +906,77 @@ describe('TrackerData.collect', () => {
     });
   });
 
+  it('kinozal: solves Cloudflare before retrying authentication', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+    settingsMock.flaresolverrEnabled = true;
+    settingsMock.flaresolverrUrl = 'http://localhost:8191';
+
+    const pageHtml = `
+      <html><body>
+        <h1>Series / Solved login (1 сезон: 1-2 серии из 2)</h1>
+      </body></html>`;
+    const magnetHtml =
+      '<html><body><ul><li>Инфо хеш: SOLVED123456</li></ul></body></html>';
+    const challengeResponse = new Response('<html>challenge</html>', {
+      status: 403,
+      headers: { 'cf-mitigated': 'challenge' },
+    });
+    const solverResponse = new Response(
+      JSON.stringify({
+        status: 'ok',
+        solution: {
+          status: 200,
+          response: pageHtml,
+          cookies: [{ name: 'cf_clearance', value: 'challenge-cookie' }],
+          userAgent: 'Mozilla/5.0 FlareSolverr',
+        },
+      }),
+      {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      },
+    );
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(challengeResponse)
+      .mockResolvedValueOnce(solverResponse)
+      .mockResolvedValueOnce(toAuthResponse('sid=authenticated'))
+      .mockResolvedValueOnce(toResponse(pageHtml))
+      .mockResolvedValueOnce(toResponse(magnetHtml));
+
+    const td = new TrackerDataAdapter({
+      url: 'https://kinozal.tv/details.php?id=788',
+      tracker: 'kinozal',
+    });
+    const result = await td.collect();
+
+    expect(result.magnet).toBe('SOLVED123456');
+    expect(
+      mockedFetch.mock.calls.map(([requestedUrl]) => requestedUrl),
+    ).toEqual([
+      'https://kinozal.tv/takelogin.php',
+      'http://localhost:8191/v1',
+      'https://kinozal.tv/takelogin.php',
+      'https://kinozal.tv/details.php?id=788',
+      'https://kinozal.tv/get_srv_details.php?action=2&id=788',
+    ]);
+    expect(mockedFetch.mock.calls[2]?.[1]).toEqual(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Cookie: 'cf_clearance=challenge-cookie',
+          'User-Agent': 'Mozilla/5.0 FlareSolverr',
+        }),
+      }),
+    );
+    expect(mockedFetch.mock.calls[3]?.[1]).toEqual({
+      headers: {
+        Cookie: 'sid=authenticated; cf_clearance=challenge-cookie',
+        'User-Agent': 'Mozilla/5.0 FlareSolverr',
+      },
+    });
+  });
+
   it('kinozal: does not retry domains for missing credentials', async () => {
     const td = new TrackerDataAdapter({
       url: 'https://kinozal.tv/details.php?id=786',

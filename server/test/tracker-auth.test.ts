@@ -11,6 +11,7 @@ vi.mock('@server/external/adapters/tracker-data/tracker-data.auth.fns', () => {
 
 import { TrackerAuth } from '@server/external/adapters/tracker-data/tracker-data.auth';
 import { authFns } from '@server/external/adapters/tracker-data/tracker-data.auth.fns';
+import { CloudflareChallengeError } from '@server/external/adapters/tracker-data/utils';
 import {
   TrackerAuthCookieCache,
   normalizeTrackerOrigin,
@@ -74,6 +75,24 @@ describe('TrackerAuth.getCookies', () => {
     await expect(ta.getCookies()).rejects.toMatchObject({
       name: 'TrackerAuthError',
       kind: 'credentials',
+      retryable: false,
+    });
+  });
+
+  it('classifies Cloudflare challenges separately from credentials', async () => {
+    const mocked = vi.mocked(authFns.kinozal);
+    mocked.mockRejectedValueOnce(new CloudflareChallengeError());
+
+    const ta = new TrackerAuth({
+      login: 'l',
+      password: 'p',
+      baseUrl: 'https://kinozal.tv',
+      tracker: 'kinozal',
+    });
+
+    await expect(ta.getCookies()).rejects.toMatchObject({
+      name: 'TrackerAuthError',
+      kind: 'challenge',
       retryable: false,
     });
   });

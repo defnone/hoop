@@ -6,6 +6,7 @@ import type {
   EpAndSeason,
   TorrentDataResult,
   TrackerDataParams,
+  TrackerAuthRequestOptions,
 } from './tracker-data.types';
 import { customFetch } from '@server/shared/custom-fetch';
 import { TrackerAuth, TrackerAuthError } from './tracker-data.auth';
@@ -352,9 +353,66 @@ export class TrackerDataAdapter {
       return this.getInjectedAuthCookies(origin, injectedAuth);
     }
 
-    return trackerAuthCookieCache.getOrCreate(this.tracker, origin, () =>
-      this.getAuth(url).then((auth) => auth.getCookies()),
-    );
+    const createAuthCookies = async (
+      requestOptions: TrackerAuthRequestOptions = {},
+    ): Promise<string> => {
+      const auth = await this.getAuth(url);
+      return auth.getCookies(requestOptions);
+    };
+
+    try {
+      return await trackerAuthCookieCache.getOrCreate(
+        this.tracker,
+        origin,
+        () => createAuthCookies(),
+      );
+    } catch (error) {
+      if (!(error instanceof TrackerAuthError) || error.kind !== 'challenge') {
+        throw error;
+      }
+
+      const session = await this.resolveFlareSolverrAuthSession(url);
+      const cookies = buildCookieHeader(session.cookies, url, session.host);
+
+      return trackerAuthCookieCache.getOrCreate(this.tracker, origin, () =>
+        createAuthCookies({
+          cookies,
+          userAgent: session.userAgent,
+        }),
+      );
+    }
+  }
+
+  private async resolveFlareSolverrAuthSession(
+    url: string,
+  ): Promise<FlareSolverrSession> {
+    const settings = await new SettingsService().getSettings();
+
+    if (!settings?.flaresolverrEnabled) {
+      throw new CloudflareChallengeError(
+        'Cloudflare Challenge detected, FlareSolverr is disabled',
+      );
+    }
+
+    if (!settings.flaresolverrUrl) {
+      throw new Error('FlareSolverr URL is not configured');
+    }
+
+    const cachedSession = this.getFlareSolverrSession(url);
+    if (cachedSession) {
+      return cachedSession;
+    }
+
+    const sessionResult = await resolveFlareSolverrSession({
+      tracker: this.tracker,
+      serverUrl: settings.flaresolverrUrl,
+      targetUrl: url,
+      timeout: this.getFlareSolverrTimeout(settings.flaresolverrTimeoutSeconds),
+      cookies: '',
+    });
+
+    this.cloudflareSession = sessionResult.session;
+    return sessionResult.session;
   }
 
   private async getInjectedAuthCookies(

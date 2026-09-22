@@ -1,11 +1,16 @@
 import { trackersConf } from '@server/shared/trackers-conf';
 import type { TrackerConf } from '@server/shared/types';
 import { authFns } from './tracker-data.auth.fns';
-import type { TrackerAuthParams } from './tracker-data.types';
+import { CloudflareChallengeError } from './utils';
+import type {
+  TrackerAuthParams,
+  TrackerAuthRequestOptions,
+} from './tracker-data.types';
 
 export type TrackerAuthErrorKind =
   | 'configuration'
   | 'credentials'
+  | 'challenge'
   | 'transport';
 
 export class TrackerAuthError extends Error {
@@ -49,18 +54,29 @@ export class TrackerAuth {
     return this.originValue;
   }
 
-  public async getCookies(): Promise<string> {
+  public async getCookies(
+    requestOptions: TrackerAuthRequestOptions = {},
+  ): Promise<string> {
     if (!this.tConf.authPath) {
       throw new TrackerAuthError('Auth path not found', 'configuration');
     }
 
     try {
-      this.cookies = await this.authFn(
-        this.login,
-        this.password,
-        this.baseUrlValue,
-        this.tConf.authPath,
-      );
+      this.cookies =
+        Object.keys(requestOptions).length > 0
+          ? await this.authFn(
+              this.login,
+              this.password,
+              this.baseUrlValue,
+              this.tConf.authPath,
+              requestOptions,
+            )
+          : await this.authFn(
+              this.login,
+              this.password,
+              this.baseUrlValue,
+              this.tConf.authPath,
+            );
       if (!this.cookies) {
         throw new TrackerAuthError('No cookies found', 'credentials');
       }
@@ -72,9 +88,15 @@ export class TrackerAuth {
 
       const cause = error instanceof Error ? error : new Error(String(error));
       const kind =
-        cause.message === 'No cookies found' ? 'credentials' : 'transport';
+        cause instanceof CloudflareChallengeError
+          ? 'challenge'
+          : cause.message === 'No cookies found'
+            ? 'credentials'
+            : 'transport';
       throw new TrackerAuthError(
-        `Failed to authenticate ${this.tracker} with ${cause}`,
+        kind === 'challenge'
+          ? `Cloudflare challenge detected while authenticating ${this.tracker}`
+          : `Failed to authenticate ${this.tracker} with ${cause}`,
         kind,
         cause,
       );
