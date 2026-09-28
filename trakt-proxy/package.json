@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@hono-rate-limiter/cloudflare": "^0.2.2",
-    "hono": "4.13.1",
+    "hono": "4.13.9",
     "hono-rate-limiter": "^0.5.3"
   },
   "devDependencies": {
