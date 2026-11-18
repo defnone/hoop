@@ -353,78 +353,45 @@ export class TrackerDataAdapter {
       return this.getInjectedAuthCookies(origin, injectedAuth);
     }
 
-    const createAuthCookies = async (
-      requestOptions: TrackerAuthRequestOptions = {},
-    ): Promise<string> => {
-      const auth = await this.getAuth(url);
-      return auth.getCookies(requestOptions);
-    };
-
-    try {
-      return await trackerAuthCookieCache.getOrCreate(
-        this.tracker,
-        origin,
-        () => createAuthCookies(),
-      );
-    } catch (error) {
-      if (!(error instanceof TrackerAuthError) || error.kind !== 'challenge') {
-        throw error;
-      }
-
-      const session = await this.resolveFlareSolverrAuthSession(url);
-      try {
-        return await this.authenticateWithFlareSolverrSession(
-          url,
-          origin,
-          session,
-          createAuthCookies,
-        );
-      } catch (retryError) {
-        if (
-          !(retryError instanceof TrackerAuthError) ||
-          retryError.kind !== 'challenge'
-        ) {
-          throw retryError;
-        }
-
-        clearCachedFlareSolverrSession(this.tracker, url, session);
-        if (this.cloudflareSession === session) {
-          this.cloudflareSession = null;
-        }
-        const freshSession = await this.resolveFlareSolverrAuthSession(url);
-        try {
-          return await this.authenticateWithFlareSolverrSession(
-            url,
-            origin,
-            freshSession,
-            createAuthCookies,
-          );
-        } catch (freshError) {
-          if (
-            freshError instanceof TrackerAuthError &&
-            freshError.kind === 'challenge'
-          ) {
-            clearCachedFlareSolverrSession(this.tracker, url, freshSession);
-            if (this.cloudflareSession === freshSession) {
-              this.cloudflareSession = null;
-            }
-          }
-          throw freshError;
-        }
-      }
-    }
+    return trackerAuthCookieCache.getOrCreate(this.tracker, origin, () =>
+      this.authenticateTracker(url),
+    );
   }
 
-  private async authenticateWithFlareSolverrSession(
-    url: string,
-    origin: string,
-    session: FlareSolverrSession,
-    createAuthCookies: (options: TrackerAuthRequestOptions) => Promise<string>,
-  ): Promise<TrackerAuthCookieResult> {
-    const cookies = buildCookieHeader(session.cookies, url, session.host);
-    return trackerAuthCookieCache.getOrCreate(this.tracker, origin, () =>
-      createAuthCookies({ cookies, userAgent: session.userAgent }),
-    );
+  private async authenticateTracker(url: string): Promise<string> {
+    let session: FlareSolverrSession | null = null;
+
+    for (let attempt = 0; ; attempt++) {
+      const options: TrackerAuthRequestOptions = session
+        ? {
+            cookies: buildCookieHeader(session.cookies, url, session.host),
+            userAgent: session.userAgent,
+          }
+        : {};
+      try {
+        const auth = await this.getAuth(url);
+        return await auth.getCookies(options);
+      } catch (error) {
+        if (
+          !(error instanceof TrackerAuthError) ||
+          error.kind !== 'challenge'
+        ) {
+          throw error;
+        }
+
+        if (session) {
+          clearCachedFlareSolverrSession(this.tracker, url, session);
+          if (this.cloudflareSession === session) {
+            this.cloudflareSession = null;
+          }
+        }
+        if (attempt === 2) {
+          throw error;
+        }
+      }
+
+      session = await this.resolveFlareSolverrAuthSession(url);
+    }
   }
 
   private async resolveFlareSolverrAuthSession(

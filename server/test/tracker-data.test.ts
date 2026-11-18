@@ -1047,7 +1047,7 @@ describe('TrackerData.collect', () => {
     );
   });
 
-  it('kinozal: clears rejected fresh clearance and stops retrying', async () => {
+  it('kinozal: clears rejected fresh clearance and shares the retry limit', async () => {
     settingsMock.kinozalUsername = 'login';
     settingsMock.kinozalPassword = 'password';
     settingsMock.flaresolverrEnabled = true;
@@ -1070,20 +1070,39 @@ describe('TrackerData.collect', () => {
           },
         }),
       );
+    let rejectFreshClearance: (response: Response) => void = () => undefined;
+    const freshLogin = new Promise<Response>((resolve) => {
+      rejectFreshClearance = resolve;
+    });
     const mockedFetch = vi.mocked(customFetch);
     mockedFetch
       .mockResolvedValueOnce(challenge())
       .mockResolvedValueOnce(solution())
       .mockResolvedValueOnce(challenge())
       .mockResolvedValueOnce(solution())
-      .mockResolvedValueOnce(challenge());
+      .mockImplementationOnce(() => freshLogin);
 
-    await expect(
-      new TrackerDataAdapter({ url, tracker: 'kinozal' }).collect(),
-    ).rejects.toThrow(
-      'Cloudflare challenge detected while authenticating kinozal',
-    );
+    const first = new TrackerDataAdapter({ url, tracker: 'kinozal' }).collect();
+    await vi.waitFor(() => expect(mockedFetch).toHaveBeenCalledTimes(5));
+    const second = new TrackerDataAdapter({
+      url,
+      tracker: 'kinozal',
+    }).collect();
+    const pendingResults = Promise.allSettled([first, second]);
+    rejectFreshClearance(challenge());
+
+    const results = await pendingResults;
     expect(mockedFetch).toHaveBeenCalledTimes(5);
+    for (const result of results) {
+      expect(result).toEqual({
+        status: 'rejected',
+        reason: expect.objectContaining({
+          message: expect.stringContaining(
+            'Cloudflare challenge detected while authenticating kinozal',
+          ),
+        }),
+      });
+    }
     expect(getCachedFlareSolverrSession('kinozal', url)).toBeNull();
   });
 
