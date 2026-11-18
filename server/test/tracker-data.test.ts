@@ -50,7 +50,11 @@ vi.mock('@server/shared/custom-fetch', () => ({
 import { TrackerDataAdapter } from '@server/external/adapters/tracker-data';
 import { customFetch } from '@server/shared/custom-fetch';
 import { TrackerAuth } from '@server/external/adapters/tracker-data/tracker-data.auth';
-import { clearFlareSolverrCache } from '@server/external/adapters/tracker-data/flaresolverr-cache';
+import {
+  clearFlareSolverrCache,
+  getCachedFlareSolverrSession,
+  resolveFlareSolverrSession,
+} from '@server/external/adapters/tracker-data/flaresolverr-cache';
 import { clearTrackerAuthCookieCache } from '@server/external/adapters/tracker-data/tracker-data.auth-cache';
 
 const toResponse = (html: string): Response =>
@@ -917,7 +921,7 @@ describe('TrackerData.collect', () => {
         <h1>Series / Solved login (1 сезон: 1-2 серии из 2)</h1>
       </body></html>`;
     const magnetHtml =
-      '<html><body><ul><li>Инфо хеш: SOLVED123456</li></ul></body></html>';
+      '<html><body><ul><li>\u0418\u043d\u0444\u043e \u0445\u0435\u0448: SOLVED123456</li></ul></body></html>';
     const challengeResponse = new Response('<html>challenge</html>', {
       status: 403,
       headers: { 'cf-mitigated': 'challenge' },
@@ -975,6 +979,112 @@ describe('TrackerData.collect', () => {
         'User-Agent': 'Mozilla/5.0 FlareSolverr',
       },
     });
+  });
+
+  it('kinozal: replaces rejected clearance and retries authentication', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+    settingsMock.flaresolverrEnabled = true;
+    settingsMock.flaresolverrUrl = 'http://localhost:8191';
+    const url = 'https://kinozal.tv/details.php?id=788';
+    const solution = (token: string): Response =>
+      new Response(
+        JSON.stringify({
+          status: 'ok',
+          solution: {
+            status: 200,
+            response: '<html></html>',
+            cookies: [{ name: 'cf_clearance', value: token }],
+            userAgent: 'Mozilla/5.0 FlareSolverr',
+          },
+        }),
+      );
+    const challenge = (): Response =>
+      new Response(null, {
+        status: 403,
+        headers: { 'cf-mitigated': 'challenge' },
+      });
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch.mockResolvedValueOnce(solution('stale'));
+    await resolveFlareSolverrSession({
+      tracker: 'kinozal',
+      serverUrl: 'http://localhost:8191',
+      targetUrl: url,
+      timeout: 60_000,
+      cookies: '',
+    });
+    mockedFetch
+      .mockResolvedValueOnce(challenge())
+      .mockResolvedValueOnce(challenge())
+      .mockResolvedValueOnce(solution('fresh'))
+      .mockResolvedValueOnce(toAuthResponse('sid=authenticated'))
+      .mockResolvedValueOnce(
+        toResponse(
+          '<h1>Series / Title (1 \u0441\u0435\u0437\u043e\u043d: 1-2 \u0441\u0435\u0440\u0438\u0438 \u0438\u0437 2)</h1>',
+        ),
+      )
+      .mockResolvedValueOnce(
+        toResponse(
+          '<ul><li>\u0418\u043d\u0444\u043e \u0445\u0435\u0448: SOLVED123456</li></ul>',
+        ),
+      );
+
+    const result = await new TrackerDataAdapter({
+      url,
+      tracker: 'kinozal',
+    }).collect();
+
+    expect(result.magnet).toBe('SOLVED123456');
+    expect(mockedFetch.mock.calls[2]?.[1]).toEqual(
+      expect.objectContaining({
+        headers: expect.objectContaining({ Cookie: 'cf_clearance=stale' }),
+      }),
+    );
+    expect(mockedFetch.mock.calls[4]?.[1]).toEqual(
+      expect.objectContaining({
+        headers: expect.objectContaining({ Cookie: 'cf_clearance=fresh' }),
+      }),
+    );
+  });
+
+  it('kinozal: clears rejected fresh clearance and stops retrying', async () => {
+    settingsMock.kinozalUsername = 'login';
+    settingsMock.kinozalPassword = 'password';
+    settingsMock.flaresolverrEnabled = true;
+    settingsMock.flaresolverrUrl = 'http://localhost:8191';
+    const url = 'https://kinozal.tv/details.php?id=788';
+    const challenge = (): Response =>
+      new Response(null, {
+        status: 403,
+        headers: { 'cf-mitigated': 'challenge' },
+      });
+    const solution = (): Response =>
+      new Response(
+        JSON.stringify({
+          status: 'ok',
+          solution: {
+            status: 200,
+            response: '<html></html>',
+            cookies: [{ name: 'cf_clearance', value: 'rejected' }],
+            userAgent: 'Mozilla/5.0 FlareSolverr',
+          },
+        }),
+      );
+    const mockedFetch = vi.mocked(customFetch);
+    mockedFetch
+      .mockResolvedValueOnce(challenge())
+      .mockResolvedValueOnce(solution())
+      .mockResolvedValueOnce(challenge())
+      .mockResolvedValueOnce(solution())
+      .mockResolvedValueOnce(challenge());
+
+    await expect(
+      new TrackerDataAdapter({ url, tracker: 'kinozal' }).collect(),
+    ).rejects.toThrow(
+      'Cloudflare challenge detected while authenticating kinozal',
+    );
+    expect(mockedFetch).toHaveBeenCalledTimes(5);
+    expect(getCachedFlareSolverrSession('kinozal', url)).toBeNull();
   });
 
   it('kinozal: does not retry domains for missing credentials', async () => {

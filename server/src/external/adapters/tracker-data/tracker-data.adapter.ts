@@ -372,15 +372,59 @@ export class TrackerDataAdapter {
       }
 
       const session = await this.resolveFlareSolverrAuthSession(url);
-      const cookies = buildCookieHeader(session.cookies, url, session.host);
+      try {
+        return await this.authenticateWithFlareSolverrSession(
+          url,
+          origin,
+          session,
+          createAuthCookies,
+        );
+      } catch (retryError) {
+        if (
+          !(retryError instanceof TrackerAuthError) ||
+          retryError.kind !== 'challenge'
+        ) {
+          throw retryError;
+        }
 
-      return trackerAuthCookieCache.getOrCreate(this.tracker, origin, () =>
-        createAuthCookies({
-          cookies,
-          userAgent: session.userAgent,
-        }),
-      );
+        clearCachedFlareSolverrSession(this.tracker, url, session);
+        if (this.cloudflareSession === session) {
+          this.cloudflareSession = null;
+        }
+        const freshSession = await this.resolveFlareSolverrAuthSession(url);
+        try {
+          return await this.authenticateWithFlareSolverrSession(
+            url,
+            origin,
+            freshSession,
+            createAuthCookies,
+          );
+        } catch (freshError) {
+          if (
+            freshError instanceof TrackerAuthError &&
+            freshError.kind === 'challenge'
+          ) {
+            clearCachedFlareSolverrSession(this.tracker, url, freshSession);
+            if (this.cloudflareSession === freshSession) {
+              this.cloudflareSession = null;
+            }
+          }
+          throw freshError;
+        }
+      }
     }
+  }
+
+  private async authenticateWithFlareSolverrSession(
+    url: string,
+    origin: string,
+    session: FlareSolverrSession,
+    createAuthCookies: (options: TrackerAuthRequestOptions) => Promise<string>,
+  ): Promise<TrackerAuthCookieResult> {
+    const cookies = buildCookieHeader(session.cookies, url, session.host);
+    return trackerAuthCookieCache.getOrCreate(this.tracker, origin, () =>
+      createAuthCookies({ cookies, userAgent: session.userAgent }),
+    );
   }
 
   private async resolveFlareSolverrAuthSession(
