@@ -15,10 +15,10 @@
     "@ctrl/shared-torrent": "6.5.1",
     "@ctrl/transmission": "7.4.0",
     "@hono/standard-validator": "^0.2.2",
-    "better-auth": "~1.6.21",
+    "better-auth": "~1.7.25",
     "drizzle-orm": "~0.45.2",
     "drizzle-zod": "~0.8.3",
-    "hono": "4.13.9",
+    "hono": "4.13.19",
     "iconv-lite": "~0.7.2",
     "jschardet": "~3.1.4",
     "node-html-parser": "~8.0.3",
@@ -28,12 +28,12 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/bun": "latest",
-    "@vitest/coverage-v8": "4.1.9",
-    "drizzle-kit": "^0.31.10",
-    "eslint": "^10.8.1",
+    "@vitest/coverage-v8": "4.1.12",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^10.15.0",
     "globals": "^17.0.0",
     "tsx": "^4.22.4",
     "typescript-eslint": "^8.37.0",
-    "vitest": "4.1.9"
+    "vitest": "4.1.12"
   }
 }
