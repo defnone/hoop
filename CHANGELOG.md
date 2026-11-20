@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.1 - 2026-11-20
+
+### Fixed
+
+- Kinozal: refresh rejected Cloudflare clearance and retry authentication (ca0612f).
+- Kinozal: share concurrent authentication retries for the same origin (8237e97).
+
+### Security
+
+- Update dependencies, including Hono to 4.13.19, Better Auth to 1.7.25, and React Router to 8.3.0 (84008a6, e60ae9a).
+
+### Changed
+
+- Update development dependencies, including Vitest, Vite, ESLint, and Wrangler (e60ae9a).
+- Exclude local AI documentation from Git tracking (048bfd2).
+
 ## 0.9.0 - 2026-09-22
 
 ### Added
